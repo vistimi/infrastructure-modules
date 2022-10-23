@@ -1,0 +1,12 @@
+# VPC
+Create a file called `terraform.tfvars` in the same folder to load the variables inside the configuration.
+They must match the variables defined inside `variables.tf`.
+
+```terraform
+region           = "us-east-1"
+project_name     = "test"
+environment_name = "trunk"
+common_tags      = { region = "us-east-1" }
+vpc_cidr_ipv4    = "160.0.0.0/16"
+vpc_cidr_ipv6    = "2600:1f18:6168:f600::/56"
+```

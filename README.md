@@ -17,12 +17,8 @@ terraform plan
 terraform apply
 terraform show
 
-# replace instances without downtime
-create_before_destroy
-
 # destroy the infrastructure
 terraform destroy
-
 ```
 
 ## terraform
@@ -37,6 +33,24 @@ To setup workflow and environments check this [Medium article](https://blog.grun
 Check the [HCL](https://developer.hashicorp.com/terraform/language).
 
 </details>
+
+For reources tags, where `common_tags` is a map:
+
+```terraform
+resource "aws_resource_type" "resource_name" {
+  tags = merge(var.common_tags, {Name="..."})
+}
+```
+
+Add the lifecycle policy to create before detroying to avoid downtime:
+
+```terraform
+resource "aws_resource_type" "resource_name" {
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+```
 
 ## env
 

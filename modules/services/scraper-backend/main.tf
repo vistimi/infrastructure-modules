@@ -38,7 +38,7 @@ module "ec2" {
   instance_type        = "m4.large"
   min_size             = 2
   max_size             = 10
-  custom_tags = {
+  common_tags = {
     Owner     = "team-foo"
     ManagedBy = "terraform"
   }

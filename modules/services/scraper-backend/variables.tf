@@ -1,4 +1,6 @@
-# Global
+# ---------------------------------------------------------------------------------------------------------------------
+# GLOBAL PARAMETERS
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
@@ -25,15 +27,30 @@ variable "hash" {
   type        = string
 }
 
+variable "server_port" {
+  description = "The port the server will use for HTTP requests"
+  type        = number
+  default     = 8080
+}
 
-# Mongodb
+variable "elb_port" {
+  description = "The port the ELB will use for HTTP requests"
+  type        = number
+  default     = 80
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# MONGODB
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "db_version" {
   description = "The version of the database"
   type        = string
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
 # EC2
+# ---------------------------------------------------------------------------------------------------------------------
 
 variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. `t2.micro`)"
