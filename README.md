@@ -52,6 +52,20 @@ resource "aws_resource_type" "resource_name" {
 }
 ```
 
+For backing up the state in an S3 bucket:
+```terraform
+backend "s3" {
+  bucket         = "${var.backup_name}-storage"
+  key            = "global/s3/terraform.tfstate"
+  region         = var.region
+
+  # Replace this with your DynamoDB table name!
+  dynamodb_table = "${var.backup_name}-locks"
+  encrypt        = true
+}
+  ```
+
+
 ## env
 
 #### devcontainer

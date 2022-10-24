@@ -20,6 +20,11 @@ variable "common_tags" {
   default     = {}
 }
 
+variable "backup_name" {
+  description = "The name of backup used to store and lock the states"
+  type        = string
+}
+
 # Specific
 variable "server_port" {
   description = "The port of the server to forward the traffic to"

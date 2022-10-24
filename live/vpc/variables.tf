@@ -1,4 +1,3 @@
-# Global
 variable "region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
   type        = string
@@ -20,7 +19,11 @@ variable "common_tags" {
   default     = {}
 }
 
-# Specific
+variable "backup_name" {
+  description = "The name of backup used to store and lock the states"
+  type        = string
+}
+
 variable "vpc_cidr_ipv4" {
   description = "The prefix of the vpc CIDR block (e.g. 160.0.0.0/16)"
   type        = string
