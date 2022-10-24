@@ -13,14 +13,13 @@ variable "environment_name" {
   type        = string
 }
 
-variable "common_tags" {
-  description = "Custom tags to set on the Instances in the ASG"
-  type        = map(string)
-  default     = {}
-}
-
 variable "backup_name" {
   description = "The name of backup used to store and lock the states"
+  type        = string
+}
+
+variable "backup_region" {
+  description = "The name of backup region"
   type        = string
 }
 

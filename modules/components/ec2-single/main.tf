@@ -1,0 +1,80 @@
+locals {
+  any_port      = 0
+  any_protocol  = "-1"
+  http_protocol = "HTTP"
+  tcp_protocol  = "tcp"
+  all_cidrs_ipv4 = "0.0.0.0/0"
+  all_cidrs_ipv6 = "::/0"
+}
+
+# AMI
+module "ami" {
+  source   = "modules/components/ami"
+  ami_name = var.ami_name
+}
+
+# Security Group
+resource "aws_security_group" "instance" {
+  name = var.instance_security_group_name
+  description = "Default security group to allow inbound/outbound for the instance"
+  tags        = merge(var.common_tags, { Name = "${var.cluster_name}-ec2-sg" })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_security_group_rule" "allow_all_inbound_ipv4" {
+  type              = "ingress"
+  security_group_id = aws_security_group.instance.id
+
+  from_port   = var.server_port
+  to_port     = var.server_port
+  protocol    = local.tcp_protocol
+  cidr_blocks = [local.all_cidrs_ipv4] // TODO: cidr from backend sg
+}
+
+resource "aws_security_group_rule" "allow_all_outbound_ipv4" {
+  type              = "egress"
+  security_group_id = aws_security_group.instance.id
+
+  from_port   = local.any_port
+  to_port     = local.any_port
+  protocol    = local.any_protocol
+  cidr_blocks = [local.all_cidrs_ipv4]
+}
+
+# # Network
+# resource "aws_network_interface" "instance" {
+#   subnet_id   = var.subnet_id
+#   private_ips = ["172.16.10.100"]
+#   tags = merge(var.common_tags, { Name = "${var.cluster_name}-network-interface" })
+
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
+
+# EC2
+resource "aws_instance" "instance" {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
+  security_groups = [aws_security_group.instance.id]
+  key_name                    = var.key_name
+  monitoring=true
+  associate_public_ip_address = var.public
+
+  tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2" })
+
+  subnet_id = var.subnet_id
+  # network_interface {
+  #   network_interface_id = aws_network_interface.instance.id
+  #   device_index         = 0
+  # }
+
+  user_data = templatefile( var.user_data_path, var.user_data_args)
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}

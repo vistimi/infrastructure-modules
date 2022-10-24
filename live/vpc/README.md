@@ -2,7 +2,7 @@
 Create a file called `terraform.tfvars` in the same folder to load the variables inside the configuration.
 They must match the variables defined inside `variables.tf`.
 
-```terraform
+```hcl
 region           = "us-east-1"
 project_name     = "test"
 environment_name = "trunk"

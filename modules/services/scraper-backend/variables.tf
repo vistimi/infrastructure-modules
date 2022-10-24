@@ -1,19 +1,11 @@
-# ---------------------------------------------------------------------------------------------------------------------
-# GLOBAL PARAMETERS
-# ---------------------------------------------------------------------------------------------------------------------
-
+# Global
 variable "region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
   type        = string
 }
 
-variable "vpc_name" {
-  description = "The name of the vpc, (e.g `vpc-scraper`)"
-  type        = string
-}
-
 variable "service_name" {
-  description = "The name of the service, (e.g `scraper-backend`)"
+  description = "The name of the project, (e.g `scraper-backend`)"
   type        = string
 }
 
@@ -22,21 +14,14 @@ variable "environment_name" {
   type        = string
 }
 
-variable "hash" {
-  description = "The hash of the current commit"
+variable "vpc_id" {
+  description = "The IDs of the VPC which contains the subnets"
   type        = string
 }
 
-variable "server_port" {
-  description = "The port the server will use for HTTP requests"
-  type        = number
-  default     = 8080
-}
-
-variable "elb_port" {
-  description = "The port the ELB will use for HTTP requests"
-  type        = number
-  default     = 80
+variable "subnets_ids" {
+  description = "The IDs of the subnets for the ASG"
+  type        = list(string)
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -52,9 +37,35 @@ variable "db_version" {
 # EC2
 # ---------------------------------------------------------------------------------------------------------------------
 
-variable "instance_type" {
-  description = "The type of EC2 Instances to run (e.g. `t2.micro`)"
+variable "server_port" {
+  description = "The port of the server to forward the traffic to"
+  type        = number
+}
+
+variable "health_check_path" {
+  description = "The path to forward the traffic to"
   type        = string
+}
+
+variable "elb_port" {
+  description = "The port the ELB will use for HTTP requests"
+  type        = number
+  default     = 80
+}
+
+variable "ami_name" {
+  description = "The name of the AMI used for the EC2 instance"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "The type of EC2 Instances to run (e.g. t2.micro)"
+  type        = string
+}
+
+variable "min_size" {
+  description = "The minimum number of EC2 Instances in the ASG"
+  type        = number
 }
 
 variable "max_size" {

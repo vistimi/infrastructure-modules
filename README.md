@@ -36,15 +36,16 @@ Check the [HCL](https://developer.hashicorp.com/terraform/language).
 
 For reources tags, where `common_tags` is a map:
 
-```terraform
+```hcl
 resource "aws_resource_type" "resource_name" {
   tags = merge(var.common_tags, {Name="..."})
 }
 ```
 
-Add the lifecycle policy to create before detroying to avoid downtime:
+Add the lifecycle policy to create before detroying to avoid downtime.
+Be careful not to do it on unique resources that cannot be duplicated.
 
-```terraform
+```hcl
 resource "aws_resource_type" "resource_name" {
   lifecycle {
     create_before_destroy = true
@@ -52,19 +53,61 @@ resource "aws_resource_type" "resource_name" {
 }
 ```
 
-For backing up the state in an S3 bucket:
-```terraform
-backend "s3" {
-  bucket         = "${var.backup_name}-storage"
-  key            = "global/s3/terraform.tfstate"
-  region         = var.region
-
-  # Replace this with your DynamoDB table name!
-  dynamodb_table = "${var.backup_name}-locks"
-  encrypt        = true
+Add the lifecycle policy to protect from destroying it:
+```hcl
+resource "aws_resource_type" "resource_name" {
+  lifecycle {
+    prevent_destroy = true
+  }
 }
-  ```
+```
 
+For backing up the state in an S3 bucket, insert those only in the running terraform file, which would not be in `modules`. 
+The backup name is usually `backup_name="terraform-state-backend"`.
+
+```hcl
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.16"
+    }
+  }
+
+  required_version = ">= 1.2.0"
+
+  backend "s3" {
+    bucket         = "terraform-state-backend-storage"
+    key            = "global/s3/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-backend-locks"
+    encrypt        = true
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+```
+
+For running a bash script after the creation of the resource:
+```hcl
+resource "aws_resource_type" "resource_name" {
+  user_data = templatefile("user-data.sh", {
+    var_to_inject = "something"
+  })
+}
+```
+
+Inside `user-data.sh`:
+
+```shell
+#!/bin/bash
+
+...
+${db_address}
+...
+```
 
 ## env
 

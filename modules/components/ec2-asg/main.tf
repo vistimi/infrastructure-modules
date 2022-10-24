@@ -1,6 +1,6 @@
 
 locals {
-  http_port     = 80
+  http_port     = var.elb_port
   any_port      = 0
   any_protocol  = "-1"
   http_protocol = "HTTP"
@@ -8,61 +8,19 @@ locals {
   all_ips       = ["0.0.0.0/0"]
 }
 
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.16"
-    }
-  }
-
-  required_version = ">= 1.2.0"
-
-  backend "s3" {
-    bucket = "${var.backup_name}-storage"
-    key    = "global/s3/terraform.tfstate"
-    region = var.region
-
-    # Replace this with your DynamoDB table name!
-    dynamodb_table = "${var.backup_name}-locks"
-    encrypt        = true
-  }
+# AMI
+module "ami" {
+  source   = "modules/components/ami"
+  ami_name = var.ami_name
 }
-
-provider "aws" {
-  region = var.region
-}
-
-# VPC
-# data "aws_vpc" "default" {
-#   default = true
-# }
-
-# data "aws_subnets" "default" {
-#   filter {
-#     name   = "vpc-id"
-#     values = [data.aws_vpc.default.id]
-#   }
-# }
 
 # ALB Security Group
 resource "aws_security_group" "alb" {
   name = "${var.cluster_name}-alb"
+  tags = merge(var.common_tags, { Name = "${var.cluster_name}-alb-sg" })
 
-  tag {
-    key                 = "Name"
-    value               = "${var.cluster_name}-alb-sg"
-    propagate_at_launch = true
-  }
-
-  dynamic "tag" {
-    for_each = var.common_tags
-
-    content {
-      key                 = tag.key
-      value               = tag.value
-      propagate_at_launch = true
-    }
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -92,25 +50,10 @@ resource "aws_lb" "alb" {
   load_balancer_type = "application"
   subnets            = data.aws_subnets.default.ids
   security_groups    = [aws_security_group.alb.id]
+  tags = merge(var.common_tags, { Name = "${var.cluster_name}-alb" })
 
   lifecycle {
     create_before_destroy = true
-  }
-
-  tag {
-    key                 = "Name"
-    value               = "${var.cluster_name}-alb"
-    propagate_at_launch = true
-  }
-
-  dynamic "tag" {
-    for_each = var.common_tags
-
-    content {
-      key                 = tag.key
-      value               = tag.value
-      propagate_at_launch = true
-    }
   }
 }
 
@@ -119,10 +62,6 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.example.arn
   port              = local.http_port
   protocol          = local.http_protocol
-
-  lifecycle {
-    create_before_destroy = true
-  }
 
   # By default, return a simple 404 page
   default_action {
@@ -134,6 +73,10 @@ resource "aws_lb_listener" "http" {
       status_code  = 404
     }
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ALB target
@@ -141,11 +84,7 @@ resource "aws_lb_target_group" "asg" {
   name     = "terraform-asg-example"
   port     = var.server_port
   protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  vpc_id   = var.vpc_id
 
   health_check {
     path                = var.health_check_path
@@ -155,6 +94,10 @@ resource "aws_lb_target_group" "asg" {
     timeout             = 3
     healthy_threshold   = 2
     unhealthy_threshold = 2
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -169,56 +112,31 @@ resource "aws_security_group" "instance" {
     protocol    = local.tcp_protocol
     cidr_blocks = local.all_ips
   }
-}
 
-# AMI
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["099720109477"] # Canonical
-}
-
-resource "aws_launch_configuration" "ec2_launch_conf" {
-  image_id        = data.aws_ami.ubuntu.id
-  instance_type   = var.instance_type
-  security_groups = [aws_security_group.instance.id]
-
-  # Required when using a launch configuration with an auto scaling group.
   lifecycle {
     create_before_destroy = true
   }
+}
 
-  tag {
-    key                 = "Name"
-    value               = "${var.cluster_name}-ec2"
-    propagate_at_launch = true
-  }
+resource "aws_launch_configuration" "ec2_launch_config" {
+  image_id        = module.ami.id
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.instance.id]
+  associate_public_ip_address = var.public
+  tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2" })
 
-  dynamic "tag" {
-    for_each = var.common_tags
-
-    content {
-      key                 = tag.key
-      value               = tag.value
-      propagate_at_launch = true
-    }
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
 # EC2 ASG
 resource "aws_autoscaling_group" "asg" {
-  launch_configuration = aws_launch_configuration.ec2_launch_conf.name
-  vpc_zone_identifier  = data.aws_subnets.default.ids
+  launch_configuration = aws_launch_configuration.ec2_launch_config.name
+  vpc_zone_identifier  = var.subnets_ids
+  monitoring=true
+  associate_public_ip_address = var.public
+  tags = merge(var.common_tags, { Name = "${var.cluster_name}-asg" })
 
   target_group_arns = [aws_lb_target_group.asg.arn]
   health_check_type = "ELB"
@@ -229,31 +147,11 @@ resource "aws_autoscaling_group" "asg" {
   lifecycle {
     create_before_destroy = true
   }
-
-  tag {
-    key                 = "Name"
-    value               = "${var.cluster_name}-asg"
-    propagate_at_launch = true
-  }
-
-  dynamic "tag" {
-    for_each = var.common_tags
-
-    content {
-      key                 = tag.key
-      value               = tag.value
-      propagate_at_launch = true
-    }
-  }
 }
 
 resource "aws_lb_listener_rule" "asg" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 100
-
-  lifecycle {
-    create_before_destroy = true
-  }
 
   condition {
     path_pattern {
@@ -264,5 +162,9 @@ resource "aws_lb_listener_rule" "asg" {
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.asg.arn
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }

@@ -10,10 +10,6 @@ locals {
   private_cidrs_ipv4 = slice(local.cidrs_ipv4, 3, 6)
 }
 
-provider "aws" {
-  region = var.region
-}
-
 data "aws_availability_zones" "available" {
   state = "available"
 }

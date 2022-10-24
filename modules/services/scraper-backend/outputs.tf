@@ -1,0 +1,1 @@
+autoscaling_group_name = module.webserver_cluster.asg_name
