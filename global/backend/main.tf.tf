@@ -21,10 +21,7 @@ resource "aws_s3_bucket" "terraform_storage" {
     prevent_destroy = true
   }
 
-  tags = {
-    Name   = "terraform-state-backend-storage"
-    Region = "us-east-1"
-  }
+  tags = { Name = "terraform-state-backend-storage", Region = "us-east-1" }
 }
 
 resource "aws_s3_bucket_versioning" "enabled" {
