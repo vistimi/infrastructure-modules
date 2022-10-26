@@ -1,14 +1,5 @@
 #!/bin/bash
 
-// TODO: remove
-aws_region=us-east-1
-aws_profile=KookaS
-aws_access_key=AKIAV3ABI2O5E3NDCH65
-aws_secret_key=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
-bucket_name_mongodb=scraper-trunk-mongodb
-bucket_name_mount_helper=global-mount-helper
-mongodb_version=6.0.1
-
 # mount S3 bucket for mongodb
 sudo yum update all
 sudo yum update -y
