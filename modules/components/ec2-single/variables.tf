@@ -15,14 +15,12 @@ variable "common_tags" {
   default     = {}
 }
 
-# Specific
-
+# EC2
 variable "cluster_name" {
   description = "The name of the EC2 cluster"
   type        = string
 }
 
-# EC2
 variable "server_port" {
   description = "The port of the server to forward the traffic to"
   type        = number

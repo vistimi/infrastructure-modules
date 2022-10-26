@@ -27,7 +27,7 @@
 	"remoteUser": "vscode",
 	"features": {
 		"terraform": "latest",
-		"github-cli": "latest",
-		"aws-cli": "latest"
+		"aws-cli": "latest",
+		"github-cli": "latest"
 	}
 }

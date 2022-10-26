@@ -1,23 +1,28 @@
 # Global
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
+variable "region" {
+  description = "The region on which the project is running, (e.g `us-east-1`)"
   type        = string
 }
 
-variable "public_subnets_ids" {
-  description = "The IDs of the public subnets for the ASG"
-  type        = list(string)
+variable "project_name" {
+  description = "The name of the project, (e.g `scraper`)"
+  type        = string
 }
 
-variable "private_subnets_ids" {
-  description = "The IDs of the private subnets for the ASG"
-  type        = list(string)
+variable "environment_name" {
+  description = "The name of the environment, (e.g `trunk`)"
+  type        = string
 }
 
-variable "common_tags" {
-  description = "Custom tags to set on the Instances in the ASG"
-  type        = map(string)
-  default     = {}
+variable "vpc_cidr_ipv4" {
+  description = "The prefix of the vpc CIDR block (e.g. 160.0.0.0/16)"
+  type        = string
+}
+
+# Mongodb
+variable "mongodb_version" {
+  description = "The version of the database"
+  type        = string
 }
 
 # EC2
@@ -45,10 +50,4 @@ variable "user_data_path" {
   description = "Bash script path to run after creation of instance"
   type        = string
   default     = ""
-}
-
-variable "user_data_args" {
-  description = "Bash script arguments to pass to the bash script"
-  type        = map
-  default     = {}
 }

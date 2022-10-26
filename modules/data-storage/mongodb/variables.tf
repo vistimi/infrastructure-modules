@@ -4,14 +4,9 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "public_subnets_ids" {
-  description = "The IDs of the public subnets for the ASG"
-  type        = list(string)
-}
-
-variable "private_subnets_ids" {
-  description = "The IDs of the private subnets for the ASG"
-  type        = list(string)
+variable "subnets_id" {
+  description = "The ID of the subnet for the EC2 instance"
+  type        = string
 }
 
 variable "common_tags" {
@@ -49,6 +44,6 @@ variable "user_data_path" {
 
 variable "user_data_args" {
   description = "Bash script arguments to pass to the bash script"
-  type        = map
+  type        = map(any)
   default     = {}
 }

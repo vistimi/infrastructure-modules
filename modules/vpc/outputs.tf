@@ -1,9 +1,9 @@
-output "vpc_id" {
+output "id" {
   value       = aws_vpc.vpc.id
   description = "The id of the VPC"
 }
 
-output "vpc_security_group_id" {
+output "security_group_id" {
   value       = aws_security_group.vpc.id
   description = "The ID of the Security Group attached to the VPC"
 }

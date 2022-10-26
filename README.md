@@ -63,7 +63,7 @@ resource "aws_resource_type" "resource_name" {
 ```
 
 For backing up the state in an S3 bucket, insert those only in the running terraform file, which would not be in `modules`. 
-The backup name is usually `backup_name="terraform-state-backend"`.
+The backend name is usually `backend_name="terraform-state-backend"`.
 
 ```hcl
 terraform {
@@ -118,6 +118,10 @@ AWS_REGION=***
 AWS_PROFILE=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
+TF_VAR_AWS_REGION="${AWS_REGION}"
+TF_VAR_AWS_PROFILE="${AWS_PROFILE}"
+TF_VAR_AWS_ACCESS_KEY="${AWS_ACCESS_KEY}"
+TF_VAR_AWS_SECRET_KEY="${AWS_SECRET_KEY}"
 ```
 
 ## variables

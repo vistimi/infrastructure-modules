@@ -21,10 +21,14 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# S3 for mongodb docker image
-resource "aws_s3_bucket" "docker" {
-  bucket = "mongodb-docker-images"
-  tags   = { Name = "mongodb-docker-images", Region = "us-east-1" }
+locals {
+  bucket_name = "global-mount-helper"
+}
+
+# S3 for helping to mount instances to buckets
+resource "aws_s3_bucket" "mount" {
+  bucket = local.bucket_name
+  tags   = { Name = local.bucket_name, Region = "us-east-1" }
 
   lifecycle {
     prevent_destroy = true
@@ -32,7 +36,7 @@ resource "aws_s3_bucket" "docker" {
 }
 
 resource "aws_s3_bucket_versioning" "enabled" {
-  bucket = aws_s3_bucket.docker.id
+  bucket = aws_s3_bucket.mount.id
   versioning_configuration {
     status = "Enabled"
   }
