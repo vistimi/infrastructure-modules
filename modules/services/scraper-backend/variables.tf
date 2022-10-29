@@ -1,4 +1,9 @@
 # Global
+variable "region" {
+  description = "The region on which the project is running, (e.g `us-east-1`)"
+  type        = string
+}
+
 variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
@@ -31,10 +36,17 @@ variable "health_check_path" {
   type        = string
 }
 
-variable "ami_name" {
-  description = "The name of the AMI used for the EC2 instance"
+variable "ami_id"{
+  description = "The ID of the AMI used for the EC2 instance"
   type        = string
+  default = "ami-09d3b3274b6c5d4aa"
 }
+
+
+# variable "ami_name" {
+#   description = "The name of the AMI used for the EC2 instance"
+#   type        = string
+# }
 
 variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"

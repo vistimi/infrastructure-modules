@@ -1,27 +1,17 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.16"
-    }
-  }
-
-  required_version = ">= 1.2.0"
-}
-
-provider "aws" {
-  region = "us-east-1"
+locals {
+  storage_name = "${var.backend_name}-storage"
+  lock_name = "${var.backend_name}-locks"
 }
 
 # S3
 resource "aws_s3_bucket" "terraform_storage" {
-  bucket = "terraform-state-backend-storage"
+  bucket = local.storage_name
+
+  tags = { Name = local.storage_name, Region = var.region }
 
   lifecycle {
     prevent_destroy = true
   }
-
-  tags = { Name = "terraform-state-backend-storage", Region = "us-east-1" }
 }
 
 resource "aws_s3_bucket_versioning" "enabled" {
@@ -51,7 +41,7 @@ resource "aws_s3_bucket_public_access_block" "public_access" {
 
 # DynamoDB
 resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "terraform-state-backend-locks"
+  name         = local.lock_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
@@ -60,12 +50,12 @@ resource "aws_dynamodb_table" "terraform_locks" {
     type = "S"
   }
 
-  lifecycle {
-    prevent_destroy = true
+  tags = {
+    Name   = local.lock_name
+    Region = var.region
   }
 
-  tags = {
-    Name   = "terraform-state-backend-locks"
-    Region = "us-east-1"
+  lifecycle {
+    prevent_destroy = true
   }
 }

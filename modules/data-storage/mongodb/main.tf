@@ -12,6 +12,7 @@ module "docker" {
 # S3 for mongodb state
 resource "aws_s3_bucket" "mongodb" {
   bucket = local.bucket_name_mongodb
+
   tags   = merge(var.common_tags, { Name = local.bucket_name_mongodb })
 }
 
@@ -25,6 +26,7 @@ resource "aws_s3_bucket_versioning" "enabled" {
 # S3 for pictures
 resource "aws_s3_bucket" "pictures" {
   bucket = local.bucket_name_pictures
+  
   tags   = merge(var.common_tags, { Name = local.bucket_name_pictures })
 }
 
@@ -36,7 +38,7 @@ resource "aws_s3_bucket_versioning" "enabled" {
 }
 
 module "ec2_single" {
-  source = "modules/components/ec2-single"
+  source = "../../components/ec2-single"
 
   vpc_id            = var.vpc_id
   subnet_id         = var.subnet_id

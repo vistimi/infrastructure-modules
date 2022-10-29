@@ -23,3 +23,9 @@ variable "vpc_cidr_ipv4" {
   description = "The prefix of the vpc CIDR block (e.g. 160.0.0.0/16)"
   type        = string
 }
+
+# variable "vpc_availability_zones" {
+#   description = "The number of availability zones to use"
+#   type        = number
+#   default     = 2
+# }

@@ -64,6 +64,7 @@ resource "aws_resource_type" "resource_name" {
 
 For backing up the state in an S3 bucket, insert those only in the running terraform file, which would not be in `modules`. 
 The backend name is usually `backend_name="terraform-state-backend"`.
+There is a different state for production and non-production environments.
 
 ```hcl
 terraform {
@@ -130,4 +131,18 @@ Variables set in the file can be overridden at deployment:
 
 ```shell
 terraform apply -var <var_to_change>=<new_value>
+```
+
+## cidr
+
+Using `/16` for CIDR blocks means that the last two parts of the adress are customizable for subnets.
+The recommendations are to use the first part of the CIDR for different VPCs projects. When ever there should be a clear abstraction, use a different number. The recommendation is to simply increment by 1 the value of the first value of the CIDR, e.g. `10.0.0.0/16` to `11.0.0.0/16`.
+The second part of the cidr block is reserved for within the VPC for the different services running inside. `10.0.0.0/16` for one service and `10.1.0.0/16` for another one.
+
+
+To check the first and last ip of a CIDR block:
+
+```hcl
+cidrhost("192.168.0.0/16", 0)
+cidrhost("192.168.0.0/16", -1)
 ```

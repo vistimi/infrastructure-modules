@@ -19,6 +19,42 @@ variable "vpc_cidr_ipv4" {
   type        = string
 }
 
+# User Data
+variable "user_data_path" {
+  description = "Bash script path to run after creation of instance"
+  type        = string
+  default     = ""
+}
+
+variable "bucket_name_mount_helper" {
+  description = "The name of the bucket to fetch what is necessary for user-data.sh"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "The region of the credentials"
+  type        = string
+  sensitive   = true
+}
+
+variable "aws_profile" {
+  description = "The profile of the credentials"
+  type        = string
+  sensitive   = true
+}
+
+variable "aws_access_key" {
+  description = "the public key of the access credentials"
+  type        = string
+  sensitive   = true
+}
+
+variable "aws_secret_key" {
+  description = "the private key of the access credentials"
+  type        = string
+  sensitive   = true
+}
+
 # Mongodb
 variable "mongodb_version" {
   description = "The version of the database"
@@ -44,10 +80,4 @@ variable "ami_name" {
 variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
-}
-
-variable "user_data_path" {
-  description = "Bash script path to run after creation of instance"
-  type        = string
-  default     = ""
 }

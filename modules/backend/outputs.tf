@@ -3,7 +3,7 @@ output "bucket_arn" {
   description = "The ARN of the S3 bucket"
 }
 
-output "dynamodb_table" {
+output "locks_arn" {
   value       = aws_dynamodb_table.terraform_locks.arn
-  description = "The ARN of the DynamoDB table"
+  description = "The ARN of the locks"
 }

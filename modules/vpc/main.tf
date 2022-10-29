@@ -1,147 +1,168 @@
 locals {
-  any_port       = 0
-  any_protocol   = "-1"
-  all_cidrs_ipv4 = "0.0.0.0/0"
-  all_cidrs_ipv6 = "::/0"
+  # any_port       = 0
+  # any_protocol   = "-1"
+  # all_cidrs_ipv4 = "0.0.0.0/0"
+  # all_cidrs_ipv6 = "::/0"
 
-  name               = "${var.project_name}-${var.environment_name}"
-  cidrs_ipv4         = cidrsubnets(var.vpc_cidr_ipv4, 4, 4, 4, 4, 4, 4)
-  public_cidrs_ipv4  = slice(local.cidrs_ipv4, 0, 3)
-  private_cidrs_ipv4 = slice(local.cidrs_ipv4, 3, 6)
+  name                   = "${var.project_name}-${var.environment_name}"
+  vpc_availability_zones = 3
+  cidrs_ipv4             = cidrsubnets(var.vpc_cidr_ipv4, 4, 4, 4, 4, 4, 4) # increment from `0.0.0.0/20` to `0.0.16.0/20`
+  public_cidrs_ipv4      = slice(local.cidrs_ipv4, 0, local.vpc_availability_zones)
+  private_cidrs_ipv4     = slice(local.cidrs_ipv4, local.vpc_availability_zones, length(local.cidrs_ipv4))
 }
 
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# VPC
-resource "aws_vpc" "vpc" {
-  cidr_block                       = var.vpc_cidr_ipv4
-  enable_dns_support               = true
-  enable_dns_hostnames             = true
-  assign_generated_ipv6_cidr_block = true
-  tags                             = merge(var.common_tags, { Name = "${local.name}-vpc" })
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 3.18.1"
 
-  lifecycle {
-    create_before_destroy = true
-  }
+  name = "${local.name}-vpc"
+  cidr = var.vpc_cidr_ipv4
+
+  azs             = slice(data.aws_availability_zones.available.names, 0, min(var.vpc_availability_zones, length(data.aws_availability_zones.available.names)))
+  public_subnets  = local.public_cidrs_ipv4
+  private_subnets = local.private_cidrs_ipv4
+
+  tags = var.common_tags
 }
 
-# Internet GateWay for the public subnets
-resource "aws_internet_gateway" "internet_gateway" {
-  vpc_id = aws_vpc.vpc.id
-  tags   = merge(var.common_tags, { Name = "${local.name}-igw" })
-}
+# # VPC
+# resource "aws_vpc" "vpc" {
+#   cidr_block                       = var.vpc_cidr_ipv4
+#   enable_dns_support               = true
+#   enable_dns_hostnames             = true
+#   assign_generated_ipv6_cidr_block = true
 
-# Public subnets
-resource "aws_subnet" "public_subnet" {
-  count             = length(local.public_cidrs_ipv4)
-  vpc_id            = aws_vpc.vpc.id
-  availability_zone = element(data.aws_availability_zones.available.names, count.index)
-  tags              = merge(var.common_tags, { Name = "${local.name}-public-subnet-${element(data.aws_availability_zones.available.names, count.index)}" })
+#   tags = merge(var.common_tags, { Name = "${local.name}-vpc" })
 
-  # ipv4
-  cidr_block              = element(local.public_cidrs_ipv4, count.index)
-  map_public_ip_on_launch = true
-  # ipv6
-  assign_ipv6_address_on_creation = true
-  ipv6_cidr_block                 = cidrsubnet(aws_vpc.vpc.ipv6_cidr_block, 8, count.index)
-}
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 
-# Private subnets
-resource "aws_subnet" "private_subnet" {
-  count             = length(local.private_cidrs_ipv4)
-  vpc_id            = aws_vpc.vpc.id
-  availability_zone = element(data.aws_availability_zones.available.names, count.index)
-  tags              = merge(var.common_tags, { Name = "${local.name}-private-subnet-${element(data.aws_availability_zones.available.names, count.index)}" })
+# # Internet GateWay for the public subnets
+# resource "aws_internet_gateway" "internet_gateway" {
+#   vpc_id = aws_vpc.vpc.id
 
-  # ipv4
-  cidr_block              = element(local.private_cidrs_ipv4, count.index)
-  map_public_ip_on_launch = true
-}
+#   tags = merge(var.common_tags, { Name = "${local.name}-igw" })
+# }
 
-# Routing table for public subnets
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.vpc.id
-  tags   = merge(var.common_tags, { Name = "${local.name}-public-route-table" })
-}
+# # Public subnets
+# resource "aws_subnet" "public_subnet" {
+#   count             = length(local.public_cidrs_ipv4)
+#   vpc_id            = aws_vpc.vpc.id
+#   availability_zone = element(data.aws_availability_zones.available.names, count.index)
+#   # ipv4
+#   cidr_block              = element(local.public_cidrs_ipv4, count.index)
+#   map_public_ip_on_launch = true
+#   # ipv6
+#   assign_ipv6_address_on_creation = true
+#   ipv6_cidr_block                 = cidrsubnet(aws_vpc.vpc.ipv6_cidr_block, 8, count.index)
 
-resource "aws_route" "public_internet_gateway_ipv4" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = local.all_cidrs_ipv4
-  gateway_id             = aws_internet_gateway.internet_gateway.id
-}
+#   tags = merge(var.common_tags, { Name = "${local.name}-public-subnet-${element(data.aws_availability_zones.available.names, count.index)}" })
 
-resource "aws_route" "public_internet_gateway_ipv6" {
-  route_table_id              = aws_route_table.public.id
-  destination_ipv6_cidr_block = local.all_cidrs_ipv6
-  gateway_id                  = aws_internet_gateway.internet_gateway.id
-}
+# }
 
-# Routing table for private subnets
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.vpc.id
-  tags   = merge(var.common_tags, { Name = "${local.name}-private-route-table" })
-}
+# # Private subnets
+# resource "aws_subnet" "private_subnet" {
+#   count             = length(local.private_cidrs_ipv4)
+#   vpc_id            = aws_vpc.vpc.id
+#   availability_zone = element(data.aws_availability_zones.available.names, count.index)
+#   # ipv4
+#   cidr_block              = element(local.private_cidrs_ipv4, count.index)
+#   map_public_ip_on_launch = true
 
-# Route table associations
-resource "aws_route_table_association" "public" {
-  count          = length(local.public_cidrs_ipv4)
-  subnet_id      = element(aws_subnet.public_subnet.*.id, count.index)
-  route_table_id = aws_route_table.public.id
-}
+#   tags              = merge(var.common_tags, { Name = "${local.name}-private-subnet-${element(data.aws_availability_zones.available.names, count.index)}" })
+# }
 
-resource "aws_route_table_association" "private" {
-  count          = length(local.private_cidrs_ipv4)
-  subnet_id      = aws_subnet.private_subnet[count.index].id
-  route_table_id = aws_route_table.private.id
-}
+# # Routing table for public subnets
+# resource "aws_route_table" "public" {
+#   vpc_id = aws_vpc.vpc.id
 
-# Security Group VPC
-resource "aws_security_group" "vpc" {
-  name        = "${local.name}-vpc-sg"
-  description = "Default security group to allow inbound/outbound from the VPC"
-  vpc_id      = aws_vpc.vpc.id
-  depends_on  = [aws_vpc.vpc]
-  tags        = merge(var.common_tags, { Name = "${local.name}-vpc-sg" })
-}
+#   tags   = merge(var.common_tags, { Name = "${local.name}-public-route-table" })
+# }
 
-resource "aws_security_group_rule" "allow_all_inbound_ipv4" {
-  type              = "ingress"
-  security_group_id = aws_security_group.vpc.id
+# resource "aws_route" "public_internet_gateway_ipv4" {
+#   route_table_id         = aws_route_table.public.id
+#   destination_cidr_block = local.all_cidrs_ipv4
+#   gateway_id             = aws_internet_gateway.internet_gateway.id
+# }
 
-  from_port   = local.any_port
-  to_port     = local.any_port
-  protocol    = local.any_protocol
-  cidr_blocks = [local.all_cidrs_ipv4]
-}
+# resource "aws_route" "public_internet_gateway_ipv6" {
+#   route_table_id              = aws_route_table.public.id
+#   destination_ipv6_cidr_block = local.all_cidrs_ipv6
+#   gateway_id                  = aws_internet_gateway.internet_gateway.id
+# }
 
-resource "aws_security_group_rule" "allow_all_outbound_ipv4" {
-  type              = "egress"
-  security_group_id = aws_security_group.vpc.id
+# # Routing table for private subnets
+# resource "aws_route_table" "private" {
+#   vpc_id = aws_vpc.vpc.id
 
-  from_port   = local.any_port
-  to_port     = local.any_port
-  protocol    = local.any_protocol
-  cidr_blocks = [local.all_cidrs_ipv4]
-}
+#   tags   = merge(var.common_tags, { Name = "${local.name}-private-route-table" })
+# }
 
-resource "aws_security_group_rule" "allow_all_inbound_ipv6" {
-  type              = "ingress"
-  security_group_id = aws_security_group.vpc.id
+# # Route table associations
+# resource "aws_route_table_association" "public" {
+#   count          = length(local.public_cidrs_ipv4)
+#   subnet_id      = element(aws_subnet.public_subnet.*.id, count.index)
+#   route_table_id = aws_route_table.public.id
+# }
 
-  from_port        = local.any_port
-  to_port          = local.any_port
-  protocol         = local.any_protocol
-  ipv6_cidr_blocks = [local.all_cidrs_ipv6]
-}
+# resource "aws_route_table_association" "private" {
+#   count          = length(local.private_cidrs_ipv4)
+#   subnet_id      = aws_subnet.private_subnet[count.index].id
+#   route_table_id = aws_route_table.private.id
+# }
 
-resource "aws_security_group_rule" "allow_all_outbound_ipv6" {
-  type              = "egress"
-  security_group_id = aws_security_group.vpc.id
+# # Security Group VPC
+# resource "aws_security_group" "vpc" {
+#   name        = "${local.name}-vpc-sg"
+#   description = "Default security group to allow inbound/outbound from the VPC"
+#   vpc_id      = aws_vpc.vpc.id
+#   depends_on  = [aws_vpc.vpc]
 
-  from_port        = local.any_port
-  to_port          = local.any_port
-  protocol         = local.any_protocol
-  ipv6_cidr_blocks = [local.all_cidrs_ipv6]
-}
+#   tags        = merge(var.common_tags, { Name = "${local.name}-vpc-sg" })
+# }
+
+# resource "aws_security_group_rule" "allow_all_inbound_ipv4" {
+#   type              = "ingress"
+#   security_group_id = aws_security_group.vpc.id
+
+#   from_port   = local.any_port
+#   to_port     = local.any_port
+#   protocol    = local.any_protocol
+#   cidr_blocks = [local.all_cidrs_ipv4]
+# }
+
+# resource "aws_security_group_rule" "allow_all_outbound_ipv4" {
+#   type              = "egress"
+#   security_group_id = aws_security_group.vpc.id
+
+#   from_port   = local.any_port
+#   to_port     = local.any_port
+#   protocol    = local.any_protocol
+#   cidr_blocks = [local.all_cidrs_ipv4]
+# }
+
+# resource "aws_security_group_rule" "allow_all_inbound_ipv6" {
+#   type              = "ingress"
+#   security_group_id = aws_security_group.vpc.id
+
+#   from_port        = local.any_port
+#   to_port          = local.any_port
+#   protocol         = local.any_protocol
+#   ipv6_cidr_blocks = [local.all_cidrs_ipv6]
+# }
+
+# resource "aws_security_group_rule" "allow_all_outbound_ipv6" {
+#   type              = "egress"
+#   security_group_id = aws_security_group.vpc.id
+
+#   from_port        = local.any_port
+#   to_port          = local.any_port
+#   protocol         = local.any_protocol
+#   ipv6_cidr_blocks = [local.all_cidrs_ipv6]
+# }

@@ -1,6 +1,10 @@
+locals {
+  asg_name = "{var.service_name}-${var.environment_name}-asg"
+}
+
 # EC2
 module "ec2-asg" {
-  source = "modules/components/ec2-asg"
+  source = "../../components/ec2-asg"
 
   vpc_id            = var.vpc_id
   subnets_ids       = var.subnets_ids
@@ -18,7 +22,7 @@ module "ec2-asg" {
 
 # MongoDB
 module "mongodb" {
-  source = "modules/data-storage/mongodb"
+  source = "../../data-storage/mongodb"
 
   vpc_id            = var.vpc_id
   subnet_id         = var.subnets_ids[0]

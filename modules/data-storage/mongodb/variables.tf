@@ -1,4 +1,9 @@
 # Global
+variable "region" {
+  description = "The region on which the project is running, (e.g `us-east-1`)"
+  type        = string
+}
+
 variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
