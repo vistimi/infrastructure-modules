@@ -16,6 +16,7 @@ module "mongodb" {
   }
 
   attach_policy = true
+  // TODO: use templatefile
   policy = {
     "Version": "2012-10-17",
     "Statement": [
@@ -59,8 +60,9 @@ module "pictures" {
 module "ec2_single" {
   source = "../../components/ec2-single"
 
-  vpc_id            = var.vpc_id
+  # vpc_id            = var.vpc_id
   subnet_id         = var.subnet_id
+  vpc_security_group_ids = var.vpc_security_group_ids
   common_tags       = var.common_tags
   cluster_name      = "${local.data_storage_name}-ec2"
   server_port       = var.server_port

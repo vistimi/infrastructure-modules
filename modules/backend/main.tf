@@ -1,34 +1,28 @@
 locals {
   storage_name = "${var.backend_name}-storage"
-  lock_name = "${var.backend_name}-locks"
+  lock_name    = "${var.backend_name}-locks"
 }
 
 # S3
-resource "aws_s3_bucket" "terraform_storage" {
-  bucket = local.storage_name
+module "terraform_storage" {
+  source = "terraform-aws-modules/s3-bucket/aws"
 
-  tags = { Name = local.storage_name, Region = var.region }
+  bucket = local.storage_name
+  acl    = "private"
+
+  versioning = {
+    enabled = true
+  }
+
+  server_side_encryption_configuration = {
+    sse_algorithm = "AES256"
+  }
 
   lifecycle {
     prevent_destroy = true
   }
-}
 
-resource "aws_s3_bucket_versioning" "enabled" {
-  bucket = aws_s3_bucket.terraform_storage.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "default" {
-  bucket = aws_s3_bucket.terraform_storage.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
+  tags = { Name = local.storage_name, Region = var.region }
 }
 
 resource "aws_s3_bucket_public_access_block" "public_access" {

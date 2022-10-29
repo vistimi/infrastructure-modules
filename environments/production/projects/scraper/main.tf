@@ -4,22 +4,13 @@ locals {
 
 # VPC
 module "vpc" {
-  source = "../../../modules/vpc"
+  source = "../../../../modules/vpc"
 
   region           = var.region
   project_name     = var.project_name
   environment_name = var.environment_name
   common_tags      = local.common_tags
   vpc_cidr_ipv4    = var.vpc_cidr_ipv4
-}
-
-# ECR
-module "ecr" {
-  source = "../../../../modules/containers/registry"
-
-  project_name              = var.project_name
-  environment_name          = var.environment_name
-  common_tags               = var.common_tags
 }
 
 # # Backend
@@ -36,9 +27,7 @@ module "ecr" {
 #   ami_name           = var.ami_name
 #   instance_type      = var.instance_type
 #   user_data_path     = var.user_data_path
-#   user_data_args = merge(
-#     var.user_data_args,
-#     {
+#   user_data_args = {
 #       bucket_name_mount_helper = var.bucket_name_mount_helper
 #       bucket_name_mongodb      = "${var.project_name}-${var.environment_name}-mongodb"
 #       bucket_name_pictures     = "${var.project_name}-${var.environment_name}-pictures"
@@ -48,7 +37,6 @@ module "ecr" {
 #       aws_access_key           = var.aws_access_key,
 #       aws_secret_key           = var.aws_secret_key,
 #     }
-#   )
 # }
 
 # # ECS

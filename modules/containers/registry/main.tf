@@ -2,7 +2,7 @@ module "ecr" {
   source = "terraform-aws-modules/ecr/aws"
   version = "~> 1.4.0"
 
-  repository_name = var.repository_name
+  repository_name = "${var.project_name}-${var.environment_name}-ecr"
 
   repository_read_write_access_arns = ["arn:aws:iam::012345678901:role/terraform"]
   repository_lifecycle_policy = jsonencode({

@@ -22,7 +22,7 @@ module "vpc" {
   name = "${local.name}-vpc"
   cidr = var.vpc_cidr_ipv4
 
-  azs             = slice(data.aws_availability_zones.available.names, 0, min(var.vpc_availability_zones, length(data.aws_availability_zones.available.names)))
+  azs             = slice(data.aws_availability_zones.available.names, 0, min(local.vpc_availability_zones, length(data.aws_availability_zones.available.names)))
   public_subnets  = local.public_cidrs_ipv4
   private_subnets = local.private_cidrs_ipv4
 

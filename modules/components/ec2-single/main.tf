@@ -1,17 +1,17 @@
-locals {
-  any_port       = 0
-  any_protocol   = "-1"
-  http_protocol  = "HTTP"
-  tcp_protocol   = "tcp"
-  all_cidrs_ipv4 = "0.0.0.0/0"
-  all_cidrs_ipv6 = "::/0"
-}
+# locals {
+#   any_port       = 0
+#   any_protocol   = "-1"
+#   http_protocol  = "HTTP"
+#   tcp_protocol   = "tcp"
+#   all_cidrs_ipv4 = "0.0.0.0/0"
+#   all_cidrs_ipv6 = "::/0"
+# }
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 4.1.4"
 
-  name = "single-instance"
+  name = var.cluster_name
 
   ami                    = var.ami_id
   instance_type          = var.instance_type
@@ -19,8 +19,13 @@ module "ec2_instance" {
   monitoring             = true
   vpc_security_group_ids = var.vpc_security_group_ids
   subnet_id              = var.subnet_id
+  user_data = templatefile(var.user_data_path, var.user_data_args)
 
   tags = var.common_tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # # AMI

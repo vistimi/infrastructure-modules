@@ -26,8 +26,19 @@
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"features": {
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "1.18"
+		},
 		"terraform": "latest",
 		"aws-cli": "latest",
 		"github-cli": "latest"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"yzhang.markdown-all-in-one",
+				"golang.go"
+			]
+		}
 	}
 }

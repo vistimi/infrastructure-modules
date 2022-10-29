@@ -2,6 +2,15 @@ locals {
   asg_name = "{var.service_name}-${var.environment_name}-asg"
 }
 
+# ECR
+module "ecr" {
+  source = "../../../../modules/containers/registry"
+
+  project_name              = var.project_name
+  environment_name          = var.environment_name
+  common_tags               = local.common_tags
+}
+
 # EC2
 module "ec2-asg" {
   source = "../../components/ec2-asg"

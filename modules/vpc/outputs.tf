@@ -1,19 +1,19 @@
-output "id" {
-  value       = aws_vpc.vpc.id
-  description = "The id of the VPC"
+output "vpc_id" {
+  value       = module.vpc.vpc_id
+  description = "The ID of the VPC"
 }
 
-output "security_group_id" {
-  value       = aws_security_group.vpc.id
-  description = "The ID of the Security Group attached to the VPC"
+output "default_security_group_id" {
+  value       = module.vpc.default_security_group_id
+  description = "The ID of the security group created by default on VPC creation"
 }
 
-output "public_subnets_ids" {
-  value = aws_subnet.public_subnet[*].id
-  description = "All IDs from the public subnets"
+output "private_subnets" {
+  value = module.vpc.private_subnets
+  description = "List of IDs of private subnets"
 }
 
-output "private_subnets_ids" {
-  value = aws_subnet.private_subnet[*].id
-  description = "All IDs from the private subnets"
+output "public_subnets" {
+  value = module.vpc.public_subnets
+  description = "List of IDs of public subnets"
 }

@@ -1,8 +1,8 @@
 # Global
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
-}
+# variable "vpc_id" {
+#   description = "The IDs of the VPC which contains the subnets"
+#   type        = string
+# }
 
 variable "subnet_id" {
   description = "The ID of the subnet for the EC2 instance"
@@ -31,15 +31,15 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "server_port" {
-  description = "The port of the server to forward the traffic to"
-  type        = number
-}
+# variable "server_port" {
+#   description = "The port of the server to forward the traffic to"
+#   type        = number
+# }
 
-variable "health_check_path" {
-  description = "The path to forward the traffic to"
-  type        = string
-}
+# variable "health_check_path" {
+#   description = "The path to forward the traffic to"
+#   type        = string
+# }
 
 # variable "ami_name" {
 #   description = "The name of the AMI used for the EC2 instance"
@@ -57,10 +57,10 @@ variable "instance_type" {
   type        = string
 }
 
-variable "public" {
-  description = "Are the resources public (e.g true) or private (e.g false)"
-  type        = bool
-}
+# variable "public" {
+#   description = "Are the resources public (e.g true) or private (e.g false)"
+#   type        = bool
+# }
 
 variable "user_data_path" {
   description = "Bash script path to run after creation of instance"
