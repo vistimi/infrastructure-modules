@@ -7,60 +7,76 @@ locals {
   all_cidrs_ipv6 = "::/0"
 }
 
-# AMI
-module "ami" {
-  source   = "../ami"
-  ami_name = var.ami_name
+module "ec2_instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "~> 4.1.4"
+
+  name = "single-instance"
+
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  monitoring             = true
+  vpc_security_group_ids = var.vpc_security_group_ids
+  subnet_id              = var.subnet_id
+
+  tags = var.common_tags
 }
 
-# Security Group
-resource "aws_security_group" "instance" {
-  name        = var.instance_security_group_name
-  description = "Default security group to allow inbound/outbound for the instance"
+# # AMI
+# module "ami" {
+#   source   = "../ami"
+#   ami_name = var.ami_name
+# }
 
-  tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2-sg" })
+# # Security Group
+# resource "aws_security_group" "instance" {
+#   name        = var.instance_security_group_name
+#   description = "Default security group to allow inbound/outbound for the instance"
 
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+#   tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2-sg" })
 
-resource "aws_security_group_rule" "allow_all_inbound_ipv4" {
-  type              = "ingress"
-  security_group_id = aws_security_group.instance.id
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 
-  from_port   = var.server_port
-  to_port     = var.server_port
-  protocol    = local.tcp_protocol
-  cidr_blocks = [local.all_cidrs_ipv4] // TODO: cidr from backend sg
-}
+# resource "aws_security_group_rule" "allow_all_inbound_ipv4" {
+#   type              = "ingress"
+#   security_group_id = aws_security_group.instance.id
 
-resource "aws_security_group_rule" "allow_all_outbound_ipv4" {
-  type              = "egress"
-  security_group_id = aws_security_group.instance.id
+#   from_port   = var.server_port
+#   to_port     = var.server_port
+#   protocol    = local.tcp_protocol
+#   cidr_blocks = [local.all_cidrs_ipv4] // TODO: cidr from backend sg
+# }
 
-  from_port   = local.any_port
-  to_port     = local.any_port
-  protocol    = local.any_protocol
-  cidr_blocks = [local.all_cidrs_ipv4]
-}
+# resource "aws_security_group_rule" "allow_all_outbound_ipv4" {
+#   type              = "egress"
+#   security_group_id = aws_security_group.instance.id
 
-# EC2
-resource "aws_instance" "instance" {
-  ami                         = data.aws_ami.ubuntu.id
-  instance_type               = var.instance_type
-  security_groups             = [aws_security_group.instance.id]
-  key_name                    = var.key_name
-  monitoring                  = true
-  associate_public_ip_address = var.public
+#   from_port   = local.any_port
+#   to_port     = local.any_port
+#   protocol    = local.any_protocol
+#   cidr_blocks = [local.all_cidrs_ipv4]
+# }
 
-  subnet_id = var.subnet_id
+# # EC2
+# resource "aws_instance" "instance" {
+#   ami                         = data.aws_ami.ubuntu.id
+#   instance_type               = var.instance_type
+#   security_groups             = [aws_security_group.instance.id]
+#   key_name                    = var.key_name
+#   monitoring                  = true
+#   associate_public_ip_address = var.public
 
-  user_data = templatefile(var.user_data_path, var.user_data_args)
+#   subnet_id = var.subnet_id
 
-  tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2" })
+#   user_data = templatefile(var.user_data_path, var.user_data_args)
 
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+#   tags = merge(var.common_tags, { Name = "${var.cluster_name}-ec2" })
+
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }

@@ -4,39 +4,58 @@ locals {
   bucket_name_mongodb  = var.user_data_args["bucket_name_mongodb"]
 }
 
-# S3 for mongodb docker image
-module "docker" {
-  source = "global/docker"
-}
+# S3 for mongodb
+module "mongodb" {
+  source = "terraform-aws-modules/s3-bucket/aws"
 
-# S3 for mongodb state
-resource "aws_s3_bucket" "mongodb" {
   bucket = local.bucket_name_mongodb
+  acl    = "private"
+
+  versioning = {
+    enabled = true
+  }
+
+  attach_policy = true
+  policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllS3",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": "arn:aws:s3:::${local.bucket_name_mongodb}/*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:SourceVpce": "${var.vpc_id}"
+                }
+            }
+        }
+    ]
+}
 
   tags   = merge(var.common_tags, { Name = local.bucket_name_mongodb })
-}
 
-resource "aws_s3_bucket_versioning" "enabled" {
-  bucket = aws_s3_bucket.mongodb.id
-  versioning_configuration {
-    status = "Enabled"
-  }
 }
 
 # S3 for pictures
-resource "aws_s3_bucket" "pictures" {
+module "pictures" {
+  source = "terraform-aws-modules/s3-bucket/aws"
+
   bucket = local.bucket_name_pictures
-  
+  acl    = "private"
+
+  versioning = {
+    enabled = true
+  }
+
+  attach_policy = true
+  policy = {}
+
   tags   = merge(var.common_tags, { Name = local.bucket_name_pictures })
 }
 
-resource "aws_s3_bucket_versioning" "enabled" {
-  bucket = aws_s3_bucket.pictures.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
+# EC2
 module "ec2_single" {
   source = "../../components/ec2-single"
 

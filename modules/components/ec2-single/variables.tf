@@ -9,6 +9,16 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "vpc_security_group_ids" {
+  description = "The IDs of the security group of the VPC"
+  type        = list(string)
+}
+
+variable "key_name" {
+  description = "The name of the key to connect to SSH with"
+  type        = string
+}
+
 variable "common_tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
@@ -31,9 +41,15 @@ variable "health_check_path" {
   type        = string
 }
 
-variable "ami_name" {
-  description = "The name of the AMI used for the EC2 instance"
+# variable "ami_name" {
+#   description = "The name of the AMI used for the EC2 instance"
+#   type        = string
+# }
+
+variable "ami_id"{
+  description = "The ID of the AMI used for the EC2 instance"
   type        = string
+  default = "ami-09d3b3274b6c5d4aa"
 }
 
 variable "instance_type" {
