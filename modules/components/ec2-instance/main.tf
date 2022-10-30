@@ -15,17 +15,14 @@ module "ec2_instance" {
 
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  key_name               = var.key_name
   monitoring             = true
   vpc_security_group_ids = var.vpc_security_group_ids
   subnet_id              = var.subnet_id
-  user_data = templatefile(var.user_data_path, var.user_data_args)
+
+  user_data_base64            = base64encode(templatefile("${path.module}/${var.user_data_path}", var.user_data_args))
+  user_data_replace_on_change = true
 
   tags = var.common_tags
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 # # AMI

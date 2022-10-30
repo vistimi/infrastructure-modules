@@ -4,18 +4,19 @@ locals {
 
 # VPC
 module "vpc" {
-  source = "../../../../modules/vpc"
+  source = "../../../modules/vpc"
 
   region           = var.region
   project_name     = var.project_name
   environment_name = var.environment_name
   common_tags      = local.common_tags
   vpc_cidr_ipv4    = var.vpc_cidr_ipv4
+  lifecycle_prevent_destroy = true
 }
 
 # # Backend
 # module "scraper_backend" {
-#   source = "../../../modules/services/scraper-backend"
+#   source = "../../modules/services/scraper-backend"
 
 #   vpc_id             = module.vpc.id
 #   public_subnet_ids  = module.vpc.public_subnets_ids
@@ -41,7 +42,7 @@ module "vpc" {
 
 # # ECS
 # module "ecs" {
-#   source = "../../../../modules/containers/cluster"
+#   source = "../../../modules/containers/cluster"
 
 #   region                    = var.region
 #   project_name              = var.project_name

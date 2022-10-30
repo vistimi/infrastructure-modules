@@ -8,7 +8,7 @@ Check the commands of [terraform CLI](https://www.terraform.io/cli/commands#swit
 
 ```shell
 # format
-terraform -chdir=scraper fmt
+terraform fmt
 
 # steps to create infrastructure
 terraform init
@@ -33,6 +33,8 @@ To setup workflow and environments check this [Medium article](https://blog.grun
 Check the [HCL](https://developer.hashicorp.com/terraform/language).
 
 </details>
+
+<details><summary> <b>Code</b> </summary>
 
 For reources tags, where `common_tags` is a map:
 
@@ -110,6 +112,8 @@ ${db_address}
 ...
 ```
 
+</details>
+
 ## env
 
 #### devcontainer
@@ -136,8 +140,10 @@ terraform apply -var <var_to_change>=<new_value>
 ## cidr
 
 Using `/16` for CIDR blocks means that the last two parts of the adress are customizable for subnets.
+
 The recommendations are to use the first part of the CIDR for different VPCs projects. When ever there should be a clear abstraction, use a different number. The recommendation is to simply increment by 1 the value of the first value of the CIDR, e.g. `10.0.0.0/16` to `11.0.0.0/16`.
-The second part of the cidr block is reserved for within the VPC for the different services running inside. `10.0.0.0/16` for one service and `10.1.0.0/16` for another one.
+
+The second part of the cidr block is reserved for replicas of an environment. It could be for another region, for a new environment. `10.0.0.0/16` to `10.1.0.0/16`
 
 
 To check the first and last ip of a CIDR block:
@@ -146,3 +152,11 @@ To check the first and last ip of a CIDR block:
 cidrhost("192.168.0.0/16", 0)
 cidrhost("192.168.0.0/16", -1)
 ```
+
+- 1.0.0.0/16 scraper test
+- 2.0.0.0/16 scraper production
+- 3.0.0.0/16 scraper non-production
+
+## test 
+
+  go test -timeout 30m -p 1 ./...

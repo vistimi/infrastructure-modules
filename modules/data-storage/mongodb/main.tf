@@ -5,7 +5,25 @@ locals {
 }
 
 # S3 for mongodb
-module "mongodb" {
+data "aws_iam_policy_document" "bucket_policy_mongodb" {
+  statement {
+    actions = [
+      "s3:*",
+    ]
+
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:SourceVpce"
+      values   = ["${var.vpc_id}"]
+    }
+
+    resources = [
+      "arn:aws:s3:::${local.bucket_name_mongodb}",
+    ]
+  }
+}
+
+module "s3_bucket_mongodb" {
   source = "terraform-aws-modules/s3-bucket/aws"
 
   bucket = local.bucket_name_mongodb
@@ -16,31 +34,31 @@ module "mongodb" {
   }
 
   attach_policy = true
-  // TODO: use templatefile
-  policy = {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "AllS3",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:*",
-            "Resource": "arn:aws:s3:::${local.bucket_name_mongodb}/*",
-            "Condition": {
-                "StringEquals": {
-                    "aws:SourceVpce": "${var.vpc_id}"
-                }
-            }
-        }
-    ]
-}
+  policy        = data.aws_iam_policy_document.bucket_policy_mongodb.json
 
-  tags   = merge(var.common_tags, { Name = local.bucket_name_mongodb })
-
+  tags = merge(var.common_tags, { Name = local.bucket_name_mongodb })
 }
 
 # S3 for pictures
-module "pictures" {
+data "aws_iam_policy_document" "bucket_policy_pictures" {
+  statement {
+    actions = [
+      "s3:*",
+    ]
+
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:SourceVpce"
+      values   = ["${var.vpc_id}"]
+    }
+
+    resources = [
+      "arn:aws:s3:::${local.bucket_name_pictures}",
+    ]
+  }
+}
+
+module "s3_bucket_pictures" {
   source = "terraform-aws-modules/s3-bucket/aws"
 
   bucket = local.bucket_name_pictures
@@ -51,26 +69,23 @@ module "pictures" {
   }
 
   attach_policy = true
-  policy = {}
+  policy        = data.aws_iam_policy_document.bucket_policy_pictures.json
 
-  tags   = merge(var.common_tags, { Name = local.bucket_name_pictures })
+  tags = merge(var.common_tags, { Name = local.bucket_name_pictures })
 }
 
 # EC2
-module "ec2_single" {
-  source = "../../components/ec2-single"
+module "ec2_instance" {
+  source = "../../components/ec2-instance"
 
   # vpc_id            = var.vpc_id
-  subnet_id         = var.subnet_id
+  subnet_id              = var.subnet_id
   vpc_security_group_ids = var.vpc_security_group_ids
-  common_tags       = var.common_tags
-  cluster_name      = "${local.data_storage_name}-ec2"
-  server_port       = var.server_port
-  health_check_path = var.health_check_path
-  ami_name          = var.ami_name
-  instance_type     = var.instance_type
-  public            = false
-  user_data_path    = var.user_data_path
-  user_data_args    = var.user_data_args
+  common_tags            = var.common_tags
+  cluster_name           = "${local.data_storage_name}-mongodb-ec2"
+  ami_id                 = var.ami_id
+  instance_type          = var.instance_type
+  user_data_path         = var.user_data_path
+  user_data_args         = var.user_data_args
 }
 

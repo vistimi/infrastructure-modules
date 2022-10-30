@@ -37,7 +37,8 @@
 		"vscode": {
 			"extensions": [
 				"yzhang.markdown-all-in-one",
-				"golang.go"
+				"golang.go",
+				"shakram02.bash-beautify"
 			]
 		}
 	}

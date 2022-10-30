@@ -1,13 +1,8 @@
 # Global
-variable "region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
-}
+# variable "vpc_id" {
+#   description = "The IDs of the VPC which contains the subnets"
+#   type        = string
+# }
 
 variable "subnet_id" {
   description = "The ID of the subnet for the EC2 instance"
@@ -26,6 +21,11 @@ variable "common_tags" {
 }
 
 # EC2
+variable "cluster_name" {
+  description = "The name of the EC2 cluster"
+  type        = string
+}
+
 # variable "server_port" {
 #   description = "The port of the server to forward the traffic to"
 #   type        = number
@@ -52,6 +52,11 @@ variable "instance_type" {
   type        = string
 }
 
+# variable "public" {
+#   description = "Are the resources public (e.g true) or private (e.g false)"
+#   type        = bool
+# }
+
 variable "user_data_path" {
   description = "Bash script path to run after creation of instance"
   type        = string
@@ -60,6 +65,6 @@ variable "user_data_path" {
 
 variable "user_data_args" {
   description = "Bash script arguments to pass to the bash script"
-  type        = map(any)
+  type        = map
   default     = {}
 }
