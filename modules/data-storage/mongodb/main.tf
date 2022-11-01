@@ -7,6 +7,14 @@ locals {
 # S3 for mongodb
 data "aws_iam_policy_document" "bucket_policy_mongodb" {
   statement {
+    principals {
+      type        = "Service"
+      identifiers = [
+        "ecs.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com",
+        ]
+    }
+
     actions = [
       "s3:*",
     ]
@@ -18,7 +26,7 @@ data "aws_iam_policy_document" "bucket_policy_mongodb" {
     }
 
     resources = [
-      "arn:aws:s3:::${local.bucket_name_mongodb}",
+      "arn:aws:s3:::${local.bucket_name_mongodb}/*",
     ]
   }
 }
@@ -42,6 +50,14 @@ module "s3_bucket_mongodb" {
 # S3 for pictures
 data "aws_iam_policy_document" "bucket_policy_pictures" {
   statement {
+    principals {
+      type        = "Service"
+      identifiers = [
+        "ecs.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com",
+        ]
+    }
+
     actions = [
       "s3:*",
     ]
@@ -53,7 +69,7 @@ data "aws_iam_policy_document" "bucket_policy_pictures" {
     }
 
     resources = [
-      "arn:aws:s3:::${local.bucket_name_pictures}",
+      "arn:aws:s3:::${local.bucket_name_pictures}/*",
     ]
   }
 }

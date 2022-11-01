@@ -29,7 +29,11 @@
 		"ghcr.io/devcontainers/features/go:1": {
 			"version": "1.18"
 		},
-		"terraform": "latest",
+		"terraform": {
+			"version": "latest",
+			"tflint": "latest",
+			"terragrunt": "latest"
+		},
 		"aws-cli": "latest",
 		"github-cli": "latest"
 	},

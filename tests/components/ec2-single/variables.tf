@@ -4,11 +4,6 @@ variable "region" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
-}
-
 variable "subnet_id" {
   description = "The ID of the subnet for the EC2 instance"
   type        = string
@@ -26,20 +21,6 @@ variable "common_tags" {
 }
 
 # EC2
-# variable "server_port" {
-#   description = "The port of the server to forward the traffic to"
-#   type        = number
-# }
-
-# variable "health_check_path" {
-#   description = "The path to forward the traffic to"
-#   type        = string
-# }
-
-# variable "key_name" {
-#   description = "The name of the AMI used for the EC2 instance"
-#   type        = string
-# }
 
 variable "ami_id"{
   description = "The ID of the AMI used for the EC2 instance"
