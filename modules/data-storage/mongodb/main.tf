@@ -8,11 +8,11 @@ locals {
 data "aws_iam_policy_document" "bucket_policy_mongodb" {
   statement {
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "ecs.amazonaws.com",
         "elasticloadbalancing.amazonaws.com",
-        ]
+      ]
     }
 
     actions = [
@@ -51,11 +51,11 @@ module "s3_bucket_mongodb" {
 data "aws_iam_policy_document" "bucket_policy_pictures" {
   statement {
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "ecs.amazonaws.com",
         "elasticloadbalancing.amazonaws.com",
-        ]
+      ]
     }
 
     actions = [
@@ -91,15 +91,47 @@ module "s3_bucket_pictures" {
 }
 
 # EC2
-module "ec2_instance" {
+module "key_pair" {
+  count = var.bastion ? 1 : 0
+
+  source = "terraform-aws-modules/key-pair/aws"
+
+  key_name           = local.data_storage_name
+  create_private_key = true
+}
+
+resource "local_file" "tf-key-file" {
+  count = var.bastion ? 1 : 0
+
+  content  = module.key_pair[0].private_key_pem
+  filename = "tfkey"
+}
+
+module "ec2_instance_mongodb" {
   source = "../../components/ec2-instance"
 
-  # vpc_id            = var.vpc_id
-  subnet_id              = var.subnet_id
+  subnet_id              = var.private_subnets[0]
   vpc_security_group_ids = var.vpc_security_group_ids
   common_tags            = var.common_tags
-  cluster_name           = "${local.data_storage_name}-mongodb-ec2"
+  cluster_name           = "${local.data_storage_name}-mongodb"
   ami_id                 = var.ami_id
+  key_name               = var.bastion ? module.key_pair.key_pair_name : null
+  instance_type          = var.instance_type
+  user_data_path         = var.user_data_path
+  user_data_args         = var.user_data_args
+}
+
+module "ec2_instance_bastion" {
+  count = var.bastion ? 1 : 0
+
+  source = "../../components/ec2-instance"
+
+  subnet_id              = var.public_subnets[0]
+  vpc_security_group_ids = var.vpc_security_group_ids
+  common_tags            = var.common_tags
+  cluster_name           = "${local.data_storage_name}-bastion"
+  ami_id                 = var.ami_id
+  key_name               = var.bastion ? module.key_pair.key_pair_name : null
   instance_type          = var.instance_type
   user_data_path         = var.user_data_path
   user_data_args         = var.user_data_args

@@ -4,11 +4,6 @@ variable "region" {
   type        = string
 }
 
-variable "project_name" {
-  description = "The name of the project, (e.g `scraper`)"
-  type        = string
-}
-
 variable "environment_name" {
   description = "The name of the environment, (e.g `trunk`)"
   type        = string

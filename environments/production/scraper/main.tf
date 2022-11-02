@@ -1,5 +1,6 @@
 locals {
   common_tags = { Region : var.region, Project : var.project_name, Environment : var.environment_name }
+  project_name = "scraper"
 }
 
 # VPC
@@ -7,7 +8,7 @@ module "vpc" {
   source = "../../../modules/vpc"
 
   region           = var.region
-  project_name     = var.project_name
+  project_name     = local.project_name
   environment_name = var.environment_name
   common_tags      = local.common_tags
   vpc_cidr_ipv4    = var.vpc_cidr_ipv4
@@ -30,8 +31,8 @@ module "vpc" {
 #   user_data_path     = var.user_data_path
 #   user_data_args = {
 #       bucket_name_mount_helper = var.bucket_name_mount_helper
-#       bucket_name_mongodb      = "${var.project_name}-${var.environment_name}-mongodb"
-#       bucket_name_pictures     = "${var.project_name}-${var.environment_name}-pictures"
+#       bucket_name_mongodb      = "${local.project_name}-${var.environment_name}-mongodb"
+#       bucket_name_pictures     = "${local.project_name}-${var.environment_name}-pictures"
 #       mongodb_version          = var.mongodb_version
 #       aws_region               = var.aws_region,
 #       aws_profile              = var.aws_profile,
@@ -45,7 +46,7 @@ module "vpc" {
 #   source = "../../../modules/containers/cluster"
 
 #   region                    = var.region
-#   project_name              = var.project_name
+#   project_name              = local.project_name
 #   environment_name          = var.environment_name
 #   common_tags               = var.common_tags
 #   auto_scaling_group_arn    = var.auto_scaling_group_arn

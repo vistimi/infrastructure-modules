@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gruntwork-io/terratest/modules/retry"
+	"github.com/gruntwork-io/terratest/modules/ssh"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,7 +26,99 @@ var (
 	bucket_name_pictures = "scraper-test-pictures"
 )
 
-func testMongodbOperations() error {
+// An example of how to test the simple Terraform module in examples/terraform-basic-example using Terratest.
+func TestTerraformMongodbUnitTest(t *testing.T) {
+	t.Parallel()
+	id := uuid.New()
+	bastion := true
+
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		// Relative path to module
+		TerraformDir: "",
+
+		// Variables to pass to our Terraform code using -var options
+		Vars: map[string]interface{}{
+			"region": "us-east-1",
+			"private_subnets": []string{
+				"subnet-0f0c2f4eb7a73ae75",
+				"subnet-05561191ab56acaec",
+				"subnet-014b7854a7e66f5ef",
+			},
+			"public_subnets": []string{
+				"subnet-053af9be74486bdec",
+				"subnet-09a00f6bc7a216def",
+				"subnet-06a9db64287e77a76",
+			},
+			"vpc_security_group_ids": []string{"sg-065fe4857db2112d9"},
+			"vpc_id":                 "vpc-0ef51aa8c677274ce",
+			"common_tags": map[string]string{
+				"Region":      "us-east-1",
+				"Project":     "scraper",
+				"Environment": "test",
+			},
+			"ami_id":         "ami-09d3b3274b6c5d4aa",
+			"instance_type":  "t2.micro",
+			"user_data_path": "mongodb.sh",
+			"user_data_args": map[string]string{
+				"bucket_name_mount_helper": "global-mount-helper",
+				"bucket_name_mongodb":      bucket_name_mongodb + id.String(),
+				"bucket_name_pictures":     bucket_name_pictures + id.String(),
+				"mongodb_version":          "6.0.1",
+				"aws_region":               os.Getenv("AWS_REGION"),
+				"aws_profile":              os.Getenv("AWS_PROFILE"),
+				"aws_access_key":           os.Getenv("AWS_ACCESS_KEY"),
+				"aws_secret_key":           os.Getenv("AWS_SECRET_KEY"),
+			},
+			"bastion": bastion,
+		},
+
+		RetryableTerraformErrors: map[string]string{
+			"net/http: TLS handshake timeout": "Terraform bug",
+		},
+		MaxRetries:         3,
+		TimeBetweenRetries: 3 * time.Second,
+	})
+
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, terraformOptions)
+		}
+		test_structure.RunTestStage(t, "cleanup_mongodb", func() {
+			terraform.Destroy(t, terraformOptions)
+		})
+	}()
+
+	test_structure.RunTestStage(t, "deploy_mongodb", func() {
+		terraform.InitAndApply(t, terraformOptions)
+	})
+
+	test_structure.RunTestStage(t, "validate_ssh", func() {
+		publicInstanceIPBastion := terraform.Output(t, terraformOptions, "ec2_instance_bastion_public_ip")
+		privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
+		keyPair := ssh.KeyPair{
+			PublicKey: terraform.Output(t, terraformOptions, "public_key_openssh"),
+			PrivateKey: terraform.Output(t, terraformOptions, "private_key_openssh"),
+		}
+
+		fmt.Println("KEYYYYYYYYYYY", keyPair)
+		fmt.Println("IPPPPPPPP", publicInstanceIPBastion, privateInstanceIPMongodb)
+
+		sshToPrivateHost(t, publicInstanceIPBastion, privateInstanceIPMongodb, &keyPair)
+	})
+
+	test_structure.RunTestStage(t, "validate_mongodb", func() {
+		s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
+		s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
+		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)
+		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_pictures), s3bucketpicturesArn)
+
+		err := mongodbOperations()
+		assert.Equal(t, nil, err)
+	})
+}
+
+func mongodbOperations() error {
 	uri := "mongodb://localhost:27017"
 	// connect
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
@@ -49,69 +144,42 @@ func testMongodbOperations() error {
 	return nil
 }
 
-// An example of how to test the simple Terraform module in examples/terraform-basic-example using Terratest.
-func TestTerraformMongodbUnitTest(t *testing.T) {
-	t.Parallel()
-	id := uuid.New()
+func sshToPrivateHost(t *testing.T, publicInstanceIP string, privateInstanceIP string, keyPair *ssh.KeyPair) {
+	// We're going to try to SSH to the private instance using the public instance as a jump host. For both instances,
+	// we are using the Key Pair we created earlier, and the user "ubuntu", as we know the Instances are running an
+	// Ubuntu AMI that has such a user
+	publicHost := ssh.Host{
+		Hostname:    publicInstanceIP,
+		SshKeyPair:  keyPair,
+		SshUserName: "ec2-user",
+	}
+	privateHost := ssh.Host{
+		Hostname:    privateInstanceIP,
+		SshKeyPair:  keyPair,
+		SshUserName: "ec2-user",
+	}
 
-	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "../",
+	// It can take a minute or so for the Instance to boot up, so retry a few times
+	maxRetries := 30
+	timeBetweenRetries := 5 * time.Second
+	description := fmt.Sprintf("SSH to private host %s via public host %s", privateInstanceIP, publicInstanceIP)
 
-		// Variables to pass to our Terraform code using -var options
-		Vars: map[string]interface{}{
-			"region": "us-east-1",
-			// "subnet_id":           "subnet-0f0c2f4eb7a73ae75",
-			"subnet_id":              "subnet-053af9be74486bdec",
-			"vpc_security_group_ids": []string{"sg-065fe4857db2112d9"},
-			"vpc_id":                 "vpc-0ef51aa8c677274ce",
-			"common_tags": map[string]string{
-				"Region":      "us-east-1",
-				"Project":     "scraper",
-				"Environment": "test",
-			},
-			"ami_id":         "ami-09d3b3274b6c5d4aa",
-			"instance_type":  "t2.micro",
-			"user_data_path": "mongodb.sh",
-			"user_data_args": map[string]string{
-				"bucket_name_mount_helper": "global-mount-helper",
-				"bucket_name_mongodb":      bucket_name_mongodb + id.String(),
-				"bucket_name_pictures":     bucket_name_pictures + id.String(),
-				"mongodb_version":          "6.0.1",
-				"aws_region":               os.Getenv("AWS_REGION"),
-				"aws_profile":              os.Getenv("AWS_PROFILE"),
-				"aws_access_key":           os.Getenv("AWS_ACCESS_KEY"),
-				"aws_secret_key":           os.Getenv("AWS_SECRET_KEY"),
-			},
-		},
+	// Run a simple echo command on the server
+	expectedText := "Hello, World"
+	command := fmt.Sprintf("echo -n '%s'", expectedText)
 
-		RetryableTerraformErrors: map[string]string{
-			"net/http: TLS handshake timeout": "Terraform bug",
-		},
-		MaxRetries: 3,
-		TimeBetweenRetries: 3*time.Second,
-	})
+	// Verify that we can SSH to the Instance and run commands
+	retry.DoWithRetry(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
+		actualText, err := ssh.CheckPrivateSshConnectionE(t, publicHost, privateHost, command)
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
+		if err != nil {
+			return "", err
 		}
-		test_structure.RunTestStage(t, "cleanup_mongodb", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
 
-	test_structure.RunTestStage(t, "deploy_mongodb", func() {
-		terraform.InitAndApply(t, terraformOptions)
-	})
+		if strings.TrimSpace(actualText) != expectedText {
+			return "", fmt.Errorf("Expected SSH command to return '%s' but got '%s'", expectedText, actualText)
+		}
 
-	test_structure.RunTestStage(t, "validate_mongodb", func() {
-		s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
-		s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
-		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)
-		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_pictures), s3bucketpicturesArn)
-
-		err := testMongodbOperations()
-		assert.Equal(t, nil, err)
+		return "", nil
 	})
 }

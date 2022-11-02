@@ -9,9 +9,14 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "subnet_id" {
-  description = "The ID of the subnet for the EC2 instance"
-  type        = string
+variable "private_subnets" {
+  description = "List of IDs of private subnets"
+  type        = list(string)
+}
+
+variable "public_subnets" {
+  description = "List of IDs of public subnets"
+  type        = list(string)
 }
 
 variable "vpc_security_group_ids" {
@@ -62,4 +67,10 @@ variable "user_data_args" {
   description = "Bash script arguments to pass to the bash script"
   type        = map(any)
   default     = {}
+}
+
+variable "bastion" {
+  description = "Spawn a public EC2 instance in the same region as Mongodb EC2 instance"
+  type        = bool
+  default     = false
 }

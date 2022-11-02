@@ -9,7 +9,12 @@ FROM mcr.microsoft.com/vscode/devcontainers/base:0-${VARIANT}
 #     && apt-get -y install --no-install-recommends <your-package-list-here>
 
 # Pre-commit
-RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-RUN sudo apt install pre-commit \
-    && sudo npm install -g @commitlint/cli \
-    pre-commit install --hook-type commit-msg
+# RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+# RUN sudo apt install pre-commit \
+#     && sudo npm install -g @commitlint/cli \
+#     pre-commit install --hook-type commit-msg
+
+# cloud-nuke
+RUN sudo wget https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21.0/cloud-nuke_linux_amd64 \
+    && sudo mv cloud-nuke_linux_amd64 /usr/local/bin/cloud-nuke \
+    && sudo chmod +rx /usr/local/bin/cloud-nuke

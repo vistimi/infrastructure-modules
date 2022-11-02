@@ -68,3 +68,8 @@ variable "user_data_args" {
   type        = map
   default     = {}
 }
+
+variable "key_name" {
+  description = "The name of the key for SSH"
+  type        = string
+}
