@@ -21,6 +21,14 @@ terraform show
 terraform destroy
 ```
 
+## nuke
+
+[Github](https://github.com/gruntwork-io/cloud-nuke)
+
+```
+cloud-nuke aws
+```
+
 ## terraform
 
 <details><summary> <b>Links</b> </summary>

@@ -84,14 +84,6 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 			},
 		},
 
-		// BackendConfig: map[string]interface{}{
-		// 	"bucket":         "terraform-state-backend-test-storage",
-		// 	"key":            "global/s3/terraform.tfstate",
-		// 	"region":         "us-east-1",
-		// 	"dynamodb_table": "terraform-state-backend-test-locks",
-		// 	"encrypt":        true,
-		// },
-
 		RetryableTerraformErrors: map[string]string{
 			"net/http: TLS handshake timeout": "Terraform bug",
 		},
