@@ -10,7 +10,7 @@ resource "aws_ecs_service" "service" {
   cluster         = var.ecs_cluster_id
   task_definition = aws_ecs_task_definition.task_definition.arn
   desired_count   = var.desired_count
-  iam_role        = .....arn
+  # iam_role        = .....arn
 
    load_balancer {
     target_group_arn = var.load_balancer_arn

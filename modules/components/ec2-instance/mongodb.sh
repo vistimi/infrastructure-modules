@@ -31,7 +31,7 @@ sudo yum install docker -y
 # which s3fs
 # which aws
 (
-    echo "sudo /usr/bin/s3fs ${bucket_name_mongodb} -o use_cache=/tmp -o allow_other -o uid=1001 -o mp_umask=002 -o multireq_max=5 -o nonempty /mys3bucket"
+ echo "sudo /usr/bin/s3fs ${bucket_name_mongodb} -o use_cache=/tmp -o allow_other -o uid=1001 -o mp_umask=002 -o multireq_max=5 -o nonempty /mys3bucket"
  echo "sudo chmod 777 /mys3bucket/"
  echo "/usr/bin/aws s3 cp s3://${bucket_name_mount_helper}/mongodb.${mongodb_version}.tar s3://${bucket_name_mongodb}/mongodb.${mongodb_version}.tar"
  echo "sudo service docker start"

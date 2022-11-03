@@ -6,6 +6,7 @@ locals {
 # S3
 module "terraform_storage" {
   source = "terraform-aws-modules/s3-bucket/aws"
+  version = "3.5.0"
 
   bucket = local.storage_name
 

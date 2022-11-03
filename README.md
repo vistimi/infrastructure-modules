@@ -8,7 +8,7 @@ Check the commands of [terraform CLI](https://www.terraform.io/cli/commands#swit
 
 ```shell
 # format
-terraform fmt
+terragrunt hclfmt
 
 # steps to create infrastructure
 terraform init
@@ -23,6 +23,14 @@ terragrunt output
 # destroy the infrastructure
 terragrunt destroy
 ```
+
+#### local
+
+```shell
+terragrunt apply --terragrunt-source ../../../modules//app
+```
+
+*(Note: the double slash (//) here too is intentional and required. Terragrunt downloads all the code in the folder before the double-slash into the temporary folder so that relative paths between modules work correctly. Terraform may display a “Terraform initialized in an empty directory” warning, but you can safely ignore it.)*
 
 ## nuke
 
@@ -82,20 +90,20 @@ There is a different state for production and non-production environments.
 ```hcl
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.16"
-    }
+  aws = {
+    source  = "hashicorp/aws"
+    version = "~> 4.16"
+  }
   }
 
   required_version = ">= 1.2.0"
 
   backend "s3" {
-    bucket         = "terraform-state-backend-storage"
-    key            = "global/s3/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-state-backend-locks"
-    encrypt        = true
+  bucket         = "terraform-state-backend-storage"
+  key            = "global/s3/terraform.tfstate"
+  region         = "us-east-1"
+  dynamodb_table = "terraform-state-backend-locks"
+  encrypt        = true
   }
 }
 
@@ -124,6 +132,18 @@ ${db_address}
 ```
 
 </details>
+
+## terragrunt
+
+#### dependencies
+
+[Docs](https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/#dependencies-between-modules)
+
+```shell
+terragrunt graph-dependencies | dot -Tsvg > graph.svg
+```
+
+
 
 ## env
 

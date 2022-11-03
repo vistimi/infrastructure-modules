@@ -1,3 +1,0 @@
-# state
-
-`terraform.tfvars`:

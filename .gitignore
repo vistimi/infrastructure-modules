@@ -1,5 +1,9 @@
 *.env
 
+# terraform
 .terraform*
 *.tfstate*
 *tfvars
+
+# terragrunt
+.terragrunt-cache
