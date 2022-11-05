@@ -1,10 +1,15 @@
-variable "project_name" {
-  description = "The name of the project, (e.g `scraper`)"
+variable "registry_name" {
+  description = "The name of the registry"
   type        = string
 }
 
-variable "environment_name" {
-  description = "The name of the environment, (e.g `trunk`)"
+variable "repository_read_write_access_arns" {
+  description = "the ARNs of the roles"
+  type = list(string)
+}
+
+variable "policy" {
+  description = "The policy to give to the registry"
   type        = string
 }
 

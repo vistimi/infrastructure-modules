@@ -4,7 +4,6 @@ locals {
   # all_cidrs_ipv4 = "0.0.0.0/0"
   # all_cidrs_ipv6 = "::/0"
 
-  name                   = "${var.project_name}-${var.environment_name}"
   vpc_availability_zones = 3
   cidrs_ipv4             = cidrsubnets(var.vpc_cidr_ipv4, 4, 4, 4, 4, 4, 4) # increment from `0.0.0.0/20` to `0.0.16.0/20`
   public_cidrs_ipv4      = slice(local.cidrs_ipv4, 0, local.vpc_availability_zones)
@@ -19,7 +18,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 3.18.1"
 
-  name = "${local.name}-vpc"
+  name = var.vpc_name
   cidr = var.vpc_cidr_ipv4
 
   azs             = slice(data.aws_availability_zones.available.names, 0, min(local.vpc_availability_zones, length(data.aws_availability_zones.available.names)))

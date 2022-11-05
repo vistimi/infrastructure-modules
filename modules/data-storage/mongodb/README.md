@@ -5,7 +5,7 @@ It is called `mongodb-docker-images` and resides in `us-east-1`.
 
 Variables:
 ```
-region                   = "us-east-1"
+aws_region               = "us-east-1"
 project_name             = "scraper"
 environment_name         = "test"
 vpc_cidr_ipv4            = "1.0.0.0/16"

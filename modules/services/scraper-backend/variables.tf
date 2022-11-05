@@ -1,7 +1,19 @@
 # Global
-variable "region" {
+variable "aws_region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
   type        = string
+}
+
+variable "common_tags" {
+  description = "Custom tags to set on the Instances in the ASG"
+  type        = map(string)
+  default     = {}
+}
+
+variable "service_name" {
+  description = "The name of the service"
+  type        = string
+  default     = {}
 }
 
 variable "vpc_id" {
@@ -14,53 +26,40 @@ variable "public_subnets_ids" {
   type        = list(string)
 }
 
-variable "private_subnets_ids" {
-  description = "The IDs of the private subnets for the ASG"
-  type        = list(string)
+# ECR
+variable "repository_read_write_access_arns" {
+  description = "the ARNs of the roles"
+  type = list(string)
 }
 
-variable "common_tags" {
-  description = "Custom tags to set on the Instances in the ASG"
-  type        = map(string)
-  default     = {}
+variable "repository_image_count" {
+  description = "The amount of images to keep in the registry"
+  type = number
 }
 
 # EC2
-variable "server_port" {
-  description = "The port of the server to forward the traffic to"
-  type        = number
-}
-
-variable "health_check_path" {
-  description = "The path to forward the traffic to"
-  type        = string
-}
-
 variable "ami_id"{
   description = "The ID of the AMI used for the EC2 instance"
   type        = string
   default = "ami-09d3b3274b6c5d4aa"
 }
 
-
-# variable "ami_name" {
-#   description = "The name of the AMI used for the EC2 instance"
-#   type        = string
-# }
-
 variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
 }
 
-variable "user_data_path" {
-  description = "Bash script path to run after creation of instance"
-  type        = string
-  default     = ""
+variable "min_size" {
+  description = "The minimum number of EC2 Instances in the ASG"
+  type        = number
 }
 
-variable "user_data_args" {
-  description = "Bash script arguments to pass to the bash script"
-  type        = map
-  default     = {}
+variable "max_size" {
+  description = "The maximum number of EC2 Instances in the ASG"
+  type        = number
+}
+
+variable "desired_capacity" {
+  description = "The maximum number of EC2 Instances in the ASG"
+  type        = number
 }

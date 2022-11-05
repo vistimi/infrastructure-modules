@@ -1,6 +1,11 @@
 # Global
-variable "region" {
+variable "aws_region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
+  type        = string
+}
+
+variable "data_storage_name" {
+  description = "The name of the data storage"
   type        = string
 }
 
@@ -31,21 +36,6 @@ variable "common_tags" {
 }
 
 # EC2
-# variable "server_port" {
-#   description = "The port of the server to forward the traffic to"
-#   type        = number
-# }
-
-# variable "health_check_path" {
-#   description = "The path to forward the traffic to"
-#   type        = string
-# }
-
-# variable "key_name" {
-#   description = "The name of the AMI used for the EC2 instance"
-#   type        = string
-# }
-
 variable "ami_id"{
   description = "The ID of the AMI used for the EC2 instance"
   type        = string

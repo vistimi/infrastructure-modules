@@ -1,4 +1,4 @@
-variable "region" {
+variable "aws_region" {
   description = "The region on which the project is running, (e.g `us-east-1`)"
   type        = string
 }

@@ -1,12 +1,11 @@
 locals {
-  storage_name = "${var.backend_name}-storage"
+  storage_name = "${var.backend_name}-state"
   lock_name    = "${var.backend_name}-locks"
 }
 
 # S3
 module "terraform_storage" {
   source = "terraform-aws-modules/s3-bucket/aws"
-  version = "3.5.0"
 
   bucket = local.storage_name
 
@@ -29,7 +28,7 @@ module "terraform_storage" {
     }
   }
 
-  tags = { Name = local.storage_name, Region = var.region }
+  tags = { Name = local.storage_name, Region = var.aws_region }
 }
 
 # DynamoDB
@@ -45,7 +44,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
 
   tags = {
     Name   = local.lock_name
-    Region = var.region
+    Region = var.aws_region
   }
 
   lifecycle {

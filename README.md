@@ -88,27 +88,8 @@ The backend name is usually `backend_name="terraform-state-backend"`.
 There is a different state for production and non-production environments.
 
 ```hcl
-terraform {
-  required_providers {
-  aws = {
-    source  = "hashicorp/aws"
-    version = "~> 4.16"
-  }
-  }
-
-  required_version = ">= 1.2.0"
-
-  backend "s3" {
-  bucket         = "terraform-state-backend-storage"
-  key            = "global/s3/terraform.tfstate"
-  region         = "us-east-1"
-  dynamodb_table = "terraform-state-backend-locks"
-  encrypt        = true
-  }
-}
-
 provider "aws" {
-  region = var.region
+  aws_region = var.aws_region
 }
 ```
 
@@ -202,7 +183,7 @@ terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "../",
 		// Variables to pass to our Terraform code using -var options
 		Vars: map[string]interface{}{
-			"region": "us-east-1",
+			"aws_region": "us-east-1",
             ...
 		},
 		RetryableTerraformErrors: map[string]string{

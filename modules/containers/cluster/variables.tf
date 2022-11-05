@@ -1,6 +1,6 @@
 # Global
-variable "region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
+variable "aws_region" {
+  description = "The aws_region on which the project is running, (e.g `us-east-1`)"
   type        = string
 }
 

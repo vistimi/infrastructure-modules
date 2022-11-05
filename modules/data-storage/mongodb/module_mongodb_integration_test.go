@@ -31,6 +31,8 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	t.Parallel()
 	id := uuid.New()
 	bastion := true
+	account_name := ""
+	aws_region := "us-east-1"
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		// Relative path to module
@@ -38,7 +40,8 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 
 		// Variables to pass to our Terraform code using -var options
 		Vars: map[string]interface{}{
-			"region": "us-east-1",
+			"aws_region":        aws_region,
+			"data_storage_name": fmt.Sprintf("%s-%s-%s-mongodb", account_name, aws_region, "test"),
 			"private_subnets": []string{
 				"subnet-0f0c2f4eb7a73ae75",
 				"subnet-05561191ab56acaec",
@@ -97,7 +100,7 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 		publicInstanceIPBastion := terraform.Output(t, terraformOptions, "ec2_instance_bastion_public_ip")
 		privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
 		keyPair := ssh.KeyPair{
-			PublicKey: terraform.Output(t, terraformOptions, "public_key_openssh"),
+			PublicKey:  terraform.Output(t, terraformOptions, "public_key_openssh"),
 			PrivateKey: terraform.Output(t, terraformOptions, "private_key_openssh"),
 		}
 

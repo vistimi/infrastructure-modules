@@ -31,7 +31,8 @@
 		},
 		"terraform": {
 			"version": "latest",
-			"tflint": "latest"
+			"tflint": "latest",
+			"terratest":"latest"
 		},
 		"aws-cli": "latest",
 		"github-cli": "latest"

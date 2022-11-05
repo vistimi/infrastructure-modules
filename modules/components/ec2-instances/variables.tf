@@ -16,32 +16,6 @@ variable "common_tags" {
 }
 
 # EC2
-# variable "cluster_name" {
-#   description = "The name of the EC2 cluster"
-#   type        = string
-# }
-
-# variable "server_port" {
-#   description = "The port of the server to forward the traffic to"
-#   type        = number
-# }
-
-# variable "health_check_path" {
-#   description = "The path to forward the traffic to"
-#   type        = string
-# }
-
-# variable "elb_port" {
-#   description = "The port the ELB will use for HTTP requests"
-#   type        = number
-#   default     = 80
-# }
-
-# variable "ami_name" {
-#   description = "The name of the AMI used for the EC2 instance"
-#   type        = string
-# }
-
 variable "ami_id"{
   description = "The ID of the AMI used for the EC2 instance"
   type        = string
@@ -67,8 +41,3 @@ variable "desired_capacity" {
   description = "The maximum number of EC2 Instances in the ASG"
   type        = number
 }
-
-# variable "public" {
-#   description = "Are the resources public (e.g true) or private (e.g false)"
-#   type        = bool
-# }

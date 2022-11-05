@@ -1,5 +1,5 @@
 locals {
-  data_storage_name    = "${var.common_tags["Project"]}-${var.common_tags["Environment"]}"
+  data_storage_name = var.data_storage_name
   bucket_name_pictures = var.user_data_args["bucket_name_pictures"]
   bucket_name_mongodb  = var.user_data_args["bucket_name_mongodb"]
 }
