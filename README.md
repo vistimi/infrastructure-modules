@@ -8,29 +8,21 @@ Check the commands of [terraform CLI](https://www.terraform.io/cli/commands#swit
 
 ```shell
 # format
-terragrunt hclfmt
+terraform fmt
 
 # steps to create infrastructure
 terraform init
 terraform validate
-terragrunt plan
-terragrunt apply
+terraform plan
+terraform apply
 
 # inspect
 terraform show
-terragrunt output
+terraform output
 
 # destroy the infrastructure
-terragrunt destroy
+terraform destroy
 ```
-
-#### local
-
-```shell
-terragrunt apply --terragrunt-source ../../../modules//app
-```
-
-*(Note: the double slash (//) here too is intentional and required. Terragrunt downloads all the code in the folder before the double-slash into the temporary folder so that relative paths between modules work correctly. Terraform may display a “Terraform initialized in an empty directory” warning, but you can safely ignore it.)*
 
 ## nuke
 
@@ -133,12 +125,9 @@ terragrunt graph-dependencies | dot -Tsvg > graph.svg
 ```
 AWS_REGION=***
 AWS_PROFILE=***
+AWS_ID=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
-TF_VAR_AWS_REGION="${AWS_REGION}"
-TF_VAR_AWS_PROFILE="${AWS_PROFILE}"
-TF_VAR_AWS_ACCESS_KEY="${AWS_ACCESS_KEY}"
-TF_VAR_AWS_SECRET_KEY="${AWS_SECRET_KEY}"
 ```
 
 ## variables
@@ -166,8 +155,6 @@ cidrhost("192.168.0.0/16", -1)
 ```
 
 - 1.0.0.0/16 scraper test
-- 2.0.0.0/16 scraper production
-- 3.0.0.0/16 scraper non-production
 
 ## test 
 

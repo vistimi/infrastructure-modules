@@ -18,7 +18,7 @@ module "ec2_instance" {
   monitoring             = true
   vpc_security_group_ids = var.vpc_security_group_ids
   subnet_id              = var.subnet_id
-  key_name           = can(var.key_name) ? var.key_name : null
+  key_name               = var.key_name
 
   user_data_base64            = base64encode(templatefile("${path.module}/${var.user_data_path}", var.user_data_args))
   user_data_replace_on_change = true

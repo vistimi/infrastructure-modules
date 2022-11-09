@@ -2,6 +2,7 @@ locals {
   data_storage_name = var.data_storage_name
   bucket_name_pictures = var.user_data_args["bucket_name_pictures"]
   bucket_name_mongodb  = var.user_data_args["bucket_name_mongodb"]
+  key_name = var.bastion ? module.key_pair[0].key_pair_name : null
 }
 
 # S3 for mongodb
@@ -97,6 +98,7 @@ module "key_pair" {
   source = "terraform-aws-modules/key-pair/aws"
 
   key_name           = local.data_storage_name
+  private_key_algorithm = "ED25519"
   create_private_key = true
 }
 
@@ -104,7 +106,7 @@ resource "local_file" "tf-key-file" {
   count = var.bastion ? 1 : 0
 
   content  = module.key_pair[0].private_key_pem
-  filename = "tfkey"
+  filename = "${local.data_storage_name}.pem"
 }
 
 module "ec2_instance_mongodb" {
@@ -115,7 +117,7 @@ module "ec2_instance_mongodb" {
   common_tags            = var.common_tags
   cluster_name           = "${local.data_storage_name}-mongodb"
   ami_id                 = var.ami_id
-  key_name               = var.bastion ? module.key_pair.key_pair_name : null
+  key_name               = local.key_name
   instance_type          = var.instance_type
   user_data_path         = var.user_data_path
   user_data_args         = var.user_data_args
@@ -131,7 +133,7 @@ module "ec2_instance_bastion" {
   common_tags            = var.common_tags
   cluster_name           = "${local.data_storage_name}-bastion"
   ami_id                 = var.ami_id
-  key_name               = var.bastion ? module.key_pair.key_pair_name : null
+  key_name               = local.key_name
   instance_type          = var.instance_type
   user_data_path         = var.user_data_path
   user_data_args         = var.user_data_args
