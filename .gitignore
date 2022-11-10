@@ -8,3 +8,6 @@
 
 # terragrunt
 account.hcl
+
+# ssh
+*.pem

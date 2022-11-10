@@ -7,6 +7,15 @@
 #   all_cidrs_ipv6 = "::/0"
 # }
 
+locals{
+  user_data_args=merge(var.user_data_args, {aws_access_key: var.aws_access_key, aws_secret_key: var.aws_secret_key})
+}
+
+# data "template_file" "user_data" {
+#   template = "${file("${path.module}/${var.user_data_path}")}"
+#   vars = local.user_data_args
+# }
+
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "~> 4.1.4"
@@ -20,7 +29,8 @@ module "ec2_instance" {
   subnet_id              = var.subnet_id
   key_name               = var.key_name
 
-  user_data_base64            = base64encode(templatefile("${path.module}/${var.user_data_path}", var.user_data_args))
+  user_data_base64            = base64encode(templatefile("${path.module}/${var.user_data_path}", local.user_data_args))
+  # user_data_base64            = base64encode(data.template_file.user_data.rendered)
   user_data_replace_on_change = true
 
   tags = var.common_tags

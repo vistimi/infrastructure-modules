@@ -1,6 +1,10 @@
 # use bash not sh
 SHELL := /bin/bash
 
+# special built in target name
+# https://www.gnu.org/software/make/manual/html_node/Special-Targets.html#Special-Targets
+.SILENT: test-prepare-mongodb
+
 # Latest commit hash
 GIT_SHA=$(shell git rev-parse HEAD)
 
@@ -11,10 +15,9 @@ GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
 ROOT_PATH=/workspaces/infrastructure-modules/
-VPC_PATH=/workspaces/infrastructure-modules/modules/vpc
+VPC_PATH=${ROOT_PATH}/modules/vpc
 
-.PHONY: all
-test-prepare:
+test-prepare-vpc:
 	cd ${ROOT_PATH}; \
 	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 		echo 'locals {' > modules/account.hcl; \
@@ -29,44 +32,56 @@ test-prepare:
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
 	fi;
-check:
-	# make test-prepare; \
-	cd ${ROOT_PATH}; \
-	declare -A PROVS=( ["NL"]=10 ["PE"]=11 ["NS"]=12 ["NB"]=13 \
-        ["QC"]=24 ["ON"]=35 ["MB"]=46 ["SK"]=47 ["AB"]=48 \
-        ["BC"]=59 ["YK"]=60 ["NT"]=61 ["NU"]=62 )\
-	printf ${#PROVS[@]}; \
-	declare -A VARS; \
-	vars[0]="VPC_ID"; \
-	vars[1]="VPC_SG_ID"; \
-	vars[2]="VPC_PRIVATE_SUBNETS"; \
-	vars[3]="VPC_PUBLIC_SUBNETS"; \
-	echo ${vars}; \
-	declare -a procs; \
-	procs[0]="terraform -chdir=${VPC_PATH} output -raw vpc_id"; \
-	procs[1]="terraform -chdir=${VPC_PATH} output -raw default_security_group_id"; \
-	procs[2]="terraform -chdir=${VPC_PATH} output -raw private_subnets"; \
-	procs[3]="terraform -chdir=${VPC_PATH} output -raw public_subnets"; \
-	num_procs=${#procs[@]}; \
-	echo "num_procs = ${num_procs}"; \
-	for i in ${num_procs}; do \
-		./procs[${i}] & \
-		pids[${i}]=$!; \
-	done; \
-	for i in ${pids}; do \
-		wait ${pid[${i}]}; \
-		export vars[${i}]="$?"; \
-	done; \
-	echo "All $num_procs processes have ended."; \
-	export VPC_ID=$(terraform -chdir=${VPC_PATH} output -raw vpc_id); \
-	echo "vpc_id=${VPC_ID}"; \
-	echo "default_security_group_id=${VPC_SG_ID}"; \
-	echo "private_subnets=${VPC_PRIVATE_SUBNETS}"; \
-	echo "public_subnets=${VPC_PUBLIC_SUBNETS}"; \
+test-prepare-mongodb:
+	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > modules/data-storage/mongodb/terraform_override.tfvars; \
+	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> modules/data-storage/mongodb/terraform_override.tfvars;
+test-prepare:
+	make test-prepare-vpc; \
+	make test-prepare-mongodb;
+# check:
+# 	# make test-prepare; \
+# 	cd ${ROOT_PATH}; \
+# 	declare -A PROVS=( ["NL"]=10 ["PE"]=11 ["NS"]=12 ["NB"]=13 \
+#         ["QC"]=24 ["ON"]=35 ["MB"]=46 ["SK"]=47 ["AB"]=48 \
+#         ["BC"]=59 ["YK"]=60 ["NT"]=61 ["NU"]=62 )\
+# 	printf ${#PROVS[@]}; \
+# 	declare -A VARS; \
+# 	vars[0]="VPC_ID"; \
+# 	vars[1]="VPC_SG_ID"; \
+# 	vars[2]="VPC_PRIVATE_SUBNETS"; \
+# 	vars[3]="VPC_PUBLIC_SUBNETS"; \
+# 	echo ${vars}; \
+# 	declare -a procs; \
+# 	procs[0]="terraform -chdir=${VPC_PATH} output -raw vpc_id"; \
+# 	procs[1]="terraform -chdir=${VPC_PATH} output -raw default_security_group_id"; \
+# 	procs[2]="terraform -chdir=${VPC_PATH} output -raw private_subnets"; \
+# 	procs[3]="terraform -chdir=${VPC_PATH} output -raw public_subnets"; \
+# 	num_procs=${#procs[@]}; \
+# 	echo "num_procs = ${num_procs}"; \
+# 	for i in ${num_procs}; do \
+# 		./procs[${i}] & \
+# 		pids[${i}]=$!; \
+# 	done; \
+# 	for i in ${pids}; do \
+# 		wait ${pid[${i}]}; \
+# 		export vars[${i}]="$?"; \
+# 	done; \
+# 	echo "All $num_procs processes have ended."; \
+# 	export VPC_ID=$(terraform -chdir=${VPC_PATH} output -raw vpc_id); \
+# 	echo "vpc_id=${VPC_ID}"; \
+# 	echo "default_security_group_id=${VPC_SG_ID}"; \
+# 	echo "private_subnets=${VPC_PRIVATE_SUBNETS}"; \
+# 	echo "public_subnets=${VPC_PUBLIC_SUBNETS}";
 test:
+	make nuke-region; \
+	make test-prepare; \
+	cd ${ROOT_PATH}; \
 	go test -p 1 -v -cover ./...;
-# nuke-all:
-# 	cloud-nuke aws
-# nuke-old:
-# 	cloud-nuke aws --older-than 4h
+	make nuke-region; \
+nuke-all:
+	cloud-nuke aws
+nuke-region:
+	cloud-nuke aws --region ${AWS_REGION} --force
+nuke-region-old:
+	cloud-nuke aws --region ${AWS_REGION} --older-than 4h --force
 

@@ -211,7 +211,7 @@ test_structure.RunTestStage(t, "validate_mongodb", func() {
 If you need to disable one functionality:
 
 ```shell
-SKIP_cleanup_mongodb=true
+export SKIP_cleanup_mongodb=true
 ```
 
 If you need to enable one functionality:

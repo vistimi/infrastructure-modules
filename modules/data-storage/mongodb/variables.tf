@@ -64,3 +64,15 @@ variable "bastion" {
   type        = bool
   default     = false
 }
+
+variable "aws_access_key" {
+  description = "The public key for AWS"
+  type        = string
+  sensitive = true
+}
+
+variable "aws_secret_key" {
+  description = "The private key for AWS"
+  type        = string
+  sensitive = true
+}
