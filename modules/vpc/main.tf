@@ -5,9 +5,10 @@ locals {
   # all_cidrs_ipv6 = "::/0"
 
   vpc_availability_zones = 3
-  cidrs_ipv4             = cidrsubnets(var.vpc_cidr_ipv4, 4, 4, 4, 4, 4, 4) # increment from `0.0.0.0/20` to `0.0.16.0/20`
-  public_cidrs_ipv4      = slice(local.cidrs_ipv4, 0, local.vpc_availability_zones)
-  private_cidrs_ipv4     = slice(local.cidrs_ipv4, local.vpc_availability_zones, length(local.cidrs_ipv4))
+  # increment from `0.0.0.0/20` to `0.0.16.0/20`
+  cidrs_ipv4             = try(cidrsubnets(var.vpc_cidr_ipv4, 4, 4, 4, 4, 4, 4), [])
+  public_cidrs_ipv4      = try(slice(local.cidrs_ipv4, 0, local.vpc_availability_zones), [])
+  private_cidrs_ipv4     = try(slice(local.cidrs_ipv4, local.vpc_availability_zones, length(local.cidrs_ipv4)), [])
 }
 
 data "aws_availability_zones" "available" {
@@ -15,11 +16,15 @@ data "aws_availability_zones" "available" {
 }
 
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 3.18.1"
+  source = "terraform-aws-modules/vpc/aws"
 
   name = var.vpc_name
   cidr = var.vpc_cidr_ipv4
+
+  # only one NAT
+  enable_nat_gateway     = var.enable_nat
+  single_nat_gateway     = var.enable_nat
+  one_nat_gateway_per_az = false
 
   azs             = slice(data.aws_availability_zones.available.names, 0, min(local.vpc_availability_zones, length(data.aws_availability_zones.available.names)))
   public_subnets  = local.public_cidrs_ipv4

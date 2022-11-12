@@ -18,7 +18,6 @@ locals{
 
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "~> 4.1.4"
 
   name = var.cluster_name
 
@@ -28,8 +27,9 @@ module "ec2_instance" {
   vpc_security_group_ids = var.vpc_security_group_ids
   subnet_id              = var.subnet_id
   key_name               = var.key_name
+  associate_public_ip_address = var.associate_public_ip_address
 
-  user_data_base64            = base64encode(templatefile("${path.module}/${var.user_data_path}", local.user_data_args))
+  user_data_base64            = var.user_data_path != "" ? base64encode(templatefile("${path.module}/${var.user_data_path}", local.user_data_args)) : null
   # user_data_base64            = base64encode(data.template_file.user_data.rendered)
   user_data_replace_on_change = true
 

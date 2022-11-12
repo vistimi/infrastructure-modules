@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -13,18 +12,9 @@ import (
 	"github.com/gruntwork-io/terratest/modules/ssh"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	test_shell "github.com/gruntwork-io/terratest/modules/shell"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
-)
-
-var (
-	bucket_name_mongodb  = "scraper-test-mongodb"
-	bucket_name_pictures = "scraper-test-pictures"
 )
 
 func TestTerraformMongodbUnitTest(t *testing.T) {
@@ -44,11 +34,14 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	aws_region := os.Getenv("AWS_REGION")
 	environment_name := fmt.Sprintf("scraper-mongodb-%s", id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", account_name, aws_region, environment_name))
+	bucket_name_mongodb := fmt.Sprintf("%s-mongodb", common_name)
+	bucket_name_pictures := fmt.Sprintf("%s-pictures", common_name)
 
 	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
 	private_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "private_subnets")
-	public_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "private_subnets")
+	public_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "public_subnets")
+	vpc_cidr_block := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_cidr_block")
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "",
@@ -59,6 +52,7 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 			"public_subnets":         public_subnets,
 			"vpc_security_group_ids": []string{default_security_group_id},
 			"vpc_id":                 vpc_id,
+			"vpc_cidr_block":         vpc_cidr_block,
 			"common_tags": map[string]string{
 				"Account":     account_name,
 				"Region":      aws_region,
@@ -68,26 +62,19 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 			"instance_type":  "t2.micro",
 			"user_data_path": "mongodb.sh",
 			"user_data_args": map[string]string{
-				"bucket_name_mount_helper": "global-mount-helper",
-				"bucket_name_mongodb":      fmt.Sprintf("%s-mongodb", common_name),
-				"bucket_name_pictures":     fmt.Sprintf("%s-pictures", common_name),
-				"mongodb_version":          "6.0.1",
-				"aws_region":               aws_region,
-				"aws_profile":              account_name,
+				"HOME":                 "/home/ec2-user",
+				"UID":                  "1000",
+				"bucket_name_mongodb":  bucket_name_mongodb,
+				"bucket_name_pictures": bucket_name_pictures,
+				"mongodb_version":      "6.0.1",
 			},
 			"bastion": bastion,
 		},
 		VarFiles: []string{"terraform_override.tfvars"},
-		// BackendConfig: map[string]interface{}{
-		// 	"bucket":         fmt.Sprintf("%s-%s-%s-terraform-state", account_name, aws_region, environment_name),
-		// 	"key":            "global/s3/terraform.tfstate",
-		// 	"region":         aws_region,
-		// 	"dynamodb_table": fmt.Sprintf("%s-%s-%s-terraform-locks", account_name, aws_region, environment_name),
-		// 	"encrypt":        true,
-		// },
 
 		RetryableTerraformErrors: map[string]string{
-			"net/http: TLS handshake timeout": "Terraform bug",
+			"port 22: Connection refused":   "SSH Connection refused",
+			"port 22: Connection timed out": "SSH Connection timed out",
 		},
 	})
 
@@ -109,12 +96,23 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 		publicInstanceIPBastion := terraform.OutputList(t, terraformOptions, "ec2_instance_bastion_public_ip")[0]
 		privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
 		keyPair := ssh.KeyPair{
-			PublicKey:  terraform.Output(t, terraformOptions, "public_key_openssh"),
-			PrivateKey: terraform.Output(t, terraformOptions, "private_key_openssh"),
+			PublicKey:  terraform.OutputList(t, terraformOptions, "public_key_openssh")[0],
+			PrivateKey: terraform.OutputList(t, terraformOptions, "private_key_openssh")[0],
 		}
 
-		fmt.Println("KEYYYYYYYYYYY", keyPair)
-		fmt.Println("IPPPPPPPP", publicInstanceIPBastion, privateInstanceIPMongodb)
+		// upload key to bastion to connect to private instance
+		bashCode := fmt.Sprintf(`ssh-keyscan -H %s >> ~/.ssh/known_hosts;`, publicInstanceIPBastion)
+		bashCode += fmt.Sprintf(`sudo chmod 400 %s.pem;`, common_name)
+		bashCode += fmt.Sprintf(`scp -i "%s.pem" %s.pem ec2-user@%s:/home/ec2-user;`, common_name, common_name, publicInstanceIPBastion)
+		command := test_shell.Command{
+			Command: "bash",
+			Args:    []string{"-c", bashCode},
+		}
+		shellOutput, err := test_shell.RunCommandAndGetOutputE(t, command)
+		if err != nil {
+			fmt.Printf("\nUpload to bastion error: %s\n", err.Error())
+		}
+		fmt.Printf("\nUpload to bastion output: %s\n", shellOutput)
 
 		sshToPrivateHost(t, publicInstanceIPBastion, privateInstanceIPMongodb, &keyPair)
 	})
@@ -124,42 +122,10 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 		s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
 		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)
 		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_pictures), s3bucketpicturesArn)
-
-		err := mongodbOperations()
-		assert.Equal(t, nil, err)
 	})
 }
 
-func mongodbOperations() error {
-	uri := "mongodb://localhost:27017"
-	// connect
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
-	if err != nil {
-		return err
-	}
-	// Ping the primary
-	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		return err
-	}
-	// test operations
-	collection := client.Database("test").Collection("test")
-	document := bson.M{"testField": "testValue"}
-	_, err = collection.InsertOne(context.TODO(), document)
-	if err != nil {
-		return err
-	}
-	var found struct{ testField string }
-	err = collection.FindOne(context.TODO(), document).Decode(&found)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func sshToPrivateHost(t *testing.T, publicInstanceIP string, privateInstanceIP string, keyPair *ssh.KeyPair) {
-	// We're going to try to SSH to the private instance using the public instance as a jump host. For both instances,
-	// we are using the Key Pair we created earlier, and the user "ubuntu", as we know the Instances are running an
-	// Ubuntu AMI that has such a user
 	publicHost := ssh.Host{
 		Hostname:    publicInstanceIP,
 		SshKeyPair:  keyPair,
@@ -171,27 +137,63 @@ func sshToPrivateHost(t *testing.T, publicInstanceIP string, privateInstanceIP s
 		SshUserName: "ec2-user",
 	}
 
-	// It can take a minute or so for the Instance to boot up, so retry a few times
-	maxRetries := 30
-	timeBetweenRetries := 5 * time.Second
-	description := fmt.Sprintf("SSH to private host %s via public host %s", privateInstanceIP, publicInstanceIP)
+	maxRetries := 15
+	timeBetweenRetries := 30 * time.Second
 
-	// Run a simple echo command on the server
+	description := fmt.Sprintf("SSH to private host %s via public host %s", privateInstanceIP, publicInstanceIP)
 	expectedText := "Hello, World"
 	command := fmt.Sprintf("echo -n '%s'", expectedText)
-
-	// Verify that we can SSH to the Instance and run commands
 	retry.DoWithRetry(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
 		actualText, err := ssh.CheckPrivateSshConnectionE(t, publicHost, privateHost, command)
-
 		if err != nil {
 			return "", err
 		}
-
 		if strings.TrimSpace(actualText) != expectedText {
 			return "", fmt.Errorf("Expected SSH command to return '%s' but got '%s'", expectedText, actualText)
 		}
+		return "", nil
+	})
 
+	description = fmt.Sprintf("Check mount S3 bucket of private host %s via public host %s", privateInstanceIP, publicInstanceIP)
+	expectedText = "s3fs fuse.s3fs /mys3bucket"
+	command = `df -Th /mys3bucket | tail -n +2 |  awk '{ print $1, $2, $7 }'`
+	retry.DoWithRetry(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
+		actualText, err := ssh.CheckPrivateSshConnectionE(t, publicHost, privateHost, command)
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(actualText) != expectedText {
+			return "", fmt.Errorf("Expected SSH command to return '%s' but got '%s'", expectedText, actualText)
+		}
+		return "", nil
+	})
+
+	description = fmt.Sprintf("Check docker container mongodb of private host %s via public host %s", privateInstanceIP, publicInstanceIP)
+	expectedText = "scraper-mongodb"
+	command = `sudo docker ps --format '{{.Names}}'`
+	retry.DoWithRetry(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
+		actualText, err := ssh.CheckPrivateSshConnectionE(t, publicHost, privateHost, command)
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(actualText) != expectedText {
+			return "", fmt.Errorf("Expected SSH command to return '%s' but got '%s'", expectedText, actualText)
+		}
+		return "", nil
+	})
+
+	description = fmt.Sprintf("Check mongodb port of private host %s via public host %s", privateInstanceIP, publicInstanceIP)
+	port := 27017
+	expectedText = fmt.Sprintf("Open %d", port)
+	command = fmt.Sprintf(`(echo >/dev/tcp/%s/%d) &>/dev/null && echo "Open %d" || echo "Close %d"`, privateHost.Hostname, port, port, port)
+	retry.DoWithRetry(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
+		actualText, err := ssh.CheckPrivateSshConnectionE(t, publicHost, privateHost, command)
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(actualText) != expectedText {
+			return "", fmt.Errorf("Expected SSH command to return '%s' but got '%s'", expectedText, actualText)
+		}
 		return "", nil
 	})
 }

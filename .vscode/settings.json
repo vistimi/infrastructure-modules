@@ -1,7 +1,10 @@
 {
-    "go.testTimeout": "240s",
-    "editor.tabSize": 4,
-    "files.associations": {
-        "*.hcl": "terraform",
-      }
+  "go.testTimeout": "900s",
+  "editor.tabSize": 4,
+  "files.associations": {
+    "*.hcl": "terraform",
+  },
+  "go.coverOnSave": false,
+  "go.coverOnSingleTest": false,
+  "go.coverOnSingleTestFile": false
 }

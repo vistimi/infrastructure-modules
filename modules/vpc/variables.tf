@@ -19,6 +19,12 @@ variable "vpc_cidr_ipv4" {
   type        = string
 }
 
+variable "enable_nat" {
+  description = "Enable the NAT gateway"
+  type        = bool
+  default = false
+}
+
 # variable "vpc_availability_zones" {
 #   description = "The number of availability zones to use"
 #   type        = number

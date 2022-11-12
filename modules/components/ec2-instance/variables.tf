@@ -52,10 +52,10 @@ variable "instance_type" {
   type        = string
 }
 
-# variable "public" {
-#   description = "Are the resources public (e.g true) or private (e.g false)"
-#   type        = bool
-# }
+variable "associate_public_ip_address" {
+  description = "Whether to associate a public IP address with an instance in a VPC"
+  type        = bool
+}
 
 variable "user_data_path" {
   description = "Bash script path to run after creation of instance"
