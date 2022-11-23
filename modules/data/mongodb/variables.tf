@@ -1,9 +1,4 @@
 # Global
-variable "aws_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
 variable "data_storage_name" {
   description = "The name of the data storage"
   type        = string
@@ -19,15 +14,15 @@ variable "vpc_cidr_block" {
   type        = string
 }
 
-variable "private_subnets" {
-  description = "List of IDs of private subnets"
-  type        = list(string)
-}
+# variable "private_subnets" {
+#   description = "List of IDs of private subnets"
+#   type        = list(string)
+# }
 
-variable "public_subnets" {
-  description = "List of IDs of public subnets"
-  type        = list(string)
-}
+# variable "public_subnets" {
+#   description = "List of IDs of public subnets"
+#   type        = list(string)
+# }
 
 variable "vpc_security_group_ids" {
   description = "The IDs of the security group of the VPC"
@@ -38,6 +33,11 @@ variable "common_tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
+}
+
+variable "force_destroy" {
+  description = "Force destroy non-empty buckets or other resources"
+  type        = bool
 }
 
 # EC2

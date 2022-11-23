@@ -20,7 +20,7 @@ import (
 func TestTerraformMongodbUnitTest(t *testing.T) {
 	t.Parallel()
 
-	bashCode := fmt.Sprint(`terragrunt init;`)
+	bashCode := `terragrunt init;`
 	command := test_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
@@ -31,33 +31,37 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	id := uuid.New().String()[0:7]
 	bastion := true
 	account_name := os.Getenv("AWS_PROFILE")
-	aws_region := os.Getenv("AWS_REGION")
-	environment_name := fmt.Sprintf("scraper-mongodb-%s", id)
-	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", account_name, aws_region, environment_name))
+	account_region := os.Getenv("AWS_REGION")
+	project_name := ""
+	service_name := "mongodb"
+	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
+	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s-%s-%s", account_name, account_region, project_name, service_name, environment_name))
 	bucket_name_mongodb := fmt.Sprintf("%s-mongodb", common_name)
 	bucket_name_pictures := fmt.Sprintf("%s-pictures", common_name)
 
 	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
-	private_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "private_subnets")
-	public_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "public_subnets")
+	// private_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "private_subnets")
+	// public_subnets := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "public_subnets")
 	vpc_cidr_block := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_cidr_block")
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "",
 		Vars: map[string]interface{}{
-			"aws_region":             aws_region,
-			"data_storage_name":      common_name,
-			"private_subnets":        private_subnets,
-			"public_subnets":         public_subnets,
+			"data_storage_name": common_name,
+			// "private_subnets":        private_subnets,
+			// "public_subnets":         public_subnets,
 			"vpc_security_group_ids": []string{default_security_group_id},
 			"vpc_id":                 vpc_id,
 			"vpc_cidr_block":         vpc_cidr_block,
 			"common_tags": map[string]string{
 				"Account":     account_name,
-				"Region":      aws_region,
+				"Region":      account_region,
+				"Project":     project_name,
+				"Service":     service_name,
 				"Environment": environment_name,
 			},
+			"force_destroy":  true,
 			"ami_id":         "ami-09d3b3274b6c5d4aa",
 			"instance_type":  "t2.micro",
 			"user_data_path": "mongodb.sh",
@@ -117,7 +121,7 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 		sshToPrivateHost(t, publicInstanceIPBastion, privateInstanceIPMongodb, &keyPair)
 	})
 
-	test_structure.RunTestStage(t, "validate_mongodb", func() {
+	test_structure.RunTestStage(t, "validate_buckets", func() {
 		s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
 		s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
 		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)

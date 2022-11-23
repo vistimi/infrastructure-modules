@@ -32,6 +32,10 @@ terraform destroy
 cloud-nuke aws
 ```
 
+## makefile
+Use premade commands
+make <make_command>
+
 ## terraform
 
 <details><summary> <b>Links</b> </summary>
@@ -126,9 +130,20 @@ terragrunt graph-dependencies | dot -Tsvg > graph.svg
 AWS_REGION=***
 AWS_PROFILE=***
 AWS_ID=***
+AWS_ROLE=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
+ENVIRONMENT_NAME=***
+GH_TOKEN=***
 ```
+
+In [Github](https://github.com/settings/personal-access-tokens/new):
+  Actions: Read and write
+  Environments: Read and write
+  Metadata: Read-only
+  Secrets: Read and write
+
+In [AWS]()
 
 ## variables
 
@@ -138,7 +153,25 @@ Variables set in the file can be overridden at deployment:
 terraform apply -var <var_to_change>=<new_value>
 ```
 
-## cidr
+## vpc
+#### tier
+
+Use the tag to access with `data` the desired outputs from specific subnets, `Private` or `Public`:
+
+```hcl
+data "aws_subnets" "tier" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  tags = {
+    Tier = var.vpc_tier
+  }
+}
+```
+
+#### cidr
 
 Using `/16` for CIDR blocks means that the last two parts of the adress are customizable for subnets.
 
@@ -155,6 +188,8 @@ cidrhost("192.168.0.0/16", -1)
 ```
 
 - 1.0.0.0/16 scraper test
+
+
 
 ## test 
 

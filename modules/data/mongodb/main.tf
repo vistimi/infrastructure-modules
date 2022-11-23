@@ -7,6 +7,32 @@ locals {
   bucket_name_mongodb  = var.user_data_args["bucket_name_mongodb"]
 }
 
+data "aws_vpc" "selected" {
+  id = var.vpc_id
+}
+
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  tags = {
+    Tier = "Private"
+  }
+}
+
+data "aws_subnets" "public" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  tags = {
+    Tier = "Public"
+  }
+}
+
 # S3 for mongodb
 data "aws_iam_policy_document" "bucket_policy_mongodb" {
   statement {
@@ -43,6 +69,8 @@ module "s3_bucket_mongodb" {
   versioning = {
     enabled = true
   }
+
+  force_destroy = var.force_destroy
 
   attach_policy = true
   policy        = data.aws_iam_policy_document.bucket_policy_mongodb.json
@@ -86,6 +114,8 @@ module "s3_bucket_pictures" {
   versioning = {
     enabled = true
   }
+
+  force_destroy = var.force_destroy
 
   attach_policy = true
   policy        = data.aws_iam_policy_document.bucket_policy_pictures.json
@@ -157,7 +187,7 @@ module "ec2_instance_sg_mongodb" {
 module "ec2_instance_mongodb" {
   source = "../../components/ec2-instance"
 
-  subnet_id = var.private_subnets[0]
+  subnet_id = data.aws_subnets.private.ids[0]
   vpc_security_group_ids = concat(
     var.vpc_security_group_ids,
     concat(
@@ -182,7 +212,7 @@ module "ec2_instance_bastion" {
 
   source = "../../components/ec2-instance"
 
-  subnet_id                   = var.public_subnets[0]
+  subnet_id                   = data.aws_subnets.public.ids[0]
   vpc_security_group_ids      = concat(var.vpc_security_group_ids, [module.ec2_instance_sg_ssh.security_group_id])
   common_tags                 = var.common_tags
   cluster_name                = "${local.data_storage_name}-bastion"

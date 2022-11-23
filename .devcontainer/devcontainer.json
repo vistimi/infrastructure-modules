@@ -42,7 +42,8 @@
 			"extensions": [
 				"yzhang.markdown-all-in-one",
 				"golang.go",
-				"shakram02.bash-beautify"
+				"shakram02.bash-beautify",
+				"shd101wyy.markdown-preview-enhanced"
 			]
 		}
 	}
