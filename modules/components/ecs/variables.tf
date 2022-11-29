@@ -23,7 +23,7 @@ variable "listener_port" {
 
 variable "listener_protocol" {
   description = "The protocol used by the containers, e.g. http or https"
-  type        = number
+  type        = string
 }
 
 variable "target_port" {
@@ -33,18 +33,18 @@ variable "target_port" {
 
 variable "target_protocol" {
   description = "The protocol used by the containers, e.g. http or https"
-  type        = number
-}
-
-# ECS
-variable "task_definition_arn" {
-   description = "The task definition ARN generated from the version controller"
   type        = string
 }
 
+# ECS
 variable "ecs_logs_retention_in_days" {
   description = "The number of days to keep the logs in Cloudwatch"
   type        = number
+}
+
+variable "task_definition_arn" {
+  description = "Family and revision (family:revision) or full ARN of the task definition that you want to run in your service"
+  type        = string
 }
 
 # ASG
@@ -66,7 +66,7 @@ variable "vpc_tier" {
 }
 
 variable "instance_type_on_demand" {
-  description = "The type of EC2 Instances to run (e.g. t2.micro)"
+  description = "The type of EC2 Instances to run (e.g. t2.micro). RAM GiB and vCPU"
   type        = string
 }
 

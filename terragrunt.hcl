@@ -5,7 +5,6 @@ locals {
   account_vars       = read_terragrunt_config(find_in_parent_folders("account.hcl"))
   aws_account_id     = local.account_vars.locals.aws_account_id
   aws_account_region = local.account_vars.locals.aws_account_region
-  gh_token           = local.account_vars.locals.gh_token
 }
 
 # Generate version block
@@ -37,10 +36,6 @@ generate "provider" {
 provider "aws" {
   region = "${local.aws_account_region}"
   allowed_account_ids = ["${local.aws_account_id}"]
-}
-
-provider "github" {
-  token = ${local.gh_token}
 }
 EOF
 }

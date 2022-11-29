@@ -30,7 +30,6 @@ module "ec2_instance" {
   associate_public_ip_address = var.associate_public_ip_address
 
   user_data_base64            = var.user_data_path != "" ? base64encode(templatefile("${path.module}/${var.user_data_path}", local.user_data_args)) : null
-  # user_data_base64            = base64encode(data.template_file.user_data.rendered)
   user_data_replace_on_change = true
 
   tags = var.common_tags

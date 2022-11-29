@@ -1,5 +1,5 @@
 # Global
-variable "data_storage_name" {
+variable "common_name" {
   description = "The name of the data storage"
   type        = string
 }
@@ -8,21 +8,6 @@ variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
 }
-
-variable "vpc_cidr_block" {
-  description = "The CIDR block of the Default VPC"
-  type        = string
-}
-
-# variable "private_subnets" {
-#   description = "List of IDs of private subnets"
-#   type        = list(string)
-# }
-
-# variable "public_subnets" {
-#   description = "List of IDs of public subnets"
-#   type        = list(string)
-# }
 
 variable "vpc_security_group_ids" {
   description = "The IDs of the security group of the VPC"

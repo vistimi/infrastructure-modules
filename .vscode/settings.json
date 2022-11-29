@@ -6,5 +6,6 @@
   },
   "go.coverOnSave": false,
   "go.coverOnSingleTest": false,
-  "go.coverOnSingleTestFile": false
+  "go.coverOnSingleTestFile": false,
+  "terminal.integrated.scrollback": 10000
 }

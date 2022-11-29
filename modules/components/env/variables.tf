@@ -14,3 +14,8 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "vpc_id" {
+  description = "The IDs of the VPC which contains the subnets"
+  type        = string
+}
