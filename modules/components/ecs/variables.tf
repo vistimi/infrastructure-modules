@@ -47,6 +47,16 @@ variable "task_definition_arn" {
   type        = string
 }
 
+variable "github_workflow_file_name_ecs" {
+  description = "The name of the ECS workflow file"
+  type        = string
+}
+
+variable "github_workflow_name_ecs" {
+  description = "The name of the ECS workflow"
+  type        = string
+}
+
 # ASG
 variable "user_data" {
   description = "The user data to provide when launching the instance"

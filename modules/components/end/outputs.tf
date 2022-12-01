@@ -38,9 +38,3 @@ output "ecs_task_definition_revision" {
   value       = aws_ecs_task_definition.service.revision
   description = "Revision of the task in a particular family"
 }
-
-# MongoDB
-output "ec2_instance_mongodb_private_ip" {
-  value       = module.mongodb.ec2_instance_mongodb_private_ip
-  description = "The private IP address assigned to the mongodb instance."
-}

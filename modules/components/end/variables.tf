@@ -147,20 +147,20 @@ variable "ecs_task_definition_cpu" {
   type        = number
 }
 
-variable "ecs_task_definition_family_name" {
-  description = "A unique name for your task definition"
-  type        = string
-}
+# variable "ecs_task_definition_family_name" {
+#   description = "A unique name for your task definition"
+#   type        = string
+# }
 
-variable "ecs_task_container_name" {
-  description = "A unique name for your container"
-  type        = string
-}
+# variable "ecs_task_container_name" {
+#   description = "A unique name for your container"
+#   type        = string
+# }
 
-variable "bucket_env_name" {
-  description = "The name of the S3 bucket to store the env file"
-  type        = string
-}
+# variable "bucket_env_name" {
+#   description = "The name of the S3 bucket to store the env file"
+#   type        = string
+# }
 
 variable "env_file_name" {
   description = "The name of the env file used for the service docker"
@@ -218,52 +218,45 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_branch" {
+  description = "The name of the branch"
+  type        = string
+}
+
+variable "github_workflow_file_name_ecr" {
+  description = "The name of the ECR workflow file"
+  type        = string
+}
+
+variable "github_workflow_name_ecr" {
+  description = "The name of the ECR workflow"
+  type        = string
+}
+
+variable "github_workflow_file_name_env" {
+  description = "The name of the S3 env workflow file"
+  type        = string
+}
+
+variable "github_workflow_name_env" {
+  description = "The name of the S3 env workflow"
+  type        = string
+}
+
+variable "github_workflow_file_name_ecs" {
+  description = "The name of the ECS workflow file"
+  type        = string
+}
+
+variable "github_workflow_name_ecs" {
+  description = "The name of the ECS workflow"
+  type        = string
+}
+
 # ------------------------
-#     MongoDB
+#     Github
 # ------------------------
-
-variable "vpc_security_group_ids" {
-  description = "The IDs of the security group of the VPC"
-  type        = list(string)
-}
-
-variable "force_destroy" {
-  description = "Force destroy non-empty buckets or other resources"
-  type        = bool
-}
-
-# EC2
-variable "ami_id"{
-  description = "The ID of the AMI used for the EC2 instance"
+variable "mongodb_ipv4" {
+  description = "The IP of the Mongodb instance"
   type        = string
-  default = "ami-09d3b3274b6c5d4aa"
-}
-
-variable "instance_type" {
-  description = "The type of EC2 Instances to run (e.g. t2.micro)"
-  type        = string
-}
-
-variable "user_data_path" {
-  description = "Bash script path to run after creation of instance"
-  type        = string
-  default     = ""
-}
-
-variable "user_data_args" {
-  description = "Bash script arguments to pass to the bash script"
-  type        = map(any)
-  default     = {}
-}
-
-variable "aws_access_key" {
-  description = "The public key for AWS"
-  type        = string
-  sensitive = true
-}
-
-variable "aws_secret_key" {
-  description = "The private key for AWS"
-  type        = string
-  sensitive = true
 }

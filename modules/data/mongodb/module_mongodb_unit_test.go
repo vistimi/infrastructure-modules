@@ -20,6 +20,7 @@ import (
 func TestTerraformMongodbUnitTest(t *testing.T) {
 	t.Parallel()
 
+	// init
 	bashCode := `terragrunt init;`
 	command := test_shell.Command{
 		Command: "bash",
@@ -28,6 +29,15 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	shellOutput := test_shell.RunCommandAndGetOutput(t, command)
 	fmt.Printf("\nStart shell output: %s\n", shellOutput)
 
+	// vpc variables
+	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
+	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
+	nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
+	if len(nat_ids) == 0 {
+		t.Errorf("No NAT available")
+	}
+
+	// global variables
 	id := uuid.New().String()[0:7]
 	account_name := os.Getenv("AWS_PROFILE")
 	account_region := os.Getenv("AWS_REGION")
@@ -35,13 +45,6 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	service_name := "mongodb"
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
-
-	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
-	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
-	nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
-	if len(nat_ids) == 0 {
-		t.Errorf("No NAT available")
-	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "",

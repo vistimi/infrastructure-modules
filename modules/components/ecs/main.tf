@@ -83,6 +83,7 @@ module "ecs" {
 
   # can have more than one capacity provider for spot instances
   # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-capacity-providers.html
+  default_capacity_provider_use_fargate = false
   autoscaling_capacity_providers = {
     on-demand = {
       auto_scaling_group_arn         = module.asg["on-demand"].autoscaling_group_arn
@@ -101,7 +102,6 @@ module "ecs" {
     }
     # spot = {
     #   auto_scaling_group_arn         = module.asg["spot"].autoscaling_group_arn
-    #   managed_termination_protection = "ENABLED"
 
     #   managed_scaling = {
     #     maximum_scaling_step_size = 5
@@ -127,6 +127,11 @@ resource "aws_cloudwatch_log_group" "ecs" {
 }
 
 # ECS Service
+
+data "aws_ecs_task_definition" "service" {
+  task_definition = var.common_name
+}
+
 resource "aws_ecs_service" "service" {
   name    = var.common_name
   cluster = module.ecs.cluster_id
@@ -144,20 +149,34 @@ resource "aws_ecs_service" "service" {
 
   load_balancer {
     target_group_arn = module.alb.target_group_arns[0] // works only for one container
-    container_name   = var.common_name  // TODO: set with variable
-    container_port   = 8080                            // TODO: set with variable
+    container_name   = var.common_name
+    container_port   = var.target_port
   }
 
   # # Use github for task deployment
   # deployment_controller {
   #   type = "EXTERNAL"
   # }
-  task_definition = var.task_definition_arn
+  task_definition = aws_ecaws_ecs_task_definitionr_image.service.arn
 
-  # # Optional: Allow external changes without Terraform plan difference
-  # lifecycle {
-  #   ignore_changes = [task_definition]
-  # }
+  # Allow external changes without Terraform plan difference
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
+    provisioner "local-exec" {
+    command = "/bin/bash gh_wf_ecr.sh GH_WF_FILE=$GH_WF_FILE GH_WF_NAME=$GH_WF_NAME GH_ORG=$GH_ORG GH_REPO=$GH_REPO GH_BRANCH=$GH_BRANCH AWS_ACCOUNT_NAME=$AWS_ACCOUNT_NAME AWS_REGION=$AWS_REGION COMMON_NAME=$COMMON_NAME"
+    environment = {
+      GH_WF_FILE       = var.github_workflow_file_name_env
+      GH_WF_NAME       = var.github_workflow_name_env
+      GH_ORG           = var.github_organization
+      GH_REPO          = var.github_repository
+      GH_BRANCH        = var.github_branch
+      AWS_ACCOUNT_NAME = var.account_name
+      AWS_REGION       = var.account_region
+      COMMON_NAME      = var.common_name
+    }
+  }
 }
 
 # ASG
@@ -207,7 +226,7 @@ module "asg" {
   enable_monitoring         = true
 
   launch_template_name        = var.common_name
-  launch_template_description = "${local.asg_name} asg launch template"
+  launch_template_description = "${var.common_name} asg launch template"
   update_default_version      = true
 
   create_iam_instance_profile = true
@@ -278,7 +297,7 @@ module "asg" {
       notification_metadata = jsonencode({
         "event"         = "launch",
         "timestamp"     = timestamp(),
-        "auto_scaling"  = local.asg_name,
+        "auto_scaling"  = var.common_name,
         "group"         = each.key,
         "instance_type" = each.value.instance_type
       })
@@ -291,7 +310,7 @@ module "asg" {
       notification_metadata = jsonencode({
         "event"         = "termination",
         "timestamp"     = timestamp(),
-        "auto_scaling"  = local.asg_name,
+        "auto_scaling"  = var.common_name,
         "group"         = each.key,
         "instance_type" = each.value.instance_type
       })

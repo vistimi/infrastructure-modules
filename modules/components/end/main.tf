@@ -4,26 +4,30 @@
 module "ecs_cluster" {
   source = "../../components/ecs"
 
-  vpc_id                     = var.vpc_id
-  common_name                = var.common_name
-  common_tags                = var.common_tags
-  listener_port              = var.listener_port
-  listener_protocol          = var.listener_protocol
-  target_port                = var.target_port
-  target_protocol            = var.target_protocol
-  task_definition_arn        = aws_ecs_task_definition.service.arn
-  ecs_logs_retention_in_days = var.ecs_logs_retention_in_days
-  user_data                  = var.user_data
-  protect_from_scale_in      = var.protect_from_scale_in
-  vpc_tier                   = var.vpc_tier
-  instance_type_on_demand    = var.instance_type_on_demand
-  min_size_on_demand         = var.min_size_on_demand
-  max_size_on_demand         = var.max_size_on_demand
-  desired_capacity_on_demand = var.desired_capacity_on_demand
-  instance_type_spot         = var.instance_type_spot
-  min_size_spot              = var.min_size_spot
-  max_size_spot              = var.max_size_spot
-  desired_capacity_spot      = var.desired_capacity_spot
+  vpc_id                        = var.vpc_id
+  common_name                   = var.common_name
+  common_tags                   = var.common_tags
+  listener_port                 = var.listener_port
+  listener_protocol             = var.listener_protocol
+  target_port                   = var.target_port
+  target_protocol               = var.target_protocol
+  task_definition_arn           = aws_ecs_task_definition.service.arn
+  ecs_logs_retention_in_days    = var.ecs_logs_retention_in_days
+  user_data                     = var.user_data
+  protect_from_scale_in         = var.protect_from_scale_in
+  vpc_tier                      = var.vpc_tier
+  instance_type_on_demand       = var.instance_type_on_demand
+  min_size_on_demand            = var.min_size_on_demand
+  max_size_on_demand            = var.max_size_on_demand
+  desired_capacity_on_demand    = var.desired_capacity_on_demand
+  instance_type_spot            = var.instance_type_spot
+  min_size_spot                 = var.min_size_spot
+  max_size_spot                 = var.max_size_spot
+  desired_capacity_spot         = var.desired_capacity_spot
+  github_workflow_file_name_ecs = var.github_workflow_file_name_ecs
+  github_workflow_name_ecs      = var.github_workflow_name_ecs
+
+  depends_on = [module.s3_env, module.ecr]
 }
 
 # ECS Roles and policies
@@ -84,9 +88,24 @@ resource "aws_iam_role" "ecs_task_container_role" {
 module "s3_env" {
   source      = "../../components/env"
   aws_region  = var.account_region
-  bucket_name = var.bucket_env_name
+  bucket_name = "${var.common_name}-env"
   common_tags = var.common_tags
   vpc_id      = var.vpc_id
+
+  provisioner "local-exec" {
+    command = "/bin/bash gh_wf_ecr.sh GH_WF_FILE=$GH_WF_FILE GH_WF_NAME=$GH_WF_NAME GH_ORG=$GH_ORG GH_REPO=$GH_REPO GH_BRANCH=$GH_BRANCH AWS_ACCOUNT_NAME=$AWS_ACCOUNT_NAME AWS_REGION=$AWS_REGION COMMON_NAME=$COMMON_NAME MONGO_IP=$MONGO_IP"
+    environment = {
+      GH_WF_FILE       = var.github_workflow_file_name_env
+      GH_WF_NAME       = var.github_workflow_name_env
+      GH_ORG           = var.github_organization
+      GH_REPO          = var.github_repository
+      GH_BRANCH        = var.github_branch
+      AWS_ACCOUNT_NAME = var.account_name
+      AWS_REGION       = var.account_region
+      COMMON_NAME      = var.common_name
+      MONGO_IP         = var.mongodb_ipv4
+    }
+  }
 }
 
 # ECS task definition
@@ -96,15 +115,15 @@ resource "aws_ecs_task_definition" "service" {
   task_role_arn            = aws_iam_role.ecs_task_container_role.arn
   memory                   = var.ecs_task_definition_memory
   cpu                      = var.ecs_task_definition_cpu
-  family                   = var.ecs_task_definition_family_name
+  family                   = var.common_name
   requires_compatibilities = ["EC2"]
 
   container_definitions = jsonencode([
     {
-      name = var.ecs_task_container_name
+      name = var.common_name
       environmentFiles : [
         {
-          "value" : "arn:aws:s3:::${var.bucket_env_name}/${var.env_file_name}",
+          "value" : "arn:aws:s3:::${var.common_name}-env/${var.env_file_name}",
           "type" : "s3"
         }
       ]
@@ -113,7 +132,7 @@ resource "aws_ecs_task_definition" "service" {
       memoryReservation = var.ecs_task_definition_memory_reservation
       cpu               = var.ecs_task_definition_cpu
 
-      image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.repository_name}:f5539f74d7486ddaf99608ea704ce585b4c375d9"
+      image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.common_name}:f5539f74d7486ddaf99608ea704ce585b4c375d9"
       essential = true
     }
   ])
@@ -125,7 +144,7 @@ resource "aws_ecs_task_definition" "service" {
 module "ecr" {
   source = "terraform-aws-modules/ecr/aws"
 
-  repository_name                   = var.common_name
+  repository_name = var.common_name
   # repository_read_write_access_arns = [aws_iam_role.ecr_execution_role.arn]
   # repository_read_access_arns       = var.repository_read_access_arns
   repository_lifecycle_policy = jsonencode({
@@ -148,6 +167,21 @@ module "ecr" {
   repository_force_delete = var.repository_force_delete
 
   tags = var.common_tags
+
+  provisioner "local-exec" {
+    command = "/bin/bash gh_wf_ecr.sh GH_WF_FILE=$GH_WF_FILE GH_WF_NAME=$GH_WF_NAME GH_ORG=$GH_ORG GH_REPO=$GH_REPO GH_BRANCH=$GH_BRANCH AWS_ACCOUNT_NAME=$AWS_ACCOUNT_NAME AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID AWS_REGION=$AWS_REGION COMMON_NAME=$COMMON_NAME"
+    environment = {
+      GH_WF_FILE       = var.github_workflow_file_name_ecr
+      GH_WF_NAME       = var.github_workflow_name_ecr
+      GH_ORG           = var.github_organization
+      GH_REPO          = var.github_repository
+      GH_BRANCH        = var.github_branch
+      AWS_ACCOUNT_NAME = var.account_name
+      AWS_ACCOUNT_ID   = var.account_id
+      AWS_REGION       = var.account_region
+      COMMON_NAME      = var.common_name
+    }
+  }
 }
 
 # # ECR roles and policies
@@ -184,6 +218,8 @@ module "ecr" {
 # ------------------------
 #     Github secrets
 # ------------------------
+// FIXME: make it work for secret env or move this logic elsewhere
+// TODO: make ECS depend on those secrets
 # data "github_repository" "repo" {
 #   full_name = "${var.github_organization}/${var.github_repository}"
 # }
@@ -206,23 +242,3 @@ module "ecr" {
 #   secret_name     = "AWS_SECRET_ACCESS_KEY"
 #   plaintext_value = var.aws_secret_key
 # }
-
-# ------------------------
-#     MongoDB
-# ------------------------
-module "mongodb" {
-  source = "../../data/mongodb"
-
-  common_name            = var.common_name
-  vpc_id                 = var.vpc_id
-  vpc_security_group_ids = var.vpc_security_group_ids
-  common_tags            = var.common_tags
-  force_destroy          = var.force_destroy
-  ami_id                 = var.ami_id
-  instance_type          = var.instance_type
-  user_data_path         = var.user_data_path
-  user_data_args         = var.user_data_args
-  bastion                = false
-  aws_access_key         = var.aws_access_key
-  aws_secret_key         = var.aws_secret_key
-}
