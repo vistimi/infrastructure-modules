@@ -1,11 +1,13 @@
 package test
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	awsSDK "github.com/aws/aws-sdk-go/aws"
 	"github.com/google/uuid"
@@ -13,6 +15,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 
+	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	test_shell "github.com/gruntwork-io/terratest/modules/shell"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -34,7 +37,7 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
 	nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
 	if len(nat_ids) == 0 {
-		t.Errorf("No NAT available")
+		t.Errorf("no NAT available")
 	}
 
 	// global variables
@@ -52,9 +55,13 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 	listener_protocol := "HTTP"
 	target_port := 8080
 	target_protocol := "HTTP"
+	user_data := fmt.Sprintf("#!/bin/bash\necho ECS_CLUSTER=%s >> /etc/ecs/ecs.config;", common_name)
 
-	ecs_execution_role_name := "ecs-execution-role-name"
-	ecs_task_container_role_name := "ecs-task-container-role-name"
+	ecs_execution_role_name := fmt.Sprintf("%s-ecs-execution", common_name)
+	ecs_task_container_role_name := fmt.Sprintf("%s-ecs-task-container", common_name)
+	ecs_task_container_s3_env_policy_name := fmt.Sprintf("%s-ecs-task-container-s3-env", common_name)
+	ecs_task_desired_count := 1
+	ecs_task_definition_image_tag := "latest"
 	env_file_name := "production.env"
 	cpu := 256
 	memory := 512
@@ -86,20 +93,23 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 				"Service":     service_name,
 				"Environment": environment_name,
 			},
+			"force_destroy": true,
 
 			"ecs_execution_role_name":                ecs_execution_role_name,
 			"ecs_task_container_role_name":           ecs_task_container_role_name,
+			"ecs_task_definition_image_tag":          ecs_task_definition_image_tag,
+			"ecs_task_container_s3_env_policy_name":  ecs_task_container_s3_env_policy_name,
 			"ecs_logs_retention_in_days":             1,
 			"listener_port":                          listener_port,
 			"listener_protocol":                      listener_protocol,
 			"target_port":                            target_port,
 			"target_protocol":                        target_protocol,
-			"user_data":                              "echo 'Instance is running!'",
+			"user_data":                              user_data,
 			"protect_from_scale_in":                  false,
 			"vpc_tier":                               "Public",
 			"instance_type_on_demand":                "t2.micro",
 			"min_size_on_demand":                     "1",
-			"max_size_on_demand":                     "1",
+			"max_size_on_demand":                     "3",
 			"desired_capacity_on_demand":             "1",
 			"instance_type_spot":                     "t2.micro",
 			"min_size_spot":                          "1",
@@ -108,6 +118,7 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 			"ecs_task_definition_memory":             memory,
 			"ecs_task_definition_memory_reservation": memory_reservation,
 			"ecs_task_definition_cpu":                cpu,
+			"ecs_task_desired_count":                 ecs_task_desired_count,
 			"env_file_name":                          env_file_name,
 			"port_mapping": []map[string]any{
 				{
@@ -122,10 +133,7 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 				},
 			},
 
-			// "repository_name":         ecr_repository_name,
-			"repository_image_count":  1,
-			"repository_force_delete": true,
-
+			"repository_image_keep_count":   1,
 			"github_workflow_file_name_ecr": github_workflow_file_name_ecr,
 			"github_workflow_name_ecr":      github_workflow_name_ecr,
 			"github_workflow_file_name_env": github_workflow_file_name_env,
@@ -137,7 +145,6 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 			"github_branch":                 github_branch,
 
 			"vpc_security_group_ids": []string{default_security_group_id},
-			"force_destroy":          true,
 			"ami_id":                 "ami-09d3b3274b6c5d4aa",
 			"instance_type":          "t2.micro",
 			"user_data_path":         "mongodb.sh",
@@ -151,17 +158,17 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 		VarFiles: []string{"terraform_override.tfvars"},
 	})
 
-	privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
+	fmt.Println(terraformOptions)
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	}
-	// 	test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, terraformOptions)
+		}
+		test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+			terraform.Destroy(t, terraformOptions)
+		})
+	}()
 
 	// TODO: plan test
 	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
@@ -170,10 +177,14 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 		terraform.InitAndApply(t, terraformOptions)
 	})
 
+	privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
+	albDnsName := terraform.Output(t, terraformOptions, "alb_dns_name")
+
 	ecrInitialImagesAmount := getEcrImagesAmount(t, common_name, account_region)
 	fmt.Printf("\nInitial amount of images in ECR registry: %d\n", ecrInitialImagesAmount)
 
 	runGithubWorkflow(
+		t,
 		github_organization,
 		github_repository,
 		github_branch,
@@ -181,6 +192,7 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 		account_region,
 		common_name,
 		privateInstanceIPMongodb,
+		strconv.Itoa(ecs_task_desired_count),
 	)
 
 	test_structure.RunTestStage(t, "validate_ecr", func() {
@@ -191,18 +203,23 @@ func TestTerraformScraperBackendUnitTest(t *testing.T) {
 		testEcs(t, common_name, account_region, common_name, strconv.Itoa(cpu), strconv.Itoa(memory))
 	})
 
-	// TODO: test backend / route or healthcheck
+	test_structure.RunTestStage(t, "validate_endpoints", func() {
+		albDnsName = "http://" + albDnsName
+		testEndpoints(t, albDnsName)
+	})
 }
 
 // Run Github workflow CI/CD to push images on ECR and update ECS
 func runGithubWorkflow(
-	github_organization string,
-	github_repository string,
-	github_branch string,
-	account_id string,
-	account_region string,
-	common_name string,
-	privateInstanceIPMongodb string,
+	t *testing.T,
+	github_organization,
+	github_repository,
+	github_branch,
+	account_id,
+	account_region,
+	common_name,
+	privateInstanceIPMongodb,
+	task_desired_count string,
 ) {
 
 	bashCode := fmt.Sprintf(`
@@ -210,7 +227,8 @@ func runGithubWorkflow(
 		-f aws-account-id=%s \
 		-f aws-region=%s \
 		-f common-name=%s \
-		-f mongodb-adress=%s
+		-f mongodb-adress=%s \
+		-f task-desired-count=%s
 		`,
 		github_organization,
 		github_repository,
@@ -219,6 +237,7 @@ func runGithubWorkflow(
 		account_region,
 		common_name,
 		privateInstanceIPMongodb,
+		task_desired_count,
 	)
 	bashCode += fmt.Sprintf(`
 	echo "Sleep 10 seconds for spawning action"
@@ -268,7 +287,7 @@ func getEcrImagesAmount(t *testing.T, common_name, account_region string) int {
 
 func testEcr(t *testing.T, common_name, account_region string, expectedImagesAmount int) {
 	currentImagesAmount := getEcrImagesAmount(t, common_name, account_region)
-	assert.Equal(t, expectedImagesAmount, currentImagesAmount)
+	assert.Equal(t, expectedImagesAmount, currentImagesAmount, "Amount of images present in the ECR repository do not match")
 }
 
 // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_ecs_example_test.go
@@ -280,10 +299,9 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 
 	service := aws.GetEcsService(t, account_region, common_name, common_name)
 	service_desired_count := int64(1)
-	assert.Equal(t, service_desired_count, awsSDK.Int64Value(service.DesiredCount))
-	assert.Equal(t, "EC2", awsSDK.StringValue(service.LaunchType))
+	assert.Equal(t, service_desired_count, awsSDK.Int64Value(service.DesiredCount), "amount of running services do not match the expected value")
 
-	// task definition
+	// latest task definition
 	bashCode := fmt.Sprintf(`aws ecs list-task-definitions \
 		--region %s \
 		--family-prefix %s \
@@ -304,7 +322,7 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 	assert.Equal(t, cpu, awsSDK.StringValue(task.Cpu))
 	assert.Equal(t, memory, awsSDK.StringValue(task.Memory))
 
-	// task version
+	// running tasks
 	bashCode = fmt.Sprintf(`aws ecs list-tasks \
 		--region %s \
 		--cluster %s \
@@ -318,13 +336,55 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 		Args:    []string{"-c", bashCode},
 	}
 	runningTaskArns := strings.Fields(test_shell.RunCommandAndGetOutput(t, command))
-	fmt.Printf("\runningTaskArns = %v\n", runningTaskArns)
+	fmt.Printf("\nrunningTaskArns = %v\n", runningTaskArns)
 
 	if len(runningTaskArns) == 0 {
 		t.Errorf("No tasks launched")
 	}
 
+	// tasks definition versions
+	runningTasks := ``
 	for _, runningTaskArn := range runningTaskArns {
-		assert.Equal(t, latestTaskDefinitionArn, runningTaskArn, "The tasks ARN need to match otherwise the latest version is not the one running")
+		runningTasks += fmt.Sprintf(`"%s"`, runningTaskArn)
 	}
+	bashCode = fmt.Sprintf(`aws ecs describe-tasks \
+		--region %s \
+		--cluster %s \
+		--tasks %s \
+		--query 'tasks[].[taskDefinitionArn]' \
+		--output text`,
+		account_region,
+		common_name,
+		runningTasks,
+	)
+	command = test_shell.Command{
+		Command: "bash",
+		Args:    []string{"-c", bashCode},
+	}
+	runningTaskDefinitionArns := strings.Fields(test_shell.RunCommandAndGetOutput(t, command))
+	fmt.Printf("\nrunningTaskDefinitionArns = %v\n", runningTaskDefinitionArns)
+
+	for _, runningTaskDefinitionArn := range runningTaskDefinitionArns {
+		assert.Equal(t, latestTaskDefinitionArn, runningTaskDefinitionArn, "The tasks ARN need to match otherwise the latest version is not the one running")
+	}
+}
+
+func testEndpoints(t *testing.T, dnsURL string) {
+	// healthcheck
+	instanceURL := dnsURL + "/"
+	tlsConfig := tls.Config{}
+	expectedStatus := 200
+	expectedBody := `"ok"`
+	maxRetries := 5
+	sleepBetweenRetries := 10 * time.Second
+	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
+
+	// tags
+	instanceURL = dnsURL + "/tags/wanted"
+	tlsConfig = tls.Config{}
+	expectedStatus = 200
+	expectedBody = "null"
+	maxRetries = 5
+	sleepBetweenRetries = 10 * time.Second
+	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
 }

@@ -18,3 +18,6 @@ FROM mcr.microsoft.com/vscode/devcontainers/base:0-${VARIANT}
 RUN sudo wget https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21.0/cloud-nuke_linux_amd64 \
     && sudo mv cloud-nuke_linux_amd64 /usr/local/bin/cloud-nuke \
     && sudo chmod +rx /usr/local/bin/cloud-nuke
+
+# dot graphviz
+# RUN sudo apt-get update && sudo apt-get install graphviz -y

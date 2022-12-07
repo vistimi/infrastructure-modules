@@ -4,6 +4,12 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_security_group_ids" {
+  description = "The IDs of the security group of the VPC"
+  type        = list(string)
+}
+
+
 variable "common_name" {
    description = "The common part of the name used for all resources"
   type        = string
@@ -14,6 +20,17 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "account_region" {
+  description = "The region on which the project is running, (e.g `us-east-1`)"
+  type        = string
+}
+
+variable "account_name" {
+  description = "The Name of the AWS account"
+  type        = string
+}
+
 
 # ALB
 variable "listener_port" {
@@ -47,19 +64,14 @@ variable "task_definition_arn" {
   type        = string
 }
 
-variable "github_workflow_file_name_ecs" {
-  description = "The name of the ECS workflow file"
-  type        = string
-}
-
-variable "github_workflow_name_ecs" {
-  description = "The name of the ECS workflow"
+variable "ecs_task_desired_count" {
+  description = "Number of instances of the task definition"
   type        = string
 }
 
 # ASG
 variable "user_data" {
-  description = "The user data to provide when launching the instance"
+  description = "The user data to provide when launching the instance. '#!/bin/bash\necho ECS_CLUSTER=my-cluster >> /etc/ecs/ecs.config' otherwise the instance will be launched in the default cluster"
   type        = string
   default     = null
 }
@@ -113,4 +125,30 @@ variable "max_size_spot" {
 variable "desired_capacity_spot" {
   description = "The maximum number of EC2 Instances in the ASG"
   type        = number
+}
+
+# Github
+variable "github_organization" {
+  description = "The name of the Github organization that contains the repo"
+  type        = string
+}
+
+variable "github_repository" {
+  description = "The name of the repository"
+  type        = string
+}
+
+variable "github_branch" {
+  description = "The name of the branch"
+  type        = string
+}
+
+variable "github_workflow_file_name_ecs" {
+  description = "The name of the ECS workflow file"
+  type        = string
+}
+
+variable "github_workflow_name_ecs" {
+  description = "The name of the ECS workflow"
+  type        = string
 }

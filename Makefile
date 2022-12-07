@@ -2,12 +2,14 @@
 # https://www.gnu.org/software/make/manual/html_node/Options-Summary.html
 
 # use bash not sh
-SHELL := /bin/bash
+SHELL:= /bin/bash
 
-# Latest commit hash
-GIT_SHA=$(shell git rev-parse HEAD)
-# If working copy has changes, append `-dirty` to hash
-GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty")
+.PHONY: build help
+help:
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+GIT_SHA=$(shell git rev-parse HEAD) # latest commit hash
+GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty") # If working copy has changes, append `-dirty` to hash
 GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
@@ -15,8 +17,7 @@ BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 ROOT_PATH=/workspaces/infrastructure-modules
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
-# test
-test:
+test: ## Setup the test environment, run the tests and clean the environment
 	make clean; \
 	make prepare; \
 	# -p 1 flag to test each package sequentially; \
@@ -24,13 +25,12 @@ test:
 	go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
 
-# prepare
 .SILENT: prepare-account prepare-modules-data-mongodb
-prepare:
+prepare: ## Setup the test environment
 	make prepare-account; \
 	make prepare-modules-data-mongodb; \
 	make prepare-modules-vpc; \
-	make prepare-modules-services-end
+	make prepare-modules-services-scraper-backend
 prepare-account:
 	echo 'locals {' > modules/account.hcl; \
 	echo 'aws_account_region="${AWS_REGION}"' >> 	${ROOT_PATH}/modules/account.hcl; \
@@ -50,34 +50,69 @@ prepare-modules-vpc:
 		cd ${VPC_PATH}; \
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
-	fi;
+	fi
 prepare-modules-data-mongodb:
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars;
-prepare-modules-services-end:
-	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/end/terraform_override.tfvars; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/end/terraform_override.tfvars;
-	cd ${ROOT_PATH}/modules/services/end; \
+	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
+	cd ${ROOT_PATH}/modules/data/mongodb; \
+	terragrunt init; 
+prepare-modules-services-scraper-backend:
+	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
+	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars;
+	cd ${ROOT_PATH}/modules/services/scraper-backend; \
 	terragrunt init; 
 
-# clean
-clean:
-	make clean-vpc
+OLD=4h
+clean: ## Clean the test environment
+	make clean-vpc; \
+	make nuke-region-exclude-vpc; \
+	make clean-vpc;
+clean-old: ## Clean the test environment that is old
+	make clean-vpc; \
+	make clean-old-vpc;
 clean-vpc:
-	cd ${ROOT_PATH}; \
-	make nuke-region; \
-	cd ${VPC_PATH}; \
-	terragrunt destroy -auto-approve; \
-	# remove the state file in the vpc folder to create a new one \
-	rm /workspaces/infrastructure-modules/modules/vpc/terraform.tfstate;
-# TODO clean repo
+	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
+		make nuke-region-vpc; \
+	else \
+		cd ${VPC_PATH}; \
+		terragrunt destroy -auto-approve; \
+		rm /workspaces/infrastructure-modules/modules/vpc/terraform.tfstate; \
+		cd ${ROOT_PATH}; \
+	fi
+clean-old-vpc:
+	make nuke-old-region-vpc;
+# nuke: ## Nuke all resources
+# 	cloud-nuke aws;
+# nuke-region: ## Nuke within the user's region all resources
+# 	cloud-nuke aws --region ${AWS_REGION} --force;
+nuke-region-exclude-vpc-nat: ## Nuke within the user's region all resources excluding vpc and nat, e.g. for repeating tests manually
+	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --force;
+nuke-region-exclude-vpc:
+	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --force;
+nuke-region-vpc:
+	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
+nuke-old-region-exclude-vpc:
+	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --older-than $OLD --force;
+nuke-old-region-vpc:
+	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
-# cloud-nuke
-nuke-all:
-	cloud-nuke aws;
-nuke-region:
-	cloud-nuke aws --region ${AWS_REGION} --force;
-nuke-region-no-vpc-nat:
-	cloud-nuke aws --exclude-resource-type vpc --exclude-resource-type nat-gateway --region ${AWS_REGION} --force;
-nuke-region-old:
-	cloud-nuke aws --region ${AWS_REGION} --older-than 4h --force;
+# graph:
+# 	make graph-modules-services-scraper-backend; \
+# 	make graph-modules-data-mongodb; \
+# 	make graph-modules-components-ecs; \
+# 	make graph-modules-components-end;
+# graph-modules-services-scraper-backend:
+# 	# cd ${ROOT_PATH}/modules/services/scraper-backend; \
+# 	# terraform graph -type=plan -draw-cycles -module-depth=1 | dot -Tsvg > graph.svg;
+# graph-modules-data-mongodb:
+# 	cd ${ROOT_PATH}/modules/data/mongodb; \
+# 	terraform graph | dot -Tsvg > graph.svg;
+# graph-modules-components-ecs:
+# 	cd ${ROOT_PATH}/modules/components/ecs; \
+# 	terraform init; \
+# 	terraform graph | dot -Tsvg > graph.svg;
+# graph-modules-components-end:
+# 	cd ${ROOT_PATH}/modules/components/end; \
+# 	terraform init; \
+# 	terraform graph | dot -Tsvg > graph.svg;
+

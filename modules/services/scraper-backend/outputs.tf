@@ -30,12 +30,12 @@ output "alb_security_group_id" {
 }
 
 output "ecs_task_definition_arn" {
-  value       = module.end.service.arn
+  value       = module.end.ecs_task_definition_arn
   description = "Full ARN of the Task Definition (including both family and revision)"
 }
 
 output "ecs_task_definition_revision" {
-  value       = module.end.service.revision
+  value       = module.end.ecs_task_definition_revision
   description = "Revision of the task in a particular family"
 }
 

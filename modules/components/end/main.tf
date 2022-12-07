@@ -1,18 +1,23 @@
+locals {
+  bucket_name = "${var.common_name}-env"
+}
+
 # ------------
 #     ECS
 # ------------
-module "ecs_cluster" {
+module "ecs" {
   source = "../../components/ecs"
 
   vpc_id                        = var.vpc_id
+  vpc_security_group_ids        = var.vpc_security_group_ids
   common_name                   = var.common_name
   common_tags                   = var.common_tags
   listener_port                 = var.listener_port
   listener_protocol             = var.listener_protocol
   target_port                   = var.target_port
   target_protocol               = var.target_protocol
-  task_definition_arn           = aws_ecs_task_definition.service.arn
   ecs_logs_retention_in_days    = var.ecs_logs_retention_in_days
+  ecs_task_desired_count        = var.ecs_task_desired_count
   user_data                     = var.user_data
   protect_from_scale_in         = var.protect_from_scale_in
   vpc_tier                      = var.vpc_tier
@@ -24,19 +29,26 @@ module "ecs_cluster" {
   min_size_spot                 = var.min_size_spot
   max_size_spot                 = var.max_size_spot
   desired_capacity_spot         = var.desired_capacity_spot
+  github_organization           = var.github_organization
+  github_repository             = var.github_repository
+  github_branch                 = var.github_branch
   github_workflow_file_name_ecs = var.github_workflow_file_name_ecs
   github_workflow_name_ecs      = var.github_workflow_name_ecs
+  account_name                  = var.account_name
+  account_region                = var.account_region
 
-  depends_on = [module.s3_env, module.ecr]
+  task_definition_arn = aws_ecs_task_definition.service.arn
+
+  # depends_on = [null_resource.s3-env, null_resource.ecr]
+  # depends_on = [module.s3_env, module.ecr]
 }
 
-# ECS Roles and policies
-# used in task definition template
-data "aws_iam_policy" "aws_ec2_full_access" {
+# Policies
+data "aws_iam_policy" "aws_ec2_full_access_policy" {
   name = "AmazonEC2FullAccess"
 }
 
-data "aws_iam_policy" "aws_ecs_full_access" {
+data "aws_iam_policy" "aws_ecs_full_access_policy" {
   name = "AmazonECS_FullAccess"
 }
 
@@ -44,24 +56,50 @@ data "aws_iam_policy" "aws_ecs_task_execution_role_policy" {
   name = "AmazonECSTaskExecutionRolePolicy"
 }
 
-data "aws_iam_policy_document" "ec2_assume_role_policy" {
+data "aws_iam_policy_document" "ecs_task_assume_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
 
     principals {
       type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
+      identifiers = ["ecs-tasks.amazonaws.com"]
     }
   }
 }
 
+resource "aws_iam_policy" "ecs_task_s3_role_policy" {
+  name = var.ecs_task_container_s3_env_policy_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
+        Effect   = "Allow"
+        Resource = "arn:aws:s3:::${local.bucket_name}",
+        # "*",
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "arn:aws:s3:::${local.bucket_name}/*",
+        # "*",
+      },
+    ]
+  })
+}
+
 # The Amazon Resource Name (ARN) of the task execution role that grants the Amazon ECS container agent permission to make AWS API calls on your behalf.
-resource "aws_iam_role" "ecs_execution_role" {
+# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html
+resource "aws_iam_role" "ecs_task_execution_role" {
   name = var.ecs_execution_role_name
 
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role_policy.json
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
   managed_policy_arns = [
-    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn
+    data.aws_iam_policy.aws_ec2_full_access_policy.arn, # TODO: renive
+    data.aws_iam_policy.aws_ecs_full_access_policy.arn, # TODO: renive
+    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn,
+    aws_iam_policy.ecs_task_s3_role_policy.arn
   ]
 
   tags = var.common_tags
@@ -71,47 +109,39 @@ resource "aws_iam_role" "ecs_execution_role" {
 resource "aws_iam_role" "ecs_task_container_role" {
   name = var.ecs_task_container_role_name
 
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role_policy.json
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
   managed_policy_arns = [
-    data.aws_iam_policy.aws_ec2_full_access.arn,
-    data.aws_iam_policy.aws_ecs_full_access.arn,
-    # data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn
+    data.aws_iam_policy.aws_ec2_full_access_policy.arn,
+    data.aws_iam_policy.aws_ecs_full_access_policy.arn,
+    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn, # TODO: renive
+    aws_iam_policy.ecs_task_s3_role_policy.arn
   ]
 
   tags = var.common_tags
 }
 
+
+# ------------------------
+#     S3 env
+# ------------------------
+
+module "s3_env" {
+  source        = "../../components/env"
+  account_id    = var.account_id
+  bucket_name   = local.bucket_name
+  common_tags   = var.common_tags
+  vpc_id        = var.vpc_id
+  force_destroy = var.force_destroy
+  source_arns   = [module.ecs.ecs_cluster_arn]
+  # source_arns   = [module.ecs.ecs_cluster_arn]  // TODO: try me
+}
+
 # ------------------------
 #     Task definition
 # ------------------------
-# S3 bucket for env file
-module "s3_env" {
-  source      = "../../components/env"
-  aws_region  = var.account_region
-  bucket_name = "${var.common_name}-env"
-  common_tags = var.common_tags
-  vpc_id      = var.vpc_id
-
-  provisioner "local-exec" {
-    command = "/bin/bash gh_wf_ecr.sh GH_WF_FILE=$GH_WF_FILE GH_WF_NAME=$GH_WF_NAME GH_ORG=$GH_ORG GH_REPO=$GH_REPO GH_BRANCH=$GH_BRANCH AWS_ACCOUNT_NAME=$AWS_ACCOUNT_NAME AWS_REGION=$AWS_REGION COMMON_NAME=$COMMON_NAME MONGO_IP=$MONGO_IP"
-    environment = {
-      GH_WF_FILE       = var.github_workflow_file_name_env
-      GH_WF_NAME       = var.github_workflow_name_env
-      GH_ORG           = var.github_organization
-      GH_REPO          = var.github_repository
-      GH_BRANCH        = var.github_branch
-      AWS_ACCOUNT_NAME = var.account_name
-      AWS_REGION       = var.account_region
-      COMMON_NAME      = var.common_name
-      MONGO_IP         = var.mongodb_ipv4
-    }
-  }
-}
-
-# ECS task definition
 resource "aws_ecs_task_definition" "service" {
 
-  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_container_role.arn
   memory                   = var.ecs_task_definition_memory
   cpu                      = var.ecs_task_definition_cpu
@@ -132,7 +162,7 @@ resource "aws_ecs_task_definition" "service" {
       memoryReservation = var.ecs_task_definition_memory_reservation
       cpu               = var.ecs_task_definition_cpu
 
-      image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.common_name}:f5539f74d7486ddaf99608ea704ce585b4c375d9"
+      image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.common_name}:${var.ecs_task_definition_image_tag}"
       essential = true
     }
   ])
@@ -151,12 +181,12 @@ module "ecr" {
     rules = [
       {
         rulePriority = 1,
-        description  = "Keep last ${var.repository_image_count} images",
+        description  = "Keep last ${var.repository_image_keep_count} images",
         selection = {
           tagStatus     = "tagged",
           tagPrefixList = ["v"],
           countType     = "imageCountMoreThan",
-          countNumber   = var.repository_image_count
+          countNumber   = var.repository_image_keep_count
         },
         action = {
           type = "expire"
@@ -164,24 +194,10 @@ module "ecr" {
       }
     ]
   })
-  repository_force_delete = var.repository_force_delete
+  repository_force_delete         = var.force_destroy
+  repository_image_tag_mutability = "MUTABLE"
 
   tags = var.common_tags
-
-  provisioner "local-exec" {
-    command = "/bin/bash gh_wf_ecr.sh GH_WF_FILE=$GH_WF_FILE GH_WF_NAME=$GH_WF_NAME GH_ORG=$GH_ORG GH_REPO=$GH_REPO GH_BRANCH=$GH_BRANCH AWS_ACCOUNT_NAME=$AWS_ACCOUNT_NAME AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID AWS_REGION=$AWS_REGION COMMON_NAME=$COMMON_NAME"
-    environment = {
-      GH_WF_FILE       = var.github_workflow_file_name_ecr
-      GH_WF_NAME       = var.github_workflow_name_ecr
-      GH_ORG           = var.github_organization
-      GH_REPO          = var.github_repository
-      GH_BRANCH        = var.github_branch
-      AWS_ACCOUNT_NAME = var.account_name
-      AWS_ACCOUNT_ID   = var.account_id
-      AWS_REGION       = var.account_region
-      COMMON_NAME      = var.common_name
-    }
-  }
 }
 
 # # ECR roles and policies

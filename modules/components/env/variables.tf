@@ -1,6 +1,6 @@
 # Global
-variable "aws_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
+variable "account_id" {
+  description = "The ID of the AWS account"
   type        = string
 }
 
@@ -18,4 +18,14 @@ variable "common_tags" {
 variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
+}
+
+variable "force_destroy" {
+  description = "If true, will delete the resources that still contain elements"
+  type        = bool
+}
+
+variable "source_arns" {
+  description = "The ARNs of the sources that have access to this bucket"
+  type        = list(string)
 }

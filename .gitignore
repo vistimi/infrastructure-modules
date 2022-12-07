@@ -11,3 +11,6 @@ account.hcl
 
 # ssh
 *.pem
+
+# graph
+graph.svg

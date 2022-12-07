@@ -19,6 +19,11 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_security_group_ids" {
+  description = "The IDs of the security group of the VPC"
+  type        = list(string)
+}
+
 variable "common_name" {
   description = "The common part of the name used for all resources"
   type        = string
@@ -28,6 +33,11 @@ variable "common_tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
+}
+
+variable "force_destroy" {
+  description = "If true, will delete the resources that still contain elements"
+  type        = bool
 }
 
 
@@ -41,6 +51,16 @@ variable "ecs_execution_role_name" {
 
 variable "ecs_task_container_role_name" {
   description = "The name of the role for task container"
+  type        = string
+}
+
+variable "ecs_task_definition_image_tag" {
+  description = "The tag of the image in the ECR repository for deployment"
+  type        = string
+}
+
+variable "ecs_task_container_s3_env_policy_name" {
+  description = "The name of the policy to access the S3 env bucket"
   type        = string
 }
 
@@ -147,15 +167,10 @@ variable "ecs_task_definition_cpu" {
   type        = number
 }
 
-# variable "ecs_task_definition_family_name" {
-#   description = "A unique name for your task definition"
-#   type        = string
-# }
-
-# variable "ecs_task_container_name" {
-#   description = "A unique name for your container"
-#   type        = string
-# }
+variable "ecs_task_desired_count" {
+  description = "Number of instances of the task definition"
+  type        = string
+}
 
 # variable "bucket_env_name" {
 #   description = "The name of the S3 bucket to store the env file"
@@ -195,14 +210,9 @@ variable "port_mapping" {
 #   default = []
 # }
 
-variable "repository_image_count" {
+variable "repository_image_keep_count" {
   description = "The amount of images to keep in the registry"
   type        = number
-}
-
-variable "repository_force_delete" {
-  description = "If true, will delete the repository even if it contains images. Defaults to false"
-  type        = bool
 }
 
 # ------------------------

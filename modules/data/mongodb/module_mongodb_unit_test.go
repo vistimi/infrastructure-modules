@@ -41,7 +41,7 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	id := uuid.New().String()[0:7]
 	account_name := os.Getenv("AWS_PROFILE")
 	account_region := os.Getenv("AWS_REGION")
-	project_name := ""
+	project_name := "terraform"
 	service_name := "mongodb"
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
