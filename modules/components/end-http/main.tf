@@ -6,41 +6,46 @@ locals {
 #     ECS
 # ------------
 module "ecs" {
-  source = "../../components/ecs"
+  source = "../../components/ecs-http"
 
-  vpc_id                        = var.vpc_id
-  vpc_security_group_ids        = var.vpc_security_group_ids
-  common_name                   = var.common_name
-  common_tags                   = var.common_tags
-  listener_port                 = var.listener_port
-  listener_protocol             = var.listener_protocol
-  target_port                   = var.target_port
-  target_protocol               = var.target_protocol
-  ecs_logs_retention_in_days    = var.ecs_logs_retention_in_days
-  ecs_task_desired_count        = var.ecs_task_desired_count
-  user_data                     = var.user_data
-  protect_from_scale_in         = var.protect_from_scale_in
-  vpc_tier                      = var.vpc_tier
-  instance_type_on_demand       = var.instance_type_on_demand
-  min_size_on_demand            = var.min_size_on_demand
-  max_size_on_demand            = var.max_size_on_demand
-  desired_capacity_on_demand    = var.desired_capacity_on_demand
-  instance_type_spot            = var.instance_type_spot
-  min_size_spot                 = var.min_size_spot
-  max_size_spot                 = var.max_size_spot
-  desired_capacity_spot         = var.desired_capacity_spot
-  github_organization           = var.github_organization
-  github_repository             = var.github_repository
-  github_branch                 = var.github_branch
-  github_workflow_file_name_ecs = var.github_workflow_file_name_ecs
-  github_workflow_name_ecs      = var.github_workflow_name_ecs
-  account_name                  = var.account_name
-  account_region                = var.account_region
+  vpc_id                              = var.vpc_id
+  vpc_security_group_ids              = var.vpc_security_group_ids
+  common_name                         = var.common_name
+  common_tags                         = var.common_tags
+  listener_port                       = var.listener_port
+  listener_protocol                   = var.listener_protocol
+  target_port                         = var.target_port
+  target_protocol                     = var.target_protocol
+  ecs_logs_retention_in_days          = var.ecs_logs_retention_in_days
+  ecs_task_desired_count              = var.ecs_task_desired_count
+  target_capacity_cpu                 = var.target_capacity_cpu
+  capacity_provider_base              = var.capacity_provider_base
+  capacity_provider_weight_on_demand  = var.capacity_provider_weight_on_demand
+  capacity_provider_weight_spot       = var.capacity_provider_weight_spot
+  user_data                           = var.user_data
+  protect_from_scale_in               = var.protect_from_scale_in
+  vpc_tier                            = var.vpc_tier
+  instance_type_on_demand             = var.instance_type_on_demand
+  min_size_on_demand                  = var.min_size_on_demand
+  max_size_on_demand                  = var.max_size_on_demand
+  desired_capacity_on_demand          = var.desired_capacity_on_demand
+  maximum_scaling_step_size_on_demand = var.maximum_scaling_step_size_on_demand
+  minimum_scaling_step_size_on_demand = var.minimum_scaling_step_size_on_demand
+  instance_type_spot                  = var.instance_type_spot
+  min_size_spot                       = var.min_size_spot
+  max_size_spot                       = var.max_size_spot
+  desired_capacity_spot               = var.desired_capacity_spot
+  maximum_scaling_step_size_spot      = var.maximum_scaling_step_size_spot
+  minimum_scaling_step_size_spot      = var.minimum_scaling_step_size_spot
+  github_organization                 = var.github_organization
+  github_repository                   = var.github_repository
+  github_branch                       = var.github_branch
+  github_workflow_file_name_ecs       = var.github_workflow_file_name_ecs
+  github_workflow_name_ecs            = var.github_workflow_name_ecs
+  account_name                        = var.account_name
+  account_region                      = var.account_region
 
   task_definition_arn = aws_ecs_task_definition.service.arn
-
-  # depends_on = [null_resource.s3-env, null_resource.ecr]
-  # depends_on = [module.s3_env, module.ecr]
 }
 
 # Policies
@@ -77,13 +82,11 @@ resource "aws_iam_policy" "ecs_task_s3_role_policy" {
         Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
         Effect   = "Allow"
         Resource = "arn:aws:s3:::${local.bucket_name}",
-        # "*",
       },
       {
         Action   = ["s3:GetObject"]
         Effect   = "Allow"
         Resource = "arn:aws:s3:::${local.bucket_name}/*",
-        # "*",
       },
     ]
   })
@@ -96,8 +99,6 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
   managed_policy_arns = [
-    data.aws_iam_policy.aws_ec2_full_access_policy.arn, # TODO: renive
-    data.aws_iam_policy.aws_ecs_full_access_policy.arn, # TODO: renive
     data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn,
     aws_iam_policy.ecs_task_s3_role_policy.arn
   ]
@@ -113,7 +114,6 @@ resource "aws_iam_role" "ecs_task_container_role" {
   managed_policy_arns = [
     data.aws_iam_policy.aws_ec2_full_access_policy.arn,
     data.aws_iam_policy.aws_ecs_full_access_policy.arn,
-    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn, # TODO: renive
     aws_iam_policy.ecs_task_s3_role_policy.arn
   ]
 
@@ -124,7 +124,6 @@ resource "aws_iam_role" "ecs_task_container_role" {
 # ------------------------
 #     S3 env
 # ------------------------
-
 module "s3_env" {
   source        = "../../components/env"
   account_id    = var.account_id
@@ -132,8 +131,7 @@ module "s3_env" {
   common_tags   = var.common_tags
   vpc_id        = var.vpc_id
   force_destroy = var.force_destroy
-  source_arns   = [module.ecs.ecs_cluster_arn]
-  # source_arns   = [module.ecs.ecs_cluster_arn]  // TODO: try me
+  source_arns   = [module.ecs.ecs_service_arn]
 }
 
 # ------------------------
@@ -175,8 +173,6 @@ module "ecr" {
   source = "terraform-aws-modules/ecr/aws"
 
   repository_name = var.common_name
-  # repository_read_write_access_arns = [aws_iam_role.ecr_execution_role.arn]
-  # repository_read_access_arns       = var.repository_read_access_arns
   repository_lifecycle_policy = jsonencode({
     rules = [
       {
@@ -199,37 +195,6 @@ module "ecr" {
 
   tags = var.common_tags
 }
-
-# # ECR roles and policies
-# # https://docs.aws.amazon.com/AmazonECR/latest/userguide/security-iam-awsmanpol.html
-# data "aws_iam_policy" "aws_ec2_container_registry_full_access" {
-#   name = "AmazonEC2ContainerRegistryFullAccess"
-# }
-
-# data "aws_iam_policy_document" "ecr_assume_role_policy" {
-#   statement {
-#     actions = ["sts:AssumeRole"]
-
-#     principals {
-#       # type        = "Service"
-#       # identifiers = ["ec2.amazonaws.com"]
-#       type        = "iam:AWSServiceName"
-#       identifiers = ["replication.ecr.amazonaws.com"]
-#     }
-#   }
-# }
-
-# # Role ARN for read write access for container registry for this user
-# resource "aws_iam_role" "ecr_execution_role" {
-#   name = "ecr-task-execution-role"
-
-#   assume_role_policy = data.aws_iam_policy_document.ecr_assume_role_policy.json
-#   managed_policy_arns = [
-#     data.aws_iam_policy.aws_ec2_container_registry_full_access.arn
-#   ]
-
-#   tags = var.common_tags
-# }
 
 # ------------------------
 #     Github secrets

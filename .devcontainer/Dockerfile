@@ -20,4 +20,6 @@ RUN sudo wget https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21
     && sudo chmod +rx /usr/local/bin/cloud-nuke
 
 # dot graphviz
-# RUN sudo apt-get update && sudo apt-get install graphviz -y
+RUN sudo apt-get update && sudo apt-get install graphviz -y
+RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build && cd ..
+RUN export PATH="~/inframap:$PATH"

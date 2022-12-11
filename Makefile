@@ -62,25 +62,26 @@ prepare-modules-services-scraper-backend:
 	cd ${ROOT_PATH}/modules/services/scraper-backend; \
 	terragrunt init; 
 
-OLD=4h
 clean: ## Clean the test environment
-	make clean-vpc; \
 	make nuke-region-exclude-vpc; \
 	make clean-vpc;
 clean-old: ## Clean the test environment that is old
-	make clean-vpc; \
+	make nuke-old-region-exclude-vpc; \
 	make clean-old-vpc;
 clean-vpc:
 	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 		make nuke-region-vpc; \
+		rm ${VPC_PATH}/terraform.tfstate; \
 	else \
 		cd ${VPC_PATH}; \
 		terragrunt destroy -auto-approve; \
-		rm /workspaces/infrastructure-modules/modules/vpc/terraform.tfstate; \
-		cd ${ROOT_PATH}; \
+		rm ${VPC_PATH}/terraform.tfstate; \
+		# cd ${ROOT_PATH}; \
 	fi
 clean-old-vpc:
 	make nuke-old-region-vpc;
+
+OLD=4h
 # nuke: ## Nuke all resources
 # 	cloud-nuke aws;
 # nuke-region: ## Nuke within the user's region all resources
@@ -88,31 +89,23 @@ clean-old-vpc:
 nuke-region-exclude-vpc-nat: ## Nuke within the user's region all resources excluding vpc and nat, e.g. for repeating tests manually
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --force;
 nuke-region-exclude-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --force;
+	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --force;
 nuke-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
 nuke-old-region-exclude-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --older-than $OLD --force;
+	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --older-than $OLD --force;
 nuke-old-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
-# graph:
-# 	make graph-modules-services-scraper-backend; \
-# 	make graph-modules-data-mongodb; \
-# 	make graph-modules-components-ecs; \
-# 	make graph-modules-components-end;
-# graph-modules-services-scraper-backend:
-# 	# cd ${ROOT_PATH}/modules/services/scraper-backend; \
-# 	# terraform graph -type=plan -draw-cycles -module-depth=1 | dot -Tsvg > graph.svg;
-# graph-modules-data-mongodb:
-# 	cd ${ROOT_PATH}/modules/data/mongodb; \
-# 	terraform graph | dot -Tsvg > graph.svg;
-# graph-modules-components-ecs:
-# 	cd ${ROOT_PATH}/modules/components/ecs; \
-# 	terraform init; \
-# 	terraform graph | dot -Tsvg > graph.svg;
-# graph-modules-components-end:
-# 	cd ${ROOT_PATH}/modules/components/end; \
-# 	terraform init; \
-# 	terraform graph | dot -Tsvg > graph.svg;
+# it needs the tfstate files which are generated with apply
+graph: ## Generate the graphs from all the tfstate files
+	make graph-modules-vpc; \
+	make graph-modules-services-scraper-backend; \
+	make graph-modules-data-mongodb;
+graph-modules-vpc:
+	cat ${ROOT_PATH}/modules/vpc/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/vpc/graph.png
+graph-modules-services-scraper-backend:
+	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
+graph-modules-data-mongodb:
+	cat ${ROOT_PATH}/modules/data/mongodb/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/data/mongodb/graph.png
 

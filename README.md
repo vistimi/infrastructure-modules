@@ -243,7 +243,7 @@ test_structure.RunTestStage(t, "validate_mongodb", func() {
 })
 ```
 
-If you need to disable one functionality:
+If you need to disable one functionality, it needs to be present in the test so make sure the env is declared in the environment:
 
 ```shell
 export SKIP_cleanup_mongodb=true
@@ -254,3 +254,17 @@ If you need to enable one functionality:
 ```shell
 unset SKIP_cleanup_mongodb
 ```
+
+## graphs
+
+#### VPC
+
+![VPC](modules/vpc/graph.png)
+
+#### MongoDB
+
+![MongoDB](modules/data/mongodb/graph.png)
+
+#### scraper-backend
+
+![Scraper-backend](modules/services/scraper-backend/graph.png)

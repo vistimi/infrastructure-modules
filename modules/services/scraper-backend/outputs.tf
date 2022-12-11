@@ -9,15 +9,15 @@ output "autoscaling_group_arn_on_demand" {
   description = "ARN of the Auto Scaling Group"
 }
 
-# output "autoscaling_group_name_spot" {
-#   value       = module.end.autoscaling_group_name_spot
-#   description = "The name of the Auto Scaling Group"
-# }
+output "autoscaling_group_name_spot" {
+  value       = module.end.autoscaling_group_name_spot
+  description = "The name of the Auto Scaling Group"
+}
 
-# output "autoscaling_group_arn_spot" {
-#   value       = module.end.autoscaling_group_arn_spot
-#   description = "ARN of the Auto Scaling Group"
-# }
+output "autoscaling_group_arn_spot" {
+  value       = module.end.autoscaling_group_arn_spot
+  description = "ARN of the Auto Scaling Group"
+}
 
 output "alb_dns_name" {
   value       = module.end.alb_dns_name

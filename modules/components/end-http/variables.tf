@@ -92,6 +92,26 @@ variable "target_protocol" {
 }
 
 # ASG
+variable "target_capacity_cpu" {
+  description = "aws_ecs_capacity_provider"
+  type        = number
+}
+
+variable "capacity_provider_base" {
+  description = "It designates how many tasks, at a minimum, to run on the specified capacity provider. Only one capacity provider in a capacity provider strategy can have a base defined"
+  type        = number
+}
+
+variable "capacity_provider_weight_on_demand" {
+  description = "It designates the relative percentage of the total number of launched tasks that should use the specified capacity provider"
+  type        = number
+}
+
+variable "capacity_provider_weight_spot" {
+  description = "It designates the relative percentage of the total number of launched tasks that should use the specified capacity provider"
+  type        = number
+}
+
 variable "user_data" {
   description = "The user data to provide when launching the instance"
   type        = string
@@ -129,6 +149,16 @@ variable "desired_capacity_on_demand" {
   type        = number
 }
 
+variable "maximum_scaling_step_size_on_demand" {
+  description = "Maximum step adjustment size. A number between 1 and 10,000"
+  type        = number
+}
+
+variable "minimum_scaling_step_size_on_demand" {
+  description = "Minimum step adjustment size. A number between 1 and 10,000"
+  type        = number
+}
+
 variable "instance_type_spot" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
@@ -146,6 +176,16 @@ variable "max_size_spot" {
 
 variable "desired_capacity_spot" {
   description = "The maximum number of EC2 Instances in the ASG"
+  type        = number
+}
+
+variable "maximum_scaling_step_size_spot" {
+  description = "Maximum step adjustment size. A number between 1 and 10,000"
+  type        = number
+}
+
+variable "minimum_scaling_step_size_spot" {
+  description = "Minimum step adjustment size. A number between 1 and 10,000"
   type        = number
 }
 
@@ -172,10 +212,10 @@ variable "ecs_task_desired_count" {
   type        = string
 }
 
-# variable "bucket_env_name" {
-#   description = "The name of the S3 bucket to store the env file"
-#   type        = string
-# }
+variable "bucket_env_name" {
+  description = "The name of the S3 bucket to store the env file"
+  type        = string
+}
 
 variable "env_file_name" {
   description = "The name of the env file used for the service docker"
@@ -260,13 +300,5 @@ variable "github_workflow_file_name_ecs" {
 
 variable "github_workflow_name_ecs" {
   description = "The name of the ECS workflow"
-  type        = string
-}
-
-# ------------------------
-#     Github
-# ------------------------
-variable "mongodb_ipv4" {
-  description = "The IP of the Mongodb instance"
   type        = string
 }

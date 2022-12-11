@@ -2,7 +2,7 @@
 #     Backend
 # ------------
 module "end" {
-  source = "../../components/end"
+  source = "../../components/end-http"
 
   vpc_id                                 = var.vpc_id
   vpc_tier                               = var.vpc_tier
@@ -18,16 +18,24 @@ module "end" {
   target_port                            = var.target_port
   target_protocol                        = var.target_protocol
   ecs_logs_retention_in_days             = var.ecs_logs_retention_in_days
+  target_capacity_cpu                    = var.target_capacity_cpu
+  capacity_provider_base                 = var.capacity_provider_base
+  capacity_provider_weight_on_demand     = var.capacity_provider_weight_on_demand
+  capacity_provider_weight_spot          = var.capacity_provider_weight_spot
   user_data                              = var.user_data
   protect_from_scale_in                  = var.protect_from_scale_in
   instance_type_on_demand                = var.instance_type_on_demand
   min_size_on_demand                     = var.min_size_on_demand
   max_size_on_demand                     = var.max_size_on_demand
   desired_capacity_on_demand             = var.desired_capacity_on_demand
+  maximum_scaling_step_size_on_demand    = var.maximum_scaling_step_size_on_demand
+  minimum_scaling_step_size_on_demand    = var.minimum_scaling_step_size_on_demand
   instance_type_spot                     = var.instance_type_spot
   min_size_spot                          = var.min_size_spot
   max_size_spot                          = var.max_size_spot
   desired_capacity_spot                  = var.desired_capacity_spot
+  maximum_scaling_step_size_spot         = var.maximum_scaling_step_size_spot
+  minimum_scaling_step_size_spot         = var.minimum_scaling_step_size_spot
   ecs_execution_role_name                = var.ecs_execution_role_name
   ecs_task_container_role_name           = var.ecs_task_container_role_name
   ecs_task_container_s3_env_policy_name  = var.ecs_task_container_s3_env_policy_name
@@ -36,7 +44,7 @@ module "end" {
   ecs_task_definition_cpu                = var.ecs_task_definition_cpu
   ecs_task_desired_count                 = var.ecs_task_desired_count
   port_mapping                           = var.port_mapping
-  repository_image_keep_count                 = var.repository_image_keep_count
+  repository_image_keep_count            = var.repository_image_keep_count
   force_destroy                          = var.force_destroy
   github_organization                    = var.github_organization
   github_repository                      = var.github_repository
@@ -47,10 +55,9 @@ module "end" {
   github_workflow_name_env               = var.github_workflow_name_env
   github_workflow_file_name_ecs          = var.github_workflow_file_name_ecs
   github_workflow_name_ecs               = var.github_workflow_name_ecs
+  bucket_env_name                        = var.bucket_env_name
 
   env_file_name = "production.env"
-
-  mongodb_ipv4 = module.mongodb.ec2_instance_mongodb_private_ip
 }
 
 # ------------------------

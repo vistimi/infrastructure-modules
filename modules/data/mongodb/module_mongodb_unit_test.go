@@ -2,12 +2,12 @@ package test
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/ssh"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -17,8 +17,18 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func TestTerraformMongodbUnitTest(t *testing.T) {
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+func randomID(n int) string {
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letterRunes[rand.Intn(len(letterRunes))]
+    }
+    return string(b)
+}
+
+func Test_Unit_TerraformMongodb(t *testing.T) {
 	t.Parallel()
+	rand.Seed(time.Now().UnixNano())
 
 	// init
 	bashCode := `terragrunt init;`
@@ -38,7 +48,7 @@ func TestTerraformMongodbUnitTest(t *testing.T) {
 	}
 
 	// global variables
-	id := uuid.New().String()[0:7]
+	id := randomID(8)
 	account_name := os.Getenv("AWS_PROFILE")
 	account_region := os.Getenv("AWS_REGION")
 	project_name := "terraform"
