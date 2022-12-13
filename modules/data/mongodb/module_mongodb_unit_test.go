@@ -89,15 +89,15 @@ func Test_Unit_TerraformMongodb(t *testing.T) {
 		},
 	})
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
-		}
-		test_structure.RunTestStage(t, "cleanup_mongodb", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	}
+	// 	test_structure.RunTestStage(t, "cleanup_mongodb", func() {
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	})
+	// }()
 
 	test_structure.RunTestStage(t, "deploy_mongodb", func() {
 		terraform.InitAndApply(t, terraformOptions)

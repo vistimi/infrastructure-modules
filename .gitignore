@@ -12,5 +12,5 @@ account.hcl
 # ssh
 *.pem
 
-# graph
-graph.svg
+# rover
+rover.svg

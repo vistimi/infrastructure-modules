@@ -14,7 +14,7 @@ GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
 # absolute path
-ROOT_PATH=/workspaces/infrastructure-modules
+ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
 test: ## Setup the test environment, run the tests and clean the environment
@@ -109,3 +109,8 @@ graph-modules-services-scraper-backend:
 graph-modules-data-mongodb:
 	cat ${ROOT_PATH}/modules/data/mongodb/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/data/mongodb/graph.png
 
+rover-vpc:
+	make rover-docker ROVER_MODULE=modules/vpc
+rover-docker:
+	# docker run --rm -it -p 9000:9000 -v ${ROOT_PATH}/${ROVER_MODULE}:/src --env-file ${ROOT_PATH}/.devcontainer/devcontainer.env im2nguyen/rover -tfVarsFile ${ROOT_PATH}/${ROVER_MODULE}/terraform_override.tfvars -genImage true; \
+	sudo rover -workingDir ${ROOT_PATH}/${ROVER_MODULE} -tfVarsFile ${ROOT_PATH}/${ROVER_MODULE}/terraform_override.tfvars -genImage true

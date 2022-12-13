@@ -1,25 +1,124 @@
-# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/ubuntu/.devcontainer/base.Dockerfile
+ARG VARIANT=alpine-3.16
+ARG GO_ALPINE_VARIANT=golang:1.19.0-alpine
 
-# [Choice] Ubuntu version (use ubuntu-22.04 or ubuntu-18.04 on local arm64/Apple Silicon): ubuntu-22.04, ubuntu-20.04, ubuntu-18.04
-ARG VARIANT="jammy"
-FROM mcr.microsoft.com/vscode/devcontainers/base:0-${VARIANT}
+FROM alpine:3.14 as builder-alpine
 
-# [Optional] Uncomment this section to install additional OS packages.
-# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-#     && apt-get -y install --no-install-recommends <your-package-list-here>
+RUN apk update
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
-# Pre-commit
+# rover
+RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v0.3.3/rover_0.3.3_linux_amd64.zip \
+    && unzip rover_0.3.3_linux_amd64.zip && mv rover_v0.3.3 /usr/local/bin/rover \
+    && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
+
+# terraform
+RUN wget -q https://releases.hashicorp.com/terraform/1.3.6/terraform_1.3.6_linux_amd64.zip \
+    && unzip terraform_1.3.6_linux_amd64.zip && mv terraform /usr/local/bin/terraform \
+    && chmod +rx /usr/local/bin/terraform && rm terraform_1.3.6_linux_amd64.zip
+
+# terragrunt
+RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v0.42.4/terragrunt_linux_amd64 \
+    && mv terragrunt_linux_amd64 /usr/local/bin/terragrunt \
+    && chmod +rx /usr/local/bin/terragrunt
+
+# cloud-nuke
+RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21.0/cloud-nuke_linux_amd64 \
+    && mv cloud-nuke_linux_amd64 /usr/local/bin/cloud-nuke \
+    && chmod +rx /usr/local/bin/cloud-nuke
+
+# # Pre-commit
 # RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 # RUN sudo apt install pre-commit \
 #     && sudo npm install -g @commitlint/cli \
 #     pre-commit install --hook-type commit-msg
 
-# cloud-nuke
-RUN sudo wget https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21.0/cloud-nuke_linux_amd64 \
-    && sudo mv cloud-nuke_linux_amd64 /usr/local/bin/cloud-nuke \
-    && sudo chmod +rx /usr/local/bin/cloud-nuke
+FROM python:3.10.5-alpine as builder-alpine-python
 
-# dot graphviz
-RUN sudo apt-get update && sudo apt-get install graphviz -y
-RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build && cd ..
-RUN export PATH="~/inframap:$PATH"
+ARG AWS_CLI_VERSION=2.9.0
+RUN apk add --no-cache git unzip groff build-base libffi-dev cmake
+RUN git clone --single-branch --depth 1 -b ${AWS_CLI_VERSION} https://github.com/aws/aws-cli.git
+
+WORKDIR aws-cli
+RUN python -m venv venv
+RUN . venv/bin/activate
+RUN scripts/installers/make-exe
+RUN unzip -q dist/awscli-exe.zip
+RUN aws/install --bin-dir /aws-cli-bin
+RUN /aws-cli-bin/aws --version
+
+# reduce image size: remove autocomplete and examples
+RUN rm -rf \
+    /usr/local/aws-cli/v2/current/dist/aws_completer \
+    /usr/local/aws-cli/v2/current/dist/awscli/data/ac.index \
+    /usr/local/aws-cli/v2/current/dist/awscli/examples
+RUN find /usr/local/aws-cli/v2/current/dist/awscli/data -name completions-1*.json -delete
+RUN find /usr/local/aws-cli/v2/current/dist/awscli/botocore/data -name examples-1.json -delete
+
+FROM ${GO_ALPINE_VARIANT} as builder-alpine-go
+
+RUN apk update
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget
+
+# # aws cli
+# ARG AWS_CLI_VERSION=2.9.0
+# RUN apk add --no-cache git unzip groff build-base libffi-dev cmake
+# RUN git clone --single-branch --depth 1 -b ${AWS_CLI_VERSION} https://github.com/aws/aws-cli.git
+# RUN aws --version
+
+# dot graphviz inframap
+RUN apk add -q --no-cache graphviz
+RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build \
+    && mv inframap /usr/local/bin/inframap  \
+    && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
+
+FROM mcr.microsoft.com/devcontainers/base:${VARIANT} as devcontainer
+
+RUN apk update
+RUN apk add -q --no-cache make
+
+# RUN rc-service docker start
+# # RUN sudo usermod -aG docker $USER && newgrp docker
+# RUN docker ps
+
+# Golang
+COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
+COPY --from=builder-alpine-go /go/ /go/
+ENV GOROOT /go
+ENV GOPATH /usr/local/go/
+ENV PATH $GOPATH/bin:$PATH
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+RUN go version
+
+# cloud-nuke
+COPY --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
+RUN cloud-nuke --version
+
+# rover
+RUN apk add -q --no-cache chromium
+COPY --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
+RUN rover --version
+# EXPOSE 9000
+
+# terraform
+COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
+RUN terraform --version
+
+COPY --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
+RUN terragrunt --version
+
+# inframap
+# RUN apk add -q --no-cache graphviz
+COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+RUN inframap version
+
+# tflint
+COPY --from=ghcr.io/terraform-linters/tflint:v0.43.0 /usr/local/bin/tflint /usr/local/bin/tflint
+RUN tflint --version && tflint --init
+
+# aws cli, possible to create an other stage and build there
+COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
+COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
+RUN aws --version
+
+# github cli
+RUN apk add --no-cache -q github-cli

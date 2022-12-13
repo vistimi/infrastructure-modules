@@ -179,15 +179,15 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 		VarFiles: []string{"terraform_override.tfvars"},
 	})
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
-		}
-		test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	}
+	// 	test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	})
+	// }()
 
 	// TODO: plan test for updates
 	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
