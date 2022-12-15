@@ -1,4 +1,5 @@
 ARG VARIANT=alpine:3.16
+ARG RUNNER=workflow
 ARG ALPINE_VARIANT=alpine:3.16
 ARG GO_ALPINE_VARIANT=golang:1.19.0-alpine
 ARG PYTHON_ALPINE_VARIANT=python:3.10.5-alpine
@@ -76,12 +77,12 @@ RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod dow
     && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
 
 #-------------------------
-#       RUNNER
+#    BUILDER FINAL
 #-------------------------
-FROM ${VARIANT} as runner
+FROM ${VARIANT} as builder-final
 
 RUN apk update
-RUN apk add -q --no-cache make gcc
+RUN apk add -q --no-cache make gcc libc-dev
 
 # RUN rc-service docker start
 # # RUN sudo usermod -aG docker $USER && newgrp docker
@@ -132,3 +133,45 @@ RUN aws --version
 
 # github cli
 RUN apk add --no-cache -q github-cli
+
+RUN    go install github.com/cweill/gotests/gotests@latest \
+    && go install github.com/fatih/gomodifytags@latest \
+    && go install github.com/josharian/impl@latest \
+    && go install github.com/haya14busa/goplay/cmd/goplay@latest \
+    && go install github.com/go-delve/delve/cmd/dlv@latest \
+    && go install honnef.co/go/tools/cmd/staticcheck@latest \
+    && go install golang.org/x/tools/gopls@latest
+
+
+
+
+#                    ---> runner-${ALPINE_VARIANT}           ---
+#                   /                                            \
+#  builder-final ---                                              ---> runner
+#                   \                                            /
+#                    ---> runner-${DEVCONTAINTER_VARIANT}    ---
+
+#-------------------------
+#    RUNNER ALPINE
+#-------------------------
+FROM builder-final AS runner-workflow
+
+# COPY go.mod go.sum ./
+# RUN go mod download && go mod verify
+
+# COPY . .
+
+# WORKDIR /workspace/infrasucture-modules
+
+# CMD ["make help"]
+
+#-------------------------
+#    RUNNER DEVCONTAINER
+#-------------------------
+FROM builder-final AS runner-devcontainer
+
+#-------------------------
+#       RUNNER
+#-------------------------
+FROM runner-${RUNNER} AS runner
+RUN echo runner=$RUNNER

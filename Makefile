@@ -25,12 +25,12 @@ test: ## Setup the test environment, run the tests and clean the environment
 	go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
 
-.SILENT: prepare-account prepare-modules-data-mongodb
 prepare: ## Setup the test environment
 	make prepare-account; \
 	make prepare-modules-data-mongodb; \
 	make prepare-modules-vpc; \
-	make prepare-modules-services-scraper-backend
+	make prepare-modules-services-scraper-backend 
+.SILENT: prepare-account
 prepare-account:
 	echo 'locals {' > modules/account.hcl; \
 	echo 'aws_account_region="${AWS_REGION}"' >> 	${ROOT_PATH}/modules/account.hcl; \
@@ -51,11 +51,13 @@ prepare-modules-vpc:
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
 	fi
+.SILENT: prepare-modules-data-mongodb
 prepare-modules-data-mongodb:
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
 	cd ${ROOT_PATH}/modules/data/mongodb; \
 	terragrunt init; 
+.SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars;
@@ -71,12 +73,10 @@ clean-old: ## Clean the test environment that is old
 clean-vpc:
 	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 		make nuke-region-vpc; \
-		rm ${VPC_PATH}/terraform.tfstate; \
 	else \
 		cd ${VPC_PATH}; \
 		terragrunt destroy -auto-approve; \
 		rm ${VPC_PATH}/terraform.tfstate; \
-		# cd ${ROOT_PATH}; \
 	fi
 clean-old-vpc:
 	make nuke-old-region-vpc;
@@ -98,15 +98,11 @@ nuke-old-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
 # it needs the tfstate files which are generated with apply
-graph: ## Generate the graphs from all the tfstate files
-	make graph-modules-vpc; \
-	make graph-modules-services-scraper-backend; \
-	make graph-modules-data-mongodb;
-graph-modules-vpc:
+graph-modules-vpc: ## Generate the graph for the VPC
 	cat ${ROOT_PATH}/modules/vpc/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/vpc/graph.png
-graph-modules-services-scraper-backend:
+graph-modules-services-scraper-backend: ## Generate the graph for the scraper backend
 	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
-graph-modules-data-mongodb:
+graph-modules-data-mongodb: ## Generate the graph for the MongoDB
 	cat ${ROOT_PATH}/modules/data/mongodb/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/data/mongodb/graph.png
 
 rover-vpc:

@@ -204,6 +204,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			github_repository,
 			github_branch,
 			account_id,
+			account_name,
 			account_region,
 			common_name,
 			privateInstanceIPMongodb,
@@ -236,6 +237,7 @@ func runGithubWorkflow(
 	github_repository,
 	github_branch,
 	account_id,
+	account_name,
 	account_region,
 	common_name,
 	privateInstanceIPMongodb,
@@ -245,6 +247,7 @@ func runGithubWorkflow(
 	bashCode := fmt.Sprintf(`
 		gh workflow run cicd.yml --repo %s/%s --ref %s\
 		-f aws-account-id=%s \
+		-f aws-account-name=%s \
 		-f aws-region=%s \
 		-f common-name=%s \
 		-f mongodb-adress=%s \
@@ -254,6 +257,7 @@ func runGithubWorkflow(
 		github_repository,
 		github_branch,
 		account_id,
+		account_name,
 		account_region,
 		common_name,
 		privateInstanceIPMongodb,

@@ -4,7 +4,7 @@
 	"name": "Alpine",
 	"build": {
 		"dockerfile": "Dockerfile",
-		"args": { "VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16" },
+		"args": { "VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16", "RUNNER": "devcontainer" },
 		"target": "runner"
 	},
 	// Mount the docker daemon on the container, must run outside the container as well

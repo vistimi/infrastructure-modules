@@ -11,19 +11,20 @@ import (
 	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/ssh"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/stretchr/testify/assert"
+	"github.com/likexian/gokit/assert"
 
 	test_shell "github.com/gruntwork-io/terratest/modules/shell"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
 func randomID(n int) string {
-    b := make([]rune, n)
-    for i := range b {
-        b[i] = letterRunes[rand.Intn(len(letterRunes))]
-    }
-    return string(b)
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
 
 func Test_Unit_TerraformMongodb(t *testing.T) {
@@ -89,15 +90,15 @@ func Test_Unit_TerraformMongodb(t *testing.T) {
 		},
 	})
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	}
-	// 	test_structure.RunTestStage(t, "cleanup_mongodb", func() {
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, terraformOptions)
+		}
+		test_structure.RunTestStage(t, "cleanup_mongodb", func() {
+			terraform.Destroy(t, terraformOptions)
+		})
+	}()
 
 	test_structure.RunTestStage(t, "deploy_mongodb", func() {
 		terraform.InitAndApply(t, terraformOptions)
