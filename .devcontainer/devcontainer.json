@@ -4,15 +4,11 @@
 	"name": "Alpine",
 	"build": {
 		"dockerfile": "Dockerfile",
-		// Update 'VARIANT' to pick an Ubuntu version: jammy / ubuntu-22.04, focal / ubuntu-20.04, bionic /ubuntu-18.04
-		// Use ubuntu-22.04 or ubuntu-18.04 on local arm64/Apple Silicon.
-		// "args": { "VARIANT": "ubuntu-22.04" }
-		// "args": { "VARIANT": "1-bullseye" }
-		"args": { "VARIANT": "alpine-3.16" },
-		"target": "devcontainer"
+		"args": { "VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16" },
+		"target": "runner"
 	},
 	// Mount the docker daemon on the container, must run outside the container as well
-	"mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
+	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
 	"runArgs": [
 		"--env-file",
 		".devcontainer/devcontainer.env"
@@ -21,9 +17,8 @@
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postStartCommand": "aws configure set aws_access_key_id $AWS_ACCESS_KEY --profile $AWS_PROFILE && aws configure set --profile $AWS_PROFILE aws_secret_access_key $AWS_SECRET_KEY --profile $AWS_PROFILE && aws configure set region $AWS_REGION --profile $AWS_PROFILE && aws configure set output 'text' --profile $AWS_PROFILE && aws configure list",
-	// "postStartCommand": "",
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	// "remoteUser": "vscode",
+	"remoteUser": "vscode",
 	"features": {
 		// "ghcr.io/devcontainers/features/go:1": {
 		// 	"version": "1.18"

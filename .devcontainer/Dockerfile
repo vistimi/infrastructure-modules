@@ -1,7 +1,12 @@
-ARG VARIANT=alpine-3.16
+ARG VARIANT=alpine:3.16
+ARG ALPINE_VARIANT=alpine:3.16
 ARG GO_ALPINE_VARIANT=golang:1.19.0-alpine
+ARG PYTHON_ALPINE_VARIANT=python:3.10.5-alpine
 
-FROM alpine:3.14 as builder-alpine
+#-------------------------
+#       BUILDER
+#-------------------------
+FROM ${ALPINE_VARIANT} as builder-alpine
 
 RUN apk update
 RUN apk add -q --no-cache git zip gzip tar dpkg make wget
@@ -32,7 +37,10 @@ RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v0.21.0
 #     && sudo npm install -g @commitlint/cli \
 #     pre-commit install --hook-type commit-msg
 
-FROM python:3.10.5-alpine as builder-alpine-python
+#-------------------------
+#    PYTHON BUILDER
+#-------------------------
+FROM ${PYTHON_ALPINE_VARIANT} as builder-alpine-python
 
 ARG AWS_CLI_VERSION=2.9.0
 RUN apk add --no-cache git unzip groff build-base libffi-dev cmake
@@ -54,27 +62,26 @@ RUN rm -rf \
 RUN find /usr/local/aws-cli/v2/current/dist/awscli/data -name completions-1*.json -delete
 RUN find /usr/local/aws-cli/v2/current/dist/awscli/botocore/data -name examples-1.json -delete
 
+#-------------------------
+#    GOLANG BUILDER
+#-------------------------
 FROM ${GO_ALPINE_VARIANT} as builder-alpine-go
 
 RUN apk update
 RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
-# # aws cli
-# ARG AWS_CLI_VERSION=2.9.0
-# RUN apk add --no-cache git unzip groff build-base libffi-dev cmake
-# RUN git clone --single-branch --depth 1 -b ${AWS_CLI_VERSION} https://github.com/aws/aws-cli.git
-# RUN aws --version
-
-# dot graphviz inframap
-RUN apk add -q --no-cache graphviz
+# inframap
 RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build \
     && mv inframap /usr/local/bin/inframap  \
     && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
 
-FROM mcr.microsoft.com/devcontainers/base:${VARIANT} as devcontainer
+#-------------------------
+#       RUNNER
+#-------------------------
+FROM ${VARIANT} as runner
 
 RUN apk update
-RUN apk add -q --no-cache make
+RUN apk add -q --no-cache make gcc
 
 # RUN rc-service docker start
 # # RUN sudo usermod -aG docker $USER && newgrp docker
@@ -83,10 +90,12 @@ RUN apk add -q --no-cache make
 # Golang
 COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
 COPY --from=builder-alpine-go /go/ /go/
-ENV GOROOT /go
-ENV GOPATH /usr/local/go/
+# ENV GOROOT /go
+ENV GOPATH /go
+ENV PATH /usr/local/go/bin:$PATH
 ENV PATH $GOPATH/bin:$PATH
 RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+WORKDIR $GOPATH
 RUN go version
 
 # cloud-nuke
@@ -103,11 +112,12 @@ RUN rover --version
 COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
 
+# terratest
 COPY --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 RUN terragrunt --version
 
 # inframap
-# RUN apk add -q --no-cache graphviz
+RUN apk add -q --no-cache graphviz
 COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
 RUN inframap version
 
