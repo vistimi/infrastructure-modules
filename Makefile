@@ -17,6 +17,9 @@ BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
+fmt: ## Format all files
+	terraform fmt -recursive
+
 test: ## Setup the test environment, run the tests and clean the environment
 	make clean; \
 	make prepare; \
@@ -100,10 +103,12 @@ nuke-old-region-vpc:
 # it needs the tfstate files which are generated with apply
 graph-modules-vpc: ## Generate the graph for the VPC
 	cat ${ROOT_PATH}/modules/vpc/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/vpc/graph.png
-graph-modules-services-scraper-backend: ## Generate the graph for the scraper backend
-	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
 graph-modules-data-mongodb: ## Generate the graph for the MongoDB
 	cat ${ROOT_PATH}/modules/data/mongodb/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/data/mongodb/graph.png
+graph-modules-services-scraper-backend: ## Generate the graph for the scraper backend
+	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
+graph-modules-services-scraper-frontend: ## Generate the graph for the scraper frontend
+	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
 
 rover-vpc:
 	make rover-docker ROVER_MODULE=modules/vpc

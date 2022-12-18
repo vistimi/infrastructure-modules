@@ -18,7 +18,7 @@ data "aws_subnets" "tier" {
 }
 
 # ALB
-# https://github.com/terraform-aws-modules/terraform-aws-alb/blob/v8.1.2/examples/complete-alb/main.tf
+# https://github.com/terraform-aws-modules/terraform-aws-alb/blob/master/examples/complete-alb/main.tf
 # Cognito for authentication
 module "alb" {
   source = "terraform-aws-modules/alb/aws"
@@ -41,10 +41,22 @@ module "alb" {
 
   target_groups = [
     {
-      name             = "${var.common_name}-tg"
+      name             = var.common_name
       backend_protocol = var.target_protocol
       backend_port     = var.target_port
       target_type      = "instance"
+      health_check = {
+        enabled             = true
+        interval            = 30
+        path                = var.health_check_path
+        port                = var.target_port
+        healthy_threshold   = 3
+        unhealthy_threshold = 3
+        timeout             = 5
+        protocol            = var.target_protocol
+        matcher             = "200-399"
+      }
+      tags = var.common_tags
     }
   ]
 

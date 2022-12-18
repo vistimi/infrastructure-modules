@@ -1,6 +1,3 @@
-# ------------
-#     Backend
-# ------------
 module "end" {
   source = "../../components/end-http"
 
@@ -52,24 +49,4 @@ module "end" {
   health_check_path                      = var.health_check_path
   bucket_env_name                        = var.bucket_env_name
   env_file_name                          = var.env_file_name
-}
-
-# ------------------------
-#     MongoDB
-# ------------------------
-module "mongodb" {
-  source = "../../data/mongodb"
-
-  common_name            = var.common_name
-  vpc_id                 = var.vpc_id
-  vpc_security_group_ids = var.vpc_security_group_ids
-  common_tags            = var.common_tags
-  force_destroy          = var.force_destroy
-  ami_id                 = var.ami_id
-  instance_type          = var.instance_type
-  user_data_path         = var.user_data_path
-  user_data_args         = var.user_data_args
-  bastion                = false
-  aws_access_key         = var.aws_access_key
-  aws_secret_key         = var.aws_secret_key
 }

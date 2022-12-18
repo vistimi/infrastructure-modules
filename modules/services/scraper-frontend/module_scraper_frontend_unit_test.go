@@ -20,17 +20,16 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+// var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+// func randomID(n int) string {
+// 	b := make([]rune, n)
+// 	for i := range b {
+// 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+// 	}
+// 	return string(b)
+// }
 
-func randomID(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
-func Test_Unit_TerraformScraperBackend(t *testing.T) {
+func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
@@ -45,25 +44,21 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	// vpc variables
 	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
-	nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
-	if len(nat_ids) == 0 {
-		t.Errorf("no NAT available")
-	}
 
 	// global variables
-	id := randomID(8)
+	id := "hbhajzlc"
 	account_name := os.Getenv("AWS_PROFILE")
 	account_id := os.Getenv("AWS_ID")
 	account_region := os.Getenv("AWS_REGION")
 	project_name := "scraper"
-	service_name := "backend"
+	service_name := "frontend"
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
 
 	// end
 	listener_port := 80
 	listener_protocol := "HTTP"
-	target_port := 8080
+	target_port := 3000
 	target_protocol := "HTTP"
 	user_data := fmt.Sprintf("#!/bin/bash\necho ECS_CLUSTER=%s >> /etc/ecs/ecs.config;", common_name)
 
@@ -72,16 +67,17 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	ecs_task_container_s3_env_policy_name := fmt.Sprintf("%s-ecs-task-container-s3-env", common_name)
 	ecs_task_desired_count := 1
 	ecs_task_definition_image_tag := "latest"
-	env_file_name := "production.env"
+	env_file_name := ".env"
 	bucket_env_name := fmt.Sprintf("%s-env", common_name)
 	cpu := 256
 	memory := 512
 	memory_reservation := 500
 
+	backend_dns := "dns_adress_test"
 	github_organization := "KookaS"
-	github_repository := "scraper-backend"
+	github_repository := "scraper-frontend"
 	github_branch := "production"
-	health_check_path := "/"
+	health_check_path := "/healthCheck"
 
 	// options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -138,14 +134,9 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"bucket_env_name":                        bucket_env_name,
 			"port_mapping": []map[string]any{
 				{
-					"hostPort":      8080,
+					"hostPort":      3000,
 					"protocol":      "tcp",
-					"containerPort": 8080,
-				},
-				{
-					"hostPort":      27017,
-					"protocol":      "tcp",
-					"containerPort": 27017,
+					"containerPort": 3000,
 				},
 			},
 
@@ -154,18 +145,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"github_repository":           github_repository,
 			"github_branch":               github_branch,
 			"health_check_path":           health_check_path,
-
-			"ami_id":         "ami-09d3b3274b6c5d4aa",
-			"instance_type":  "t2.micro",
-			"user_data_path": "mongodb.sh",
-			"user_data_args": map[string]string{
-				"HOME":            "/home/ec2-user",
-				"UID":             "1000",
-				"mongodb_version": "6.0.1",
-			},
 		},
-		// to pass AWS credentials
-		VarFiles: []string{"terraform_override.tfvars"},
 	})
 
 	defer func() {
@@ -173,7 +153,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			// destroy all resources if panic
 			terraform.Destroy(t, terraformOptions)
 		}
-		test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+		test_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
 			terraform.Destroy(t, terraformOptions)
 		})
 	}()
@@ -182,9 +162,8 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
 
 	var ecrInitialImagesAmount int
-	test_structure.RunTestStage(t, "deploy_scraper_backend", func() {
+	test_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
 		terraform.InitAndApply(t, terraformOptions)
-		privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
 		ecrInitialImagesAmount = getEcrImagesAmount(t, common_name, account_region)
 		fmt.Printf("\nInitial amount of images in ECR registry: %d\n", ecrInitialImagesAmount)
 		runGithubWorkflow(
@@ -196,7 +175,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			account_name,
 			account_region,
 			common_name,
-			privateInstanceIPMongodb,
+			backend_dns,
 			strconv.Itoa(ecs_task_desired_count),
 		)
 	})
@@ -229,7 +208,7 @@ func runGithubWorkflow(
 	account_name,
 	account_region,
 	common_name,
-	privateInstanceIPMongodb,
+	backend_dns,
 	task_desired_count string,
 ) {
 
@@ -239,7 +218,7 @@ func runGithubWorkflow(
 		-f aws-account-name=%s \
 		-f aws-region=%s \
 		-f common-name=%s \
-		-f mongodb-adress=%s \
+		-f backend-dns=%s \
 		-f task-desired-count=%s || exit 1
 		`,
 		github_organization,
@@ -249,7 +228,7 @@ func runGithubWorkflow(
 		account_name,
 		account_region,
 		common_name,
-		privateInstanceIPMongodb,
+		backend_dns,
 		task_desired_count,
 	)
 	bashCode += fmt.Sprintf(`
@@ -392,17 +371,7 @@ func testEndpoints(t *testing.T, dnsURL, healthCheckPath string) {
 	instanceURL := dnsURL + healthCheckPath
 	tlsConfig := tls.Config{}
 	expectedStatus := 200
-	expectedBody := `"ok"`
-	maxRetries := 3
-	sleepBetweenRetries := 10 * time.Second
-	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
-
-	// tags
-	instanceURL = dnsURL + "/tags/wanted"
-	tlsConfig = tls.Config{}
-	expectedStatus = 200
-	expectedBody = "null"
-	maxRetries = 5
-	sleepBetweenRetries = 10 * time.Second
-	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
+	options := http_helper.HttpGetOptions{Url: instanceURL, TlsConfig: &tlsConfig, Timeout: 10}
+	gotStatus, _ := http_helper.HttpGetWithOptions(t, options)
+	assert.Equal(t, expectedStatus, gotStatus, "The status of the request don't match")
 }

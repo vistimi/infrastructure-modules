@@ -26,10 +26,10 @@ variable "force_destroy" {
 }
 
 # EC2
-variable "ami_id"{
+variable "ami_id" {
   description = "The ID of the AMI used for the EC2 instance"
   type        = string
-  default = "ami-09d3b3274b6c5d4aa"
+  default     = "ami-09d3b3274b6c5d4aa"
 }
 
 variable "instance_type" {
@@ -58,11 +58,11 @@ variable "bastion" {
 variable "aws_access_key" {
   description = "The public key for AWS"
   type        = string
-  sensitive = true
+  sensitive   = true
 }
 
 variable "aws_secret_key" {
   description = "The private key for AWS"
   type        = string
-  sensitive = true
+  sensitive   = true
 }

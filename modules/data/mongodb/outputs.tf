@@ -32,13 +32,13 @@ output "ec2_instance_bastion_public_ip" {
 }
 
 output "private_key_openssh" {
-  value = tls_private_key.this.*.private_key_openssh
+  value       = tls_private_key.this.*.private_key_openssh
   description = "Private key data in OpenSSH PEM (RFC 4716) format"
   sensitive   = true
 }
 
 output "public_key_openssh" {
-  value = tls_private_key.this.*.public_key_openssh
+  value       = tls_private_key.this.*.public_key_openssh
   description = "The public key data in `Authorized Keys` format. This is populated only if the configured private key is supported: this includes all RSA and ED25519 keys"
   sensitive   = false
 }

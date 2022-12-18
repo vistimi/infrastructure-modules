@@ -107,7 +107,16 @@ RUN cloud-nuke --version
 RUN apk add -q --no-cache chromium
 COPY --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
 RUN rover --version
-# EXPOSE 9000
+
+# inframap
+RUN apk add -q --no-cache graphviz
+COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+RUN inframap version
+
+# aws cli
+COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
+COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
+RUN aws --version
 
 # terraform
 COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
@@ -117,24 +126,14 @@ RUN terraform --version
 COPY --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 RUN terragrunt --version
 
-# inframap
-RUN apk add -q --no-cache graphviz
-COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
-RUN inframap version
-
 # tflint
 COPY --from=ghcr.io/terraform-linters/tflint:v0.43.0 /usr/local/bin/tflint /usr/local/bin/tflint
-RUN tflint --version && tflint --init
-
-# aws cli, possible to create an other stage and build there
-COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
-COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
-RUN aws --version
+RUN tflint --version
 
 # github cli
 RUN apk add --no-cache -q github-cli
 
-RUN    go install github.com/cweill/gotests/gotests@latest \
+RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/fatih/gomodifytags@latest \
     && go install github.com/josharian/impl@latest \
     && go install github.com/haya14busa/goplay/cmd/goplay@latest \
@@ -143,27 +142,29 @@ RUN    go install github.com/cweill/gotests/gotests@latest \
     && go install golang.org/x/tools/gopls@latest
 
 
-
-
-#                    ---> runner-${ALPINE_VARIANT}           ---
-#                   /                                            \
-#  builder-final ---                                              ---> runner
-#                   \                                            /
-#                    ---> runner-${DEVCONTAINTER_VARIANT}    ---
+#-------------------------
+#    RUNNER
+#-------------------------
+#                    --->   workflow   ---
+#                   /                      \
+#  builder-final ---                        ---> runner
+#                   \                      /
+#                    ---> devcontainer ---
 
 #-------------------------
-#    RUNNER ALPINE
+#    RUNNER WORKFLOW
 #-------------------------
 FROM builder-final AS runner-workflow
 
-# COPY go.mod go.sum ./
-# RUN go mod download && go mod verify
-
-# COPY . .
-
-# WORKDIR /workspace/infrasucture-modules
-
-# CMD ["make help"]
+ARG USER_NAME=user
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN apk update && apk add --update sudo
+RUN addgroup --gid $USER_GID $USER_NAME \
+    && adduser --uid $USER_UID -D -G $USER_NAME $USER_NAME \
+    && echo $USER_NAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USER_NAME \
+    && chmod 0440 /etc/sudoers.d/$USER_NAME
+USER $USER_NAME
 
 #-------------------------
 #    RUNNER DEVCONTAINER
@@ -174,4 +175,3 @@ FROM builder-final AS runner-devcontainer
 #       RUNNER
 #-------------------------
 FROM runner-${RUNNER} AS runner
-RUN echo runner=$RUNNER

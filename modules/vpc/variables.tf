@@ -22,7 +22,7 @@ variable "vpc_cidr_ipv4" {
 variable "enable_nat" {
   description = "Enable the NAT gateway"
   type        = bool
-  default = false
+  default     = false
 }
 
 # variable "vpc_availability_zones" {

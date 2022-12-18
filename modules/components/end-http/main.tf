@@ -40,8 +40,7 @@ module "ecs" {
   github_organization                 = var.github_organization
   github_repository                   = var.github_repository
   github_branch                       = var.github_branch
-  github_workflow_file_name_ecs       = var.github_workflow_file_name_ecs
-  github_workflow_name_ecs            = var.github_workflow_name_ecs
+  health_check_path                   = var.health_check_path
   account_name                        = var.account_name
   account_region                      = var.account_region
 

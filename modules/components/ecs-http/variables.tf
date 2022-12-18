@@ -11,7 +11,7 @@ variable "vpc_security_group_ids" {
 
 
 variable "common_name" {
-   description = "The common part of the name used for all resources"
+  description = "The common part of the name used for all resources"
   type        = string
 }
 
@@ -183,12 +183,8 @@ variable "github_branch" {
   type        = string
 }
 
-variable "github_workflow_file_name_ecs" {
-  description = "The name of the ECS workflow file"
+variable "health_check_path" {
+  description = "The path for the healthcheck"
   type        = string
-}
-
-variable "github_workflow_name_ecs" {
-  description = "The name of the ECS workflow"
-  type        = string
+  default     = "/"
 }

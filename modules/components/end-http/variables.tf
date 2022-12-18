@@ -234,22 +234,6 @@ variable "port_mapping" {
 # ------------
 #     ECR
 # ------------
-# variable "repository_name" {
-#   description = "The name of the repository"
-#   type        = string
-# }
-# variable "repository_read_write_access_arns" {
-#   description = "The ARNs of the IAM users/roles that have read/write access to the repository"
-#   type = list(string)
-#   default = []
-# }
-
-# variable "repository_read_access_arns" {
-#   description = "The ARNs of the IAM users/roles that have read access to the repository"
-#   type = list(string)
-#   default = []
-# }
-
 variable "repository_image_keep_count" {
   description = "The amount of images to keep in the registry"
   type        = number
@@ -273,32 +257,8 @@ variable "github_branch" {
   type        = string
 }
 
-variable "github_workflow_file_name_ecr" {
-  description = "The name of the ECR workflow file"
+variable "health_check_path" {
+  description = "The path for the healthcheck"
   type        = string
-}
-
-variable "github_workflow_name_ecr" {
-  description = "The name of the ECR workflow"
-  type        = string
-}
-
-variable "github_workflow_file_name_env" {
-  description = "The name of the S3 env workflow file"
-  type        = string
-}
-
-variable "github_workflow_name_env" {
-  description = "The name of the S3 env workflow"
-  type        = string
-}
-
-variable "github_workflow_file_name_ecs" {
-  description = "The name of the ECS workflow file"
-  type        = string
-}
-
-variable "github_workflow_name_ecs" {
-  description = "The name of the ECS workflow"
-  type        = string
+  default     = "/"
 }
