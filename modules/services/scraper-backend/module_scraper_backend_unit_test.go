@@ -20,16 +20,6 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-
-func randomID(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
 func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
@@ -217,6 +207,15 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	})
 
 	fmt.Printf("\n\nDNS: %s\n\n", terraform.Output(t, terraformOptions, "alb_dns_name"))
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+func randomID(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
 
 // Run Github workflow CI/CD to push images on ECR and update ECS

@@ -17,16 +17,6 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-
-func randomID(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
 func Test_Unit_TerraformMongodb(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
@@ -135,6 +125,15 @@ func Test_Unit_TerraformMongodb(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s-mongodb", common_name), s3bucketMongodbArn)
 		assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s-pictures", common_name), s3bucketpicturesArn)
 	})
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+func randomID(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
 
 func sshToPrivateHost(t *testing.T, publicInstanceIP string, privateInstanceIP string, keyPair *ssh.KeyPair) {
