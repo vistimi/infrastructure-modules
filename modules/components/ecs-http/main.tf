@@ -196,7 +196,14 @@ resource "aws_ecs_service" "this" {
 # ASG
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
 data "aws_ssm_parameter" "ecs_optimized_ami" {
-  name = var.ami_ssm_name[var.ami_ssm_architecture]
+  for_each = {
+    on-demand = {
+      name = var.ami_ssm_name[var.ami_ssm_architecture_on_demand]
+    }
+    spot = {
+      name = var.ami_ssm_name[var.ami_ssm_architecture_spot]
+    }
+  }
 }
 
 # https://github.com/terraform-aws-modules/terraform-aws-autoscaling/blob/master/examples/complete/main.tf
@@ -210,6 +217,7 @@ module "asg" {
       min_size                = var.min_size_on_demand
       max_size                = var.max_size_on_demand
       desired_capacity        = var.desired_capacity_on_demand
+      image_id                = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["on-demand"].value)["image_id"]
       instance_market_options = {}
       tag_specifications = [
         {
@@ -224,6 +232,7 @@ module "asg" {
       min_size         = var.min_size_spot
       max_size         = var.max_size_spot
       desired_capacity = var.desired_capacity_spot
+      image_id         = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["spot"].value)["image_id"]
       instance_market_options = {
         market_type = "spot"
       }
@@ -245,6 +254,7 @@ module "asg" {
   max_size                = each.value.max_size
   desired_capacity        = each.value.desired_capacity
   instance_market_options = each.value.instance_market_options
+  image_id                = each.value.image_id
 
   use_name_prefix = false
   name            = "${var.common_name}-${each.value.key_name}"
@@ -260,7 +270,6 @@ module "asg" {
   launch_template_name        = var.common_name
   launch_template_description = "${var.common_name} asg launch template"
   update_default_version      = true
-  image_id                    = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
   ebs_optimized               = false # optimized ami does not support ebs_optimized
   # key_name = null
 

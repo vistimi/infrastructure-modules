@@ -30,13 +30,14 @@ module "end" {
   desired_capacity_on_demand             = var.desired_capacity_on_demand
   maximum_scaling_step_size_on_demand    = var.maximum_scaling_step_size_on_demand
   minimum_scaling_step_size_on_demand    = var.minimum_scaling_step_size_on_demand
+  ami_ssm_architecture_on_demand         = var.ami_ssm_architecture_on_demand
   instance_type_spot                     = var.instance_type_spot
   min_size_spot                          = var.min_size_spot
   max_size_spot                          = var.max_size_spot
   desired_capacity_spot                  = var.desired_capacity_spot
   maximum_scaling_step_size_spot         = var.maximum_scaling_step_size_spot
   minimum_scaling_step_size_spot         = var.minimum_scaling_step_size_spot
-  ami_ssm_architecture                   = var.ami_ssm_architecture
+  ami_ssm_architecture_spot              = var.ami_ssm_architecture_spot
   ecs_execution_role_name                = var.ecs_execution_role_name
   ecs_task_container_role_name           = var.ecs_task_container_role_name
   ecs_task_container_s3_env_policy_name  = var.ecs_task_container_s3_env_policy_name
