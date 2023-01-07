@@ -37,6 +37,7 @@ module "ecs" {
   desired_capacity_spot               = var.desired_capacity_spot
   maximum_scaling_step_size_spot      = var.maximum_scaling_step_size_spot
   minimum_scaling_step_size_spot      = var.minimum_scaling_step_size_spot
+  ami_ssm_architecture                = var.ami_ssm_architecture
   github_organization                 = var.github_organization
   github_repository                   = var.github_repository
   github_branch                       = var.github_branch

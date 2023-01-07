@@ -35,21 +35,21 @@ prepare: ## Setup the test environment
 	make prepare-modules-services-scraper-backend 
 .SILENT: prepare-account
 prepare-account:
-	echo 'locals {' > modules/account.hcl; \
-	echo 'aws_account_region="${AWS_REGION}"' >> 	${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_account_name="${AWS_PROFILE}"' >> 	${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_account_id="${AWS_ID}"' >> 			${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_access_key="${AWS_ACCESS_KEY}"' >> 	${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/account.hcl; \
-	echo '}' >> modules/account.hcl;
+	echo 'locals {' 							> 	${ROOT_PATH}/modules/account.hcl; \
+	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	echo 'aws_account_name="${AWS_PROFILE}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	echo 'aws_account_id="${AWS_ID}"' 			>> 	${ROOT_PATH}/modules/account.hcl; \
+	echo 'aws_access_key="${AWS_ACCESS_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	echo 'aws_secret_key="${AWS_SECRET_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	echo '}' 									>> 	${ROOT_PATH}/modules/account.hcl;
 prepare-modules-vpc:
 	# remove the state file in the vpc folder to create a new one \
 	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
-		echo 'aws_region="${AWS_REGION}"' > 													${VPC_PATH}/terraform_override.tfvars; \
-		echo 'vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"' >> 	${VPC_PATH}/terraform_override.tfvars; \
-		echo 'common_tags={Region: "${AWS_REGION}"}' >> 										${VPC_PATH}/terraform_override.tfvars; \
-		echo 'vpc_cidr_ipv4="1.0.0.0/16"' >> 													${VPC_PATH}/terraform_override.tfvars; \
-		echo 'enable_nat=true' >> 																${VPC_PATH}/terraform_override.tfvars; \
+		echo 'aws_region="${AWS_REGION}"' 													> 	${VPC_PATH}/terraform_override.tfvars; \
+		echo 'vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"' 	>> 	${VPC_PATH}/terraform_override.tfvars; \
+		echo 'common_tags={Region: "${AWS_REGION}"}' 										>> 	${VPC_PATH}/terraform_override.tfvars; \
+		echo 'vpc_cidr_ipv4="1.0.0.0/16"' 													>> 	${VPC_PATH}/terraform_override.tfvars; \
+		echo 'enable_nat=true' 																>> 	${VPC_PATH}/terraform_override.tfvars; \
 		cd ${VPC_PATH}; \
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
@@ -101,14 +101,16 @@ nuke-old-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
 # it needs the tfstate files which are generated with apply
+graph:
+	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}//vpc/graph.png
 graph-modules-vpc: ## Generate the graph for the VPC
-	cat ${ROOT_PATH}/modules/vpc/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/vpc/graph.png
+	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/vpc
 graph-modules-data-mongodb: ## Generate the graph for the MongoDB
-	cat ${ROOT_PATH}/modules/data/mongodb/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/data/mongodb/graph.png
+	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/data/mongodb
 graph-modules-services-scraper-backend: ## Generate the graph for the scraper backend
-	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
+	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-backend
 graph-modules-services-scraper-frontend: ## Generate the graph for the scraper frontend
-	cat ${ROOT_PATH}/modules/services/scraper-backend/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${ROOT_PATH}/modules/services/scraper-backend/graph.png
+	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-frontend
 
 rover-vpc:
 	make rover-docker ROVER_MODULE=modules/vpc

@@ -167,6 +167,23 @@ variable "minimum_scaling_step_size_spot" {
   type        = number
 }
 
+variable "ami_ssm_architecture" {
+  description = "The name of the ssm name to select the optimized AMI architecture"
+  type        = number
+  default = "amazon-linux-2"
+}
+
+variable "ami_ssm_name" {
+  description = "Map to select an optimized ami for the correct architecture"
+  type = map(string)
+
+  default = {
+    amazon-linux-2 = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
+    amazon-linux-2-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
+    amazon-linux-2-gpu = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
+  }
+}
+
 # Github
 variable "github_organization" {
   description = "The name of the Github organization that contains the repo"

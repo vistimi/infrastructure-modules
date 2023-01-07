@@ -134,9 +134,10 @@ AWS_ROLE=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
 ENVIRONMENT_NAME=***
-GH_TOKEN=***
+GITHUB_TOKEN=***
 ```
 
+:warning: The `GITHUB_TOKEN` is a default name
 In [Github](https://github.com/settings/personal-access-tokens/new):
   Actions: Read and write
   Environments: Read and write

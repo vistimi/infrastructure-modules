@@ -189,6 +189,12 @@ variable "minimum_scaling_step_size_spot" {
   type        = number
 }
 
+variable "ami_ssm_architecture" {
+  description = "The name of the ssm name to select the optimized AMI architecture"
+  type        = number
+  default = "amazon-linux-2"
+}
+
 # ------------------------
 #     Task definition
 # ------------------------

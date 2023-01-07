@@ -112,14 +112,15 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"min_size_on_demand":                     "1",
 			"max_size_on_demand":                     "2",
 			"desired_capacity_on_demand":             "1",
-			"maximum_scaling_step_size_on_demand":    "1",
 			"minimum_scaling_step_size_on_demand":    "1",
+			"maximum_scaling_step_size_on_demand":    "1",
 			"instance_type_spot":                     "t2.micro",
 			"min_size_spot":                          "1",
 			"max_size_spot":                          "3",
 			"desired_capacity_spot":                  "1",
-			"maximum_scaling_step_size_spot":         "1",
 			"minimum_scaling_step_size_spot":         "1",
+			"maximum_scaling_step_size_spot":         "1",
+			"ami_ssm_architecture":                   "amazon-linux-2",
 			"ecs_task_definition_memory":             memory,
 			"ecs_task_definition_memory_reservation": memory_reservation,
 			"ecs_task_definition_cpu":                cpu,
@@ -128,9 +129,9 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"bucket_env_name":                        bucket_env_name,
 			"port_mapping": []map[string]any{
 				{
-					"hostPort":      8080,
+					"hostPort":      target_port,
 					"protocol":      "tcp",
-					"containerPort": 8080,
+					"containerPort": target_port,
 				},
 				{
 					"hostPort":      27017,
@@ -210,6 +211,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
 func randomID(n int) string {
 	b := make([]rune, n)
 	for i := range b {

@@ -36,7 +36,8 @@
 				"shakram02.bash-beautify",
 				"shd101wyy.markdown-preview-enhanced",
 				"premparihar.gotestexplorer",
-				"hashicorp.terraform"
+				"hashicorp.terraform",
+				"bierner.markdown-emoji"
 			]
 		}
 	}

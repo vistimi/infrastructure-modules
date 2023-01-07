@@ -46,29 +46,10 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
 
-	// end
-	listener_port := 80
-	listener_protocol := "HTTP"
-	target_port := 3000
-	target_protocol := "HTTP"
-	user_data := fmt.Sprintf("#!/bin/bash\necho ECS_CLUSTER=%s >> /etc/ecs/ecs.config;", common_name)
-
-	ecs_execution_role_name := fmt.Sprintf("%s-ecs-execution", common_name)
-	ecs_task_container_role_name := fmt.Sprintf("%s-ecs-task-container", common_name)
-	ecs_task_container_s3_env_policy_name := fmt.Sprintf("%s-ecs-task-container-s3-env", common_name)
-	ecs_task_desired_count := 1
-	ecs_task_definition_image_tag := "latest"
-	env_file_name := ".env"
-	bucket_env_name := fmt.Sprintf("%s-env", common_name)
-	cpu := 256
-	memory := 512
-	memory_reservation := 500
-
-	backend_dns := "dns_adress_test"
+	
 	github_organization := "KookaS"
 	github_repository := "scraper-frontend"
 	github_branch := "production"
-	health_check_path := "/healthCheck"
 
 	// options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -88,55 +69,6 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 				"Environment": environment_name,
 			},
 			"force_destroy": true,
-
-			"ecs_execution_role_name":                ecs_execution_role_name,
-			"ecs_task_container_role_name":           ecs_task_container_role_name,
-			"ecs_task_definition_image_tag":          ecs_task_definition_image_tag,
-			"ecs_task_container_s3_env_policy_name":  ecs_task_container_s3_env_policy_name,
-			"ecs_logs_retention_in_days":             1,
-			"listener_port":                          listener_port,
-			"listener_protocol":                      listener_protocol,
-			"target_port":                            target_port,
-			"target_protocol":                        target_protocol,
-			"target_capacity_cpu":                    70,
-			"capacity_provider_base":                 1,
-			"capacity_provider_weight_on_demand":     20,
-			"capacity_provider_weight_spot":          80,
-			"user_data":                              user_data,
-			"protect_from_scale_in":                  false,
-			"vpc_tier":                               "Public",
-			"instance_type_on_demand":                "t2.micro",
-			"min_size_on_demand":                     "1",
-			"max_size_on_demand":                     "2",
-			"desired_capacity_on_demand":             "1",
-			"maximum_scaling_step_size_on_demand":    "1",
-			"minimum_scaling_step_size_on_demand":    "1",
-			"instance_type_spot":                     "t2.micro",
-			"min_size_spot":                          "1",
-			"max_size_spot":                          "3",
-			"desired_capacity_spot":                  "1",
-			"maximum_scaling_step_size_spot":         "1",
-			"minimum_scaling_step_size_spot":         "1",
-			"ami_ssm_architecture":                   "amazon-linux-2",
-			"ecs_task_definition_memory":             memory,
-			"ecs_task_definition_memory_reservation": memory_reservation,
-			"ecs_task_definition_cpu":                cpu,
-			"ecs_task_desired_count":                 ecs_task_desired_count,
-			"env_file_name":                          env_file_name,
-			"bucket_env_name":                        bucket_env_name,
-			"port_mapping": []map[string]any{
-				{
-					"hostPort":      3000,
-					"protocol":      "tcp",
-					"containerPort": 3000,
-				},
-			},
-
-			"repository_image_keep_count": 1,
-			"github_organization":         github_organization,
-			"github_repository":           github_repository,
-			"github_branch":               github_branch,
-			"health_check_path":           health_check_path,
 		},
 	})
 
@@ -191,7 +123,6 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-
 func randomID(n int) string {
 	b := make([]rune, n)
 	for i := range b {

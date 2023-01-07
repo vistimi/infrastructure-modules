@@ -36,6 +36,7 @@ module "end" {
   desired_capacity_spot                  = var.desired_capacity_spot
   maximum_scaling_step_size_spot         = var.maximum_scaling_step_size_spot
   minimum_scaling_step_size_spot         = var.minimum_scaling_step_size_spot
+  ami_ssm_architecture                   = var.ami_ssm_architecture
   ecs_execution_role_name                = var.ecs_execution_role_name
   ecs_task_container_role_name           = var.ecs_task_container_role_name
   ecs_task_container_s3_env_policy_name  = var.ecs_task_container_s3_env_policy_name
