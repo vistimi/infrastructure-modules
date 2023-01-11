@@ -71,7 +71,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	github_organization := "KookaS"
 	github_repository := "scraper-backend"
 	github_branch := "production"
-	health_check_path := "/"
+	health_check_path := "/healthz"
 
 	// options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
