@@ -13,6 +13,9 @@ GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty") # If working copy has
 GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
+# Github
+GH_ORG=KookaS
+
 # absolute path
 ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
@@ -32,7 +35,7 @@ prepare: ## Setup the test environment
 	make prepare-account; \
 	make prepare-modules-data-mongodb; \
 	make prepare-modules-vpc; \
-	make prepare-modules-services-scraper-backend 
+	make prepare-modules-services-scraper-backend;
 .SILENT: prepare-account
 prepare-account:
 	echo 'locals {' 							> 	${ROOT_PATH}/modules/account.hcl; \
@@ -62,10 +65,13 @@ prepare-modules-data-mongodb:
 	terragrunt init; 
 .SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o modules/services/scraper-backend/config_override.yml https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config/config.yml; \
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o modules/services/scraper-backend/config_override.go https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config/config.go; \
+	# change package name to test \
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars;
 	cd ${ROOT_PATH}/modules/services/scraper-backend; \
-	terragrunt init; 
+	terragrunt init;
 
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc; \

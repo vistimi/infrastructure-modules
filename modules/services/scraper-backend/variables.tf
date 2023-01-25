@@ -159,6 +159,12 @@ variable "minimum_scaling_step_size_on_demand" {
   type        = number
 }
 
+variable "ami_ssm_architecture_on_demand" {
+  description = "The name of the ssm name to select the optimized AMI architecture"
+  type        = string
+  default     = "amazon-linux-2"
+}
+
 variable "instance_type_spot" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
@@ -189,16 +195,10 @@ variable "minimum_scaling_step_size_spot" {
   type        = number
 }
 
-variable "ami_ssm_architecture_on_demand" {
-  description = "The name of the ssm name to select the optimized AMI architecture"
-  type        = number
-  default = "amazon-linux-2"
-}
-
 variable "ami_ssm_architecture_spot" {
   description = "The name of the ssm name to select the optimized AMI architecture"
-  type        = number
-  default = "amazon-linux-2"
+  type        = string
+  default     = "amazon-linux-2"
 }
 
 # ------------------------
@@ -264,6 +264,11 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_repository_id" {
+  description = "The ID of the repository"
+  type        = string
+}
+
 variable "github_branch" {
   description = "The name of the branch"
   type        = string
@@ -273,6 +278,18 @@ variable "health_check_path" {
   description = "The path for the healthcheck"
   type        = string
   default     = "/"
+}
+
+# ------------------------
+#     DynamoDB
+# ------------------------
+variable "dynamodb_tables" {
+  description = "The mapping of the DynamoDB tables"
+  type = list(object({
+    name        = string
+    primary_key = string
+    sort_key    = string
+  }))
 }
 
 # ------------------------

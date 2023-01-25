@@ -200,8 +200,18 @@ module "ecr" {
 # ------------------------
 #     Github secrets
 # ------------------------
-// FIXME: make it work for secret env or move this logic elsewhere
-// TODO: make ECS depend on those secrets
+resource "null_resource" "action_env_aws_access_key" {
+  provisioner "local-exec" {
+    command = "/bin/bash github.sh GH_REPO_ID=${var.github_repository_id} GH_ENV=${var.github_organization} GH_SECRET_KEY=\"AWS_ACCESS_KEY\" GH_SECRET_VALUE=${var.aws_access_key}"
+  }
+}
+
+resource "null_resource" "action_env_aws_secret_key" {
+  provisioner "local-exec" {
+    command = "/bin/bash github.sh GH_REPO_ID=${var.github_repository_id} GH_ENV=${var.github_organization} GH_SECRET_KEY=\"AWS_SECRET_KEY\" GH_SECRET_VALUE=${var.aws_secret_key}"
+  }
+}
+
 # data "github_repository" "repo" {
 #   full_name = "${var.github_organization}/${var.github_repository}"
 # }

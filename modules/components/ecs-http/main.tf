@@ -204,6 +204,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami" {
       name = var.ami_ssm_name[var.ami_ssm_architecture_spot]
     }
   }
+  name = each.value.name
 }
 
 # https://github.com/terraform-aws-modules/terraform-aws-autoscaling/blob/master/examples/complete/main.tf

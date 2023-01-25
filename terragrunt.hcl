@@ -37,5 +37,7 @@ provider "aws" {
   region = "${local.aws_account_region}"
   allowed_account_ids = ["${local.aws_account_id}"]
 }
+provider "github" {
+}
 EOF
 }

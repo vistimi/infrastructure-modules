@@ -60,15 +60,17 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 	ecs_task_definition_image_tag := "latest"
 	env_file_name := ".env"
 	bucket_env_name := fmt.Sprintf("%s-env", common_name)
-	cpu := 256
-	memory := 512
-	memory_reservation := 500
+	cpu := 2048
+	memory := 1024
+	memory_reservation := 1000
 
-	backend_dns := "dns_adress_test"
+	// backend_dns := "dns_adress_test" //FIXME:
+	backend_dns := "http://scraper-backend-test-kurnqcbt-1930982203.us-east-1.elb.amazonaws.com/"
 	github_organization := "KookaS"
 	github_repository := "scraper-frontend"
 	github_branch := "production"
 	health_check_path := "/healthz"
+	github_repository_id := "?????"
 
 	// options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -105,19 +107,20 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 			"user_data":                              user_data,
 			"protect_from_scale_in":                  false,
 			"vpc_tier":                               "Public",
-			"instance_type_on_demand":                "t2.micro",
+			"instance_type_on_demand":                "t4g.micro",
 			"min_size_on_demand":                     "1",
-			"max_size_on_demand":                     "2",
+			"max_size_on_demand":                     "1",
 			"desired_capacity_on_demand":             "1",
 			"maximum_scaling_step_size_on_demand":    "1",
 			"minimum_scaling_step_size_on_demand":    "1",
-			"instance_type_spot":                     "t2.micro",
-			"min_size_spot":                          "1",
-			"max_size_spot":                          "3",
-			"desired_capacity_spot":                  "1",
+			"ami_ssm_architecture_on_demand":         "amazon-linux-2-arm64",
+			"instance_type_spot":                     "t4g.micro",
+			"min_size_spot":                          "0",
+			"max_size_spot":                          "0",
+			"desired_capacity_spot":                  "0",
 			"maximum_scaling_step_size_spot":         "1",
 			"minimum_scaling_step_size_spot":         "1",
-			"ami_ssm_architecture":                   "amazon-linux-2",
+			"ami_ssm_architecture_spot":              "amazon-linux-2-arm64",
 			"ecs_task_definition_memory":             memory,
 			"ecs_task_definition_memory_reservation": memory_reservation,
 			"ecs_task_definition_cpu":                cpu,
@@ -135,20 +138,21 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 			"repository_image_keep_count": 1,
 			"github_organization":         github_organization,
 			"github_repository":           github_repository,
+			"github_repository_id":        github_repository_id,
 			"github_branch":               github_branch,
 			"health_check_path":           health_check_path,
 		},
 	})
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
-		}
-		test_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	}
+	// 	test_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	})
+	// }()
 
 	// TODO: plan test for updates
 	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go

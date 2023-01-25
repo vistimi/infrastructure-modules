@@ -139,6 +139,8 @@ GITHUB_TOKEN=***
 
 :warning: The `GITHUB_TOKEN` is a default name
 In [Github](https://github.com/settings/personal-access-tokens/new):
+Content: Read-only
+
   Actions: Read and write
   Environments: Read and write
   Metadata: Read-only

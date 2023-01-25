@@ -3,6 +3,7 @@ package test
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strconv"
@@ -14,18 +15,36 @@ import (
 	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	test_shell "github.com/gruntwork-io/terratest/modules/shell"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
+
+
+type table struct {
+	name       string
+	primaryKey string
+	sortKey    string
+}
+
+type config struct {
+	TablePictureProcess    table
+	TablePictureValidation table
+	TablePictureProduction table
+	TablePictureBlocked    table
+	TableTag               table
+	TableUser              table
+}
+
 func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
 	// init
-	bashCode := `terragrunt init;`
+	bashCode := `env;terragrunt init;`
 	command := test_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
@@ -50,6 +69,28 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
 
+	// yml
+	f, err := os.ReadFile("themirth.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var c config
+	if err := yaml.Unmarshal(f, &c); err != nil {
+		log.Fatal(err)
+	}
+	dynamodb_table_picture_process_name := c.TablePictureProcessName
+	dynamodb_table_picture_validation_name := c.TablePictureValidationName
+	dynamodb_table_picture_production_name := c.TablePictureProductionName
+	dynamodb_table_picture_blocked_name := c.TablePictureBlockedName
+	dynamodb_table_picture_primary_key := c.TablePicturePK
+	dynamodb_table_picture_sort_key := c.TablePictureSK
+	dynamodb_table_tag_name := c.TableTagName
+	dynamodb_table_tag_primary_key := c.TableTagPK
+	dynamodb_table_tag_sort_key := c.TableTagSK
+	dynamodb_table_user_name := c.TableUserName
+	dynamodb_table_user_primary_key := c.TableUserPK
+	dynamodb_table_user_sort_key := c.TableUserSK
+
 	// end
 	listener_port := 80
 	listener_protocol := "HTTP"
@@ -64,12 +105,13 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	ecs_task_definition_image_tag := "latest"
 	env_file_name := "production.env"
 	bucket_env_name := fmt.Sprintf("%s-env", common_name)
-	cpu := 256
-	memory := 512
-	memory_reservation := 500
+	cpu := 1024
+	memory := 950 // 982 when describe instance container
+	memory_reservation := 900
 
 	github_organization := "KookaS"
 	github_repository := "scraper-backend"
+	github_repository_id := "497233030"
 	github_branch := "production"
 	health_check_path := "/healthz"
 
@@ -116,8 +158,8 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"maximum_scaling_step_size_on_demand":    "1",
 			"ami_ssm_architecture_on_demand":         "amazon-linux-2",
 			"instance_type_spot":                     "t2.micro",
-			"min_size_spot":                          "1",
-			"max_size_spot":                          "3",
+			"min_size_spot":                          "0",
+			"max_size_spot":                          "2",
 			"desired_capacity_spot":                  "1",
 			"minimum_scaling_step_size_spot":         "1",
 			"maximum_scaling_step_size_spot":         "1",
@@ -144,6 +186,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"repository_image_keep_count": 1,
 			"github_organization":         github_organization,
 			"github_repository":           github_repository,
+			"github_repository_id":        github_repository_id,
 			"github_branch":               github_branch,
 			"health_check_path":           health_check_path,
 
@@ -160,18 +203,18 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 		VarFiles: []string{"terraform_override.tfvars"},
 	})
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
-		}
-		test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	}
+	// 	test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	})
+	// }()
 
-	// TODO: plan test for updates
-	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
+	// // TODO: plan test for updates
+	// // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
 
 	var ecrInitialImagesAmount int
 	test_structure.RunTestStage(t, "deploy_scraper_backend", func() {
