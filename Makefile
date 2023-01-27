@@ -65,13 +65,16 @@ prepare-modules-data-mongodb:
 	terragrunt init; 
 .SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o modules/services/scraper-backend/config_override.yml https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config/config.yml; \
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o modules/services/scraper-backend/config_override.go https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config/config.go; \
-	# change package name to test \
+	make load-config MODULE_PATH=modules/services/scraper-backend GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars;
+	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
 	cd ${ROOT_PATH}/modules/services/scraper-backend; \
 	terragrunt init;
+
+load-config:
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.yml ${GH_PATH}/config.yml; \
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.go ${GH_PATH}/config.go; \
+	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go; \
 
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc; \
@@ -121,5 +124,4 @@ graph-modules-services-scraper-frontend: ## Generate the graph for the scraper f
 rover-vpc:
 	make rover-docker ROVER_MODULE=modules/vpc
 rover-docker:
-	# docker run --rm -it -p 9000:9000 -v ${ROOT_PATH}/${ROVER_MODULE}:/src --env-file ${ROOT_PATH}/.devcontainer/devcontainer.env im2nguyen/rover -tfVarsFile ${ROOT_PATH}/${ROVER_MODULE}/terraform_override.tfvars -genImage true; \
 	sudo rover -workingDir ${ROOT_PATH}/${ROVER_MODULE} -tfVarsFile ${ROOT_PATH}/${ROVER_MODULE}/terraform_override.tfvars -genImage true
