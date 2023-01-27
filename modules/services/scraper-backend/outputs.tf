@@ -39,6 +39,14 @@
 #   description = "Revision of the task in a particular family"
 # }
 
+# Dynamodb
+
+output "dynamodb_arn" {
+  value = {
+    for k, db in module.dynamodb_table : k => db.dynamodb_table_arn
+  }
+}
+
 # # MongoDB
 # output "ec2_instance_mongodb_private_ip" {
 #   value       = module.mongodb.ec2_instance_mongodb_private_ip

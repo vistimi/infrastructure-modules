@@ -3,9 +3,9 @@ package test
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,35 +15,16 @@ import (
 	"github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	test_shell "github.com/gruntwork-io/terratest/modules/shell"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-
-
-type table struct {
-	name       string
-	primaryKey string
-	sortKey    string
-}
-
-type config struct {
-	TablePictureProcess    table
-	TablePictureValidation table
-	TablePictureProduction table
-	TablePictureBlocked    table
-	TableTag               table
-	TableUser              table
-}
-
 func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
-	// init
 	bashCode := `env;terragrunt init;`
 	command := test_shell.Command{
 		Command: "bash",
@@ -54,10 +35,10 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	// vpc variables
 	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
-	nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
-	if len(nat_ids) == 0 {
-		t.Errorf("no NAT available")
-	}
+	// nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
+	// if len(nat_ids) == 0 {
+	// 	t.Errorf("no NAT available")
+	// }
 
 	// global variables
 	id := randomID(8)
@@ -70,26 +51,25 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
 
 	// yml
-	f, err := os.ReadFile("themirth.yaml")
+	path, err := filepath.Abs("config_override.yml")
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
-	var c config
-	if err := yaml.Unmarshal(f, &c); err != nil {
-		log.Fatal(err)
+	configYml, err := ReadConfigFile(path)
+	if err != nil {
+		t.Error(err)
 	}
-	dynamodb_table_picture_process_name := c.TablePictureProcessName
-	dynamodb_table_picture_validation_name := c.TablePictureValidationName
-	dynamodb_table_picture_production_name := c.TablePictureProductionName
-	dynamodb_table_picture_blocked_name := c.TablePictureBlockedName
-	dynamodb_table_picture_primary_key := c.TablePicturePK
-	dynamodb_table_picture_sort_key := c.TablePictureSK
-	dynamodb_table_tag_name := c.TableTagName
-	dynamodb_table_tag_primary_key := c.TableTagPK
-	dynamodb_table_tag_sort_key := c.TableTagSK
-	dynamodb_table_user_name := c.TableUserName
-	dynamodb_table_user_primary_key := c.TableUserPK
-	dynamodb_table_user_sort_key := c.TableUserSK
+	var dynamodb_tables []map[string]any
+	for _, db := range configYml.Databases {
+		dynamodb_tables = append(dynamodb_tables, map[string]any{
+			"name":        *db.Name,
+			"primary_key_name": *db.PrimaryKeyName,
+			"primary_key_type": *db.PrimaryKeyType,
+			"sort_key_name":    *db.SortKeyName,
+			"sort_key_type":    *db.SortKeyType,
+		})
+	}
+	bucket_env_name := fmt.Sprintf("%s-env", *configYml.Buckets["env"].Name)
 
 	// end
 	listener_port := 80
@@ -104,7 +84,6 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	ecs_task_desired_count := 1
 	ecs_task_definition_image_tag := "latest"
 	env_file_name := "production.env"
-	bucket_env_name := fmt.Sprintf("%s-env", common_name)
 	cpu := 1024
 	memory := 950 // 982 when describe instance container
 	memory_reservation := 900
@@ -190,28 +169,30 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			"github_branch":               github_branch,
 			"health_check_path":           health_check_path,
 
-			"ami_id":         "ami-09d3b3274b6c5d4aa",
-			"instance_type":  "t2.micro",
-			"user_data_path": "mongodb.sh",
-			"user_data_args": map[string]string{
-				"HOME":            "/home/ec2-user",
-				"UID":             "1000",
-				"mongodb_version": "6.0.1",
-			},
+			"dynamodb_tables": dynamodb_tables,
+
+			// "ami_id":         "ami-09d3b3274b6c5d4aa",
+			// "instance_type":  "t2.micro",
+			// "user_data_path": "mongodb.sh",
+			// "user_data_args": map[string]string{
+			// 	"HOME":            "/home/ec2-user",
+			// 	"UID":             "1000",
+			// 	"mongodb_version": "6.0.1",
+			// },
 		},
 		// to pass AWS credentials
 		VarFiles: []string{"terraform_override.tfvars"},
 	})
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	}
-	// 	test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-	// 		terraform.Destroy(t, terraformOptions)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, terraformOptions)
+		}
+		test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+			terraform.Destroy(t, terraformOptions)
+		})
+	}()
 
 	// // TODO: plan test for updates
 	// // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
@@ -219,7 +200,6 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	var ecrInitialImagesAmount int
 	test_structure.RunTestStage(t, "deploy_scraper_backend", func() {
 		terraform.InitAndApply(t, terraformOptions)
-		privateInstanceIPMongodb := terraform.Output(t, terraformOptions, "ec2_instance_mongodb_private_ip")
 		ecrInitialImagesAmount = getEcrImagesAmount(t, common_name, account_region)
 		fmt.Printf("\nInitial amount of images in ECR registry: %d\n", ecrInitialImagesAmount)
 		runGithubWorkflow(
@@ -231,7 +211,6 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 			account_name,
 			account_region,
 			common_name,
-			privateInstanceIPMongodb,
 			strconv.Itoa(ecs_task_desired_count),
 		)
 	})
@@ -274,7 +253,6 @@ func runGithubWorkflow(
 	account_name,
 	account_region,
 	common_name,
-	privateInstanceIPMongodb,
 	task_desired_count string,
 ) {
 
@@ -284,7 +262,6 @@ func runGithubWorkflow(
 		-f aws-account-name=%s \
 		-f aws-region=%s \
 		-f common-name=%s \
-		-f mongodb-adress=%s \
 		-f task-desired-count=%s || exit 1
 		`,
 		github_organization,
@@ -294,7 +271,6 @@ func runGithubWorkflow(
 		account_name,
 		account_region,
 		common_name,
-		privateInstanceIPMongodb,
 		task_desired_count,
 	)
 	bashCode += fmt.Sprintf(`

@@ -52,7 +52,7 @@ prepare-modules-vpc:
 		echo 'vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"' 	>> 	${VPC_PATH}/terraform_override.tfvars; \
 		echo 'common_tags={Region: "${AWS_REGION}"}' 										>> 	${VPC_PATH}/terraform_override.tfvars; \
 		echo 'vpc_cidr_ipv4="1.0.0.0/16"' 													>> 	${VPC_PATH}/terraform_override.tfvars; \
-		echo 'enable_nat=true' 																>> 	${VPC_PATH}/terraform_override.tfvars; \
+		echo 'enable_nat=false' 															>> 	${VPC_PATH}/terraform_override.tfvars; \
 		cd ${VPC_PATH}; \
 		terragrunt init; \
 		terragrunt apply -auto-approve; \

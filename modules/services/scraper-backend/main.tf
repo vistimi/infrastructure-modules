@@ -58,11 +58,28 @@
 # }
 
 module "dynamodb_table" {
-  source = "../../"
+  source   = "terraform-aws-modules/dynamodb-table/aws"
 
-  name                = "${var.common_name}-${var.dynamodb_table_picture_process_nameprimary_}"
-  hash_key            = var.dynamodb_table_picture_process_primary_key
-  range_key           = var.dynamodb_table_picture_process_sort_key
+  for_each   = {
+    for index, dt in var.dynamodb_tables:
+    dt.name => dt # Perfect, since DT names also need to be unique
+  }
+
+  # TODO: handle no sort key
+  name                = "${var.common_name}-${each.value.name}"
+  hash_key            = each.value.primary_key_name
+  range_key           = each.value.sort_key_name
+  attributes = [
+    {
+      name = each.value.primary_key_name
+      type = each.value.primary_key_type
+    },
+    {
+      name = each.value.sort_key_name
+      type = each.value.sort_key_type
+    },
+  ]
+
   billing_mode        = "PROVISIONED"
   read_capacity       = 5
   write_capacity      = 5
@@ -81,26 +98,6 @@ module "dynamodb_table" {
     target_value       = 45
     max_capacity       = 10
   }
-
-  autoscaling_indexes = {
-    TitleIndex = {
-      read_max_capacity  = 30
-      read_min_capacity  = 10
-      write_max_capacity = 30
-      write_min_capacity = 10
-    }
-  }
-
-  attributes = [
-    {
-      name = "ID"
-      type = "S"
-    },
-    {
-      name = "title"
-      type = "S"
-    },
-  ]
 
   tags = var.common_tags
 }
