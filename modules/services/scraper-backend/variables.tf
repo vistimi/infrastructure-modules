@@ -280,6 +280,18 @@ variable "health_check_path" {
   default     = "/"
 }
 
+# variable "aws_access_key" {
+#   description = "The public key for AWS"
+#   type        = string
+#   sensitive   = true
+# }
+
+# variable "aws_secret_key" {
+#   description = "The private key for AWS"
+#   type        = string
+#   sensitive   = true
+# }
+
 # ------------------------
 #     DynamoDB
 # ------------------------
@@ -319,16 +331,4 @@ variable "dynamodb_tables" {
 #   description = "Bash script arguments to pass to the bash script"
 #   type        = map(any)
 #   default     = {}
-# }
-
-# variable "aws_access_key" {
-#   description = "The public key for AWS"
-#   type        = string
-#   sensitive   = true
-# }
-
-# variable "aws_secret_key" {
-#   description = "The private key for AWS"
-#   type        = string
-#   sensitive   = true
 # }

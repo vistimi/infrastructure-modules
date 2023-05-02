@@ -44,7 +44,7 @@ prepare-account:
 	echo 'aws_account_id="${AWS_ID}"' 			>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
-	echo '}' 									>> 	${ROOT_PATH}/modules/account.hcl;
+	echo '}'									>> 	${ROOT_PATH}/modules/account.hcl;
 prepare-modules-vpc:
 	# remove the state file in the vpc folder to create a new one \
 	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
@@ -57,24 +57,47 @@ prepare-modules-vpc:
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
 	fi
-.SILENT: prepare-modules-data-mongodb
-prepare-modules-data-mongodb:
-	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
-	cd ${ROOT_PATH}/modules/data/mongodb; \
-	terragrunt init; 
+# .SILENT: prepare-modules-data-mongodb
+# prepare-modules-data-mongodb:
+# 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
+# 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
+# 	cd ${ROOT_PATH}/modules/data/mongodb; \
+# 	terragrunt init; 
 .SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
 	make load-config MODULE_PATH=modules/services/scraper-backend GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
+	make prepare-github \
+		GITHUB_REPO_ID=497233030 \
+		GITHUB_REPO_OWNER=KookaS \
+		GITHUB_REPO_NAME=scraper-backend \
+		GITHUB_ENV=KookaS \
+		GITHUB_SECRET_KEY=AWS_ACCESS_KEY \
+		GITHUB_SECRET_VALUE=${AWS_ACCESS_KEY}; \
+	make prepare-github \
+		GITHUB_REPO_ID=497233030 \
+		GITHUB_REPO_OWNER=KookaS \
+		GITHUB_REPO_NAME=scraper-backend \
+		GITHUB_ENV=KookaS \
+		GITHUB_SECRET_KEY=AWS_SECRET_KEY \
+		GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
 	cd ${ROOT_PATH}/modules/services/scraper-backend; \
 	terragrunt init;
-
+# .SILENT: load-config
 load-config:
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.yml ${GH_PATH}/config.yml; \
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.go ${GH_PATH}/config.go; \
-	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go; \
+	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go;
+.SILENT: prepare-github
+prepare-github:
+	gh api \
+		--method PUT \
+		-H "Accept: application/vnd.github+json" \
+		-f encrypted_value=${GITHUB_SECRET_VALUE} \
+		-f key_id=$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id) \
+		/repositories/${GITHUB_REPO_ID}/environments/${GITHUB_ENV}/secrets/${GITHUB_SECRET_KEY}
+
 
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc; \
@@ -93,6 +116,7 @@ clean-vpc:
 clean-old-vpc:
 	make nuke-old-region-vpc;
 
+
 OLD=4h
 # nuke: ## Nuke all resources
 # 	cloud-nuke aws;
@@ -109,6 +133,7 @@ nuke-old-region-exclude-vpc:
 nuke-old-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
+
 # it needs the tfstate files which are generated with apply
 graph:
 	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}//vpc/graph.png
@@ -120,6 +145,7 @@ graph-modules-services-scraper-backend: ## Generate the graph for the scraper ba
 	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-backend
 graph-modules-services-scraper-frontend: ## Generate the graph for the scraper frontend
 	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-frontend
+
 
 rover-vpc:
 	make rover-docker ROVER_MODULE=modules/vpc

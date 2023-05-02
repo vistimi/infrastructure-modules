@@ -113,11 +113,6 @@ RUN apk add -q --no-cache graphviz
 COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
 RUN inframap version
 
-# aws cli
-COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
-COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
-RUN aws --version
-
 # terraform
 COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
@@ -129,9 +124,6 @@ RUN terragrunt --version
 # tflint
 COPY --from=ghcr.io/terraform-linters/tflint:v0.43.0 /usr/local/bin/tflint /usr/local/bin/tflint
 RUN tflint --version
-
-# github cli
-RUN apk add --no-cache -q github-cli
 
 RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/fatih/gomodifytags@latest \
@@ -170,6 +162,14 @@ USER $USER_NAME
 #    RUNNER DEVCONTAINER
 #-------------------------
 FROM builder-final AS runner-devcontainer
+
+# github cli
+RUN apk add --no-cache -q github-cli
+
+# aws cli
+COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
+COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
+RUN aws --version
 
 #-------------------------
 #       RUNNER

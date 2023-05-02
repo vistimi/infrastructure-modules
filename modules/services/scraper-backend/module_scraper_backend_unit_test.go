@@ -62,7 +62,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	var dynamodb_tables []map[string]any
 	for _, db := range configYml.Databases {
 		dynamodb_tables = append(dynamodb_tables, map[string]any{
-			"name":        *db.Name,
+			"name":             *db.Name,
 			"primary_key_name": *db.PrimaryKeyName,
 			"primary_key_type": *db.PrimaryKeyType,
 			"sort_key_name":    *db.SortKeyName,
@@ -83,7 +83,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	ecs_task_container_s3_env_policy_name := fmt.Sprintf("%s-ecs-task-container-s3-env", common_name)
 	ecs_task_desired_count := 1
 	ecs_task_definition_image_tag := "latest"
-	env_file_name := "production.env"
+	env_file_name := "master.env"
 	cpu := 1024
 	memory := 950 // 982 when describe instance container
 	memory_reservation := 900
@@ -91,7 +91,7 @@ func Test_Unit_TerraformScraperBackend(t *testing.T) {
 	github_organization := "KookaS"
 	github_repository := "scraper-backend"
 	github_repository_id := "497233030"
-	github_branch := "production"
+	github_branch := "master"
 	health_check_path := "/healthz"
 
 	// options
@@ -422,7 +422,7 @@ func testEndpoints(t *testing.T, dnsURL, healthCheckPath string) {
 	instanceURL = dnsURL + "/tags/wanted"
 	tlsConfig = tls.Config{}
 	expectedStatus = 200
-	expectedBody = "null"
+	expectedBody = `[]` // empty dynamodb
 	maxRetries = 5
 	sleepBetweenRetries = 10 * time.Second
 	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)

@@ -142,6 +142,7 @@ In [Github](https://github.com/settings/personal-access-tokens/new):
 Content: Read-only
 
   Actions: Read and write
+  Contents: Read-only
   Environments: Read and write
   Metadata: Read-only
   Secrets: Read and write

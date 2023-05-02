@@ -1,4 +1,4 @@
-Pipeline flow:
+Pipeline flow deprecated:
 
 ```mermaid
 flowchart LR
