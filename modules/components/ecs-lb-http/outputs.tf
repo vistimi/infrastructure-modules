@@ -1,4 +1,8 @@
-# ASG
+output "vpc_tier_ids" {
+  value = data.aws_subnets.tier.ids
+  description = "IDs of the subnets selected"
+}
+
 output "autoscaling_group_name_on_demand" {
   value = module.asg["on-demand"].autoscaling_group_name
   # value       = aws_autoscaling_group.this["on-demand"].name

@@ -14,6 +14,11 @@ variable "vpc_security_group_ids" {
   type        = list(string)
 }
 
+variable "common_name" {
+  description = "The common part of the name used for all resources"
+  type        = string
+}
+
 variable "common_tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
@@ -21,32 +26,6 @@ variable "common_tags" {
 }
 
 # EC2
-variable "cluster_name" {
-  description = "The name of the EC2 cluster"
-  type        = string
-}
-
-# variable "server_port" {
-#   description = "The port of the server to forward the traffic to"
-#   type        = number
-# }
-
-# variable "health_check_path" {
-#   description = "The path to forward the traffic to"
-#   type        = string
-# }
-
-# variable "ami_name" {
-#   description = "The name of the AMI used for the EC2 instance"
-#   type        = string
-# }
-
-variable "ami_id" {
-  description = "The ID of the AMI used for the EC2 instance"
-  type        = string
-  default     = "ami-09d3b3274b6c5d4aa"
-}
-
 variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
@@ -57,16 +36,10 @@ variable "associate_public_ip_address" {
   type        = bool
 }
 
-variable "user_data_path" {
-  description = "Bash script path to run after creation of instance"
+variable "user_data" {
+  description = "The user data to provide when launching the instance. '#!/bin/bash\necho ECS_CLUSTER=my-cluster >> /etc/ecs/ecs.config' otherwise the instance will be launched in the default cluster"
   type        = string
-  default     = ""
-}
-
-variable "user_data_args" {
-  description = "Bash script arguments to pass to the bash script"
-  type        = map(any)
-  default     = {}
+  default     = null
 }
 
 variable "key_name" {
@@ -75,14 +48,19 @@ variable "key_name" {
   default     = null
 }
 
-variable "aws_access_key" {
-  description = "The public key for AWS"
+variable "ami_ssm_architecture_spot" {
+  description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  sensitive   = true
+  default     = "amazon-linux-2"
 }
 
-variable "aws_secret_key" {
-  description = "The private key for AWS"
-  type        = string
-  sensitive   = true
+variable "ami_ssm_name" {
+  description = "Map to select an optimized ami for the correct architecture"
+  type        = map(string)
+
+  default = {
+    amazon-linux-2       = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
+    amazon-linux-2-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
+    amazon-linux-2-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
+  }
 }

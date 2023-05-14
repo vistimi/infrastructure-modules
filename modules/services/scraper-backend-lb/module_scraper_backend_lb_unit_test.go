@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,12 +21,11 @@ import (
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_TerraformScraperFrontend(t *testing.T) {
+func Test_Unit_TerraformScraperBackend_LB(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
-	// init
-	bashCode := `terragrunt init;`
+	bashCode := `env;terragrunt init;`
 	command := test_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
@@ -35,6 +35,10 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 	// vpc variables
 	vpc_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
 	default_security_group_id := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
+	// nat_ids := terraform.OutputList(t, &terraform.Options{TerraformDir: "../../vpc"}, "nat_ids")
+	// if len(nat_ids) == 0 {
+	// 	t.Errorf("no NAT available")
+	// }
 
 	// global variables
 	id := randomID(8)
@@ -42,14 +46,53 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 	account_id := os.Getenv("AWS_ID")
 	account_region := os.Getenv("AWS_REGION")
 	project_name := "scraper"
-	service_name := "frontend"
+	service_name := "backend"
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", project_name, service_name, environment_name))
 
-	
+	// yml
+	path, err := filepath.Abs("config_override.yml")
+	if err != nil {
+		t.Error(err)
+	}
+	configYml, err := ReadConfigFile(path)
+	if err != nil {
+		t.Error(err)
+	}
+	var dynamodb_tables []map[string]any
+	for _, db := range configYml.Databases {
+		dynamodb_tables = append(dynamodb_tables, map[string]any{
+			"name":             *db.Name,
+			"primary_key_name": *db.PrimaryKeyName,
+			"primary_key_type": *db.PrimaryKeyType,
+			"sort_key_name":    *db.SortKeyName,
+			"sort_key_type":    *db.SortKeyType,
+		})
+	}
+	bucket_env_name := fmt.Sprintf("%s-env", *configYml.Buckets["env"].Name)
+
+	// end
+	listener_port := 80
+	listener_protocol := "HTTP"
+	target_port := 8080
+	target_protocol := "HTTP"
+	user_data := fmt.Sprintf("#!/bin/bash\necho ECS_CLUSTER=%s >> /etc/ecs/ecs.config;", common_name)
+
+	ecs_execution_role_name := fmt.Sprintf("%s-ecs-execution", common_name)
+	ecs_task_container_role_name := fmt.Sprintf("%s-ecs-task-container", common_name)
+	ecs_task_container_s3_env_policy_name := fmt.Sprintf("%s-ecs-task-container-s3-env", common_name)
+	ecs_task_desired_count := 1
+	ecs_task_definition_image_tag := "latest"
+	env_file_name := "master.env"
+	cpu := 1024
+	memory := 950 // 982 when describe instance container
+	memory_reservation := 900
+
 	github_organization := "KookaS"
-	github_repository := "scraper-frontend"
-	github_branch := "production"
+	github_repository := "scraper-backend"
+	// github_repository_id := "497233030"
+	github_branch := "master"
+	health_check_path := "/"
 
 	// options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -69,24 +112,73 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 				"Environment": environment_name,
 			},
 			"force_destroy": true,
+
+			"ecs_execution_role_name":                ecs_execution_role_name,
+			"ecs_task_container_role_name":           ecs_task_container_role_name,
+			"ecs_task_definition_image_tag":          ecs_task_definition_image_tag,
+			"ecs_task_container_s3_env_policy_name":  ecs_task_container_s3_env_policy_name,
+			"ecs_logs_retention_in_days":             1,
+			"listener_port":                          listener_port,
+			"listener_protocol":                      listener_protocol,
+			"target_port":                            target_port,
+			"target_protocol":                        target_protocol,
+			"target_capacity_cpu":                    70,
+			"capacity_provider_base":                 1,
+			"capacity_provider_weight_on_demand":     20,
+			"capacity_provider_weight_spot":          80,
+			"user_data":                              user_data,
+			"protect_from_scale_in":                  false,
+			"vpc_tier":                               "Public",
+			"instance_type_on_demand":                "t2.micro",
+			"min_size_on_demand":                     "1",
+			"max_size_on_demand":                     "2",
+			"desired_capacity_on_demand":             "1",
+			"minimum_scaling_step_size_on_demand":    "1",
+			"maximum_scaling_step_size_on_demand":    "1",
+			"ami_ssm_architecture_on_demand":         "amazon-linux-2",
+			"instance_type_spot":                     "t2.micro",
+			"min_size_spot":                          "0",
+			"max_size_spot":                          "2",
+			"desired_capacity_spot":                  "1",
+			"minimum_scaling_step_size_spot":         "1",
+			"maximum_scaling_step_size_spot":         "1",
+			"ami_ssm_architecture_spot":              "amazon-linux-2",
+			"ecs_task_definition_memory":             memory,
+			"ecs_task_definition_memory_reservation": memory_reservation,
+			"ecs_task_definition_cpu":                cpu,
+			"ecs_task_desired_count":                 ecs_task_desired_count,
+			"env_file_name":                          env_file_name,
+			"bucket_env_name":                        bucket_env_name,
+			"port_mapping": []map[string]any{
+				{
+					"hostPort":      target_port,
+					"protocol":      "tcp",
+					"containerPort": target_port,
+				},
+			},
+
+			"repository_image_keep_count": 1,
+			"health_check_path":           health_check_path,
+
+			"dynamodb_tables": dynamodb_tables,
 		},
 	})
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, terraformOptions)
-		}
-		test_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
-			terraform.Destroy(t, terraformOptions)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	}
+	// 	test_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+	// 		terraform.Destroy(t, terraformOptions)
+	// 	})
+	// }()
 
-	// TODO: plan test for updates
-	// https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
+	// // TODO: plan test for updates
+	// // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
 
 	var ecrInitialImagesAmount int
-	test_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
+	test_structure.RunTestStage(t, "deploy_scraper_backend", func() {
 		terraform.InitAndApply(t, terraformOptions)
 		ecrInitialImagesAmount = getEcrImagesAmount(t, common_name, account_region)
 		fmt.Printf("\nInitial amount of images in ECR registry: %d\n", ecrInitialImagesAmount)
@@ -99,7 +191,6 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 			account_name,
 			account_region,
 			common_name,
-			backend_dns,
 			strconv.Itoa(ecs_task_desired_count),
 		)
 	})
@@ -123,6 +214,7 @@ func Test_Unit_TerraformScraperFrontend(t *testing.T) {
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
 func randomID(n int) string {
 	b := make([]rune, n)
 	for i := range b {
@@ -141,7 +233,6 @@ func runGithubWorkflow(
 	account_name,
 	account_region,
 	common_name,
-	backend_dns,
 	task_desired_count string,
 ) {
 
@@ -151,7 +242,6 @@ func runGithubWorkflow(
 		-f aws-account-name=%s \
 		-f aws-region=%s \
 		-f common-name=%s \
-		-f backend-dns=%s \
 		-f task-desired-count=%s || exit 1
 		`,
 		github_organization,
@@ -161,7 +251,6 @@ func runGithubWorkflow(
 		account_name,
 		account_region,
 		common_name,
-		backend_dns,
 		task_desired_count,
 	)
 	bashCode += fmt.Sprintf(`
@@ -170,13 +259,17 @@ func runGithubWorkflow(
 	echo "Continue to check the status"
 	# while workflow status == in_progress, wait
 	workflowStatus="preparing"
+	i=0
 	while [ "${workflowStatus}" != "completed" ]
 	do
 		workflowStatus=$(gh run list --repo %s/%s --branch %s --workflow %s --limit 1 | awk '{print $1}')
 		echo $workflowStatus
 		if [[ $workflowStatus  =~ "could not find any workflows" ]]; then exit 1; fi
 		echo "Waiting for status workflow to complete: "${workflowStatus}
-		sleep 5s
+		sleep 10s
+
+		if [ $i -gt 30 ]; then exit 1; fi
+		i=$((i+1))
 	done
 	echo "Workflow finished: $workflowStatus"
 	sleep 10s
@@ -304,7 +397,17 @@ func testEndpoints(t *testing.T, dnsURL, healthCheckPath string) {
 	instanceURL := dnsURL + healthCheckPath
 	tlsConfig := tls.Config{}
 	expectedStatus := 200
-	options := http_helper.HttpGetOptions{Url: instanceURL, TlsConfig: &tlsConfig, Timeout: 10}
-	gotStatus, _ := http_helper.HttpGetWithOptions(t, options)
-	assert.Equal(t, expectedStatus, gotStatus, "The status of the request don't match")
+	expectedBody := `"ok"`
+	maxRetries := 3
+	sleepBetweenRetries := 10 * time.Second
+	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
+
+	// tags
+	instanceURL = dnsURL + "/tags/wanted"
+	tlsConfig = tls.Config{}
+	expectedStatus = 200
+	expectedBody = `[]` // empty dynamodb
+	maxRetries = 5
+	sleepBetweenRetries = 10 * time.Second
+	http_helper.HttpGetWithRetry(t, instanceURL, &tlsConfig, expectedStatus, expectedBody, maxRetries, sleepBetweenRetries)
 }

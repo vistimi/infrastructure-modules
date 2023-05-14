@@ -1,3 +1,8 @@
+output "available_zone_names" {
+  value       = data.aws_availability_zones.available.names
+  description = "Name of the availability zones available"
+}
+
 output "vpc_id" {
   value       = module.vpc.vpc_id
   description = "The ID of the VPC"

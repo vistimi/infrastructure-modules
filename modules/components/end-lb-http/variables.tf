@@ -55,7 +55,7 @@ variable "ecs_task_container_role_name" {
 }
 
 variable "ecs_task_definition_image_tag" {
-  description = "The tag of the image in the repository"
+  description = "The tag of the image in the ECR repository for deployment"
   type        = string
 }
 
@@ -162,7 +162,7 @@ variable "minimum_scaling_step_size_on_demand" {
 variable "ami_ssm_architecture_on_demand" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default     = "amazon-linux-2"
+  default = "amazon-linux-2"
 }
 
 variable "instance_type_spot" {
@@ -198,7 +198,7 @@ variable "minimum_scaling_step_size_spot" {
 variable "ami_ssm_architecture_spot" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default     = "amazon-linux-2"
+  default = "amazon-linux-2"
 }
 
 # ------------------------
@@ -254,81 +254,8 @@ variable "repository_image_keep_count" {
 # ------------------------
 #     Github
 # ------------------------
-variable "github_organization" {
-  description = "The name of the Github organization that contains the repo"
-  type        = string
-}
-
-variable "github_repository" {
-  description = "The name of the repository"
-  type        = string
-}
-
-variable "github_repository_id" {
-  description = "The ID of the repository"
-  type        = string
-}
-
-variable "github_branch" {
-  description = "The name of the branch"
-  type        = string
-}
-
 variable "health_check_path" {
   description = "The path for the healthcheck"
   type        = string
   default     = "/"
 }
-
-# variable "aws_access_key" {
-#   description = "The public key for AWS"
-#   type        = string
-#   sensitive   = true
-# }
-
-# variable "aws_secret_key" {
-#   description = "The private key for AWS"
-#   type        = string
-#   sensitive   = true
-# }
-
-# ------------------------
-#     DynamoDB
-# ------------------------
-variable "dynamodb_tables" {
-  description = "The mapping of the DynamoDB tables"
-  type = list(object({
-    name             = string
-    primary_key_name = string
-    primary_key_type = string
-    sort_key_name    = string
-    sort_key_type    = string
-  }))
-}
-
-# # ------------------------
-# #     MongoDB
-# # ------------------------
-
-# variable "ami_id" {
-#   description = "The ID of the AMI used for the EC2 instance"
-#   type        = string
-#   default     = "ami-09d3b3274b6c5d4aa"
-# }
-
-# variable "instance_type" {
-#   description = "The type of EC2 Instances to run (e.g. t2.micro)"
-#   type        = string
-# }
-
-# variable "user_data_path" {
-#   description = "Bash script path to run after creation of instance"
-#   type        = string
-#   default     = ""
-# }
-
-# variable "user_data_args" {
-#   description = "Bash script arguments to pass to the bash script"
-#   type        = map(any)
-#   default     = {}
-# }

@@ -209,7 +209,7 @@ terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "../",
 		// Variables to pass to our Terraform code using -var options
 		Vars: map[string]interface{}{
-			"aws_region": "us-east-1",
+			"aws_region": "us-west-1",
             ...
 		},
 		RetryableTerraformErrors: map[string]string{

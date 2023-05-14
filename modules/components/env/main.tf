@@ -41,10 +41,15 @@ data "aws_iam_policy_document" "bucket_policy" {
       "arn:aws:s3:::${var.bucket_name}",
     ]
 
+    # condition {
+    #   test     = "ArnEquals"
+    #   variable = "aws:SourceArn"
+    #   values   = var.source_arns
+    # }
     condition {
-      test     = "ArnEquals"
-      variable = "aws:SourceArn"
-      values   = var.source_arns
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:SourceVpce"
+      values   = ["${var.vpc_id}"]
     }
   }
 
@@ -61,10 +66,15 @@ data "aws_iam_policy_document" "bucket_policy" {
       "arn:aws:s3:::${var.bucket_name}/*",
     ]
 
+    # condition {
+    #   test     = "ArnEquals"
+    #   variable = "aws:SourceArn"
+    #   values   = var.source_arns
+    # }
     condition {
-      test     = "ArnEquals"
-      variable = "aws:SourceArn"
-      values   = var.source_arns
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:SourceVpce"
+      values   = ["${var.vpc_id}"]
     }
   }
 }

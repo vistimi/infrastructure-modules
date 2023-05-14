@@ -191,21 +191,6 @@ variable "ami_ssm_name" {
 }
 
 # Github
-variable "github_organization" {
-  description = "The name of the Github organization that contains the repo"
-  type        = string
-}
-
-variable "github_repository" {
-  description = "The name of the repository"
-  type        = string
-}
-
-variable "github_branch" {
-  description = "The name of the branch"
-  type        = string
-}
-
 variable "health_check_path" {
   description = "The path for the healthcheck"
   type        = string

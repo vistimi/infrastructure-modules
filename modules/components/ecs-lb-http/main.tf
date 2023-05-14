@@ -47,7 +47,7 @@ module "alb" {
       target_type      = "instance"
       health_check = {
         enabled             = true
-        interval            = 30
+        interval            = 5 // FIXME: make me longer
         path                = var.health_check_path
         port                = var.target_port
         healthy_threshold   = 3
@@ -90,7 +90,7 @@ module "ecs" {
     execute_command_configuration = {
       logging = "OVERRIDE"
       log_configuration = {
-        cloud_watch_log_group_name = aws_cloudwatch_log_group.ecs.name
+        cloud_watch_log_group_name = "/aws/ecs/${var.common_name}"
       }
     }
   }
@@ -148,12 +148,12 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
   }
 }
 
-resource "aws_cloudwatch_log_group" "ecs" {
-  name              = "/aws/ecs/${var.common_name}"
-  retention_in_days = var.ecs_logs_retention_in_days
+# resource "aws_cloudwatch_log_group" "ecs" {
+#   name              = "/aws/ecs/${var.common_name}"
+#   retention_in_days = var.ecs_logs_retention_in_days
 
-  tags = var.common_tags
-}
+#   tags = var.common_tags
+# }
 
 # ECS Service
 resource "aws_ecs_service" "this" {
@@ -181,7 +181,7 @@ resource "aws_ecs_service" "this" {
   }
 
   load_balancer {
-    target_group_arn = module.alb.target_group_arns[0] // works only for one container
+    target_group_arn = module.alb.target_group_arns[0] // one target group per LB
     container_name   = var.common_name
     container_port   = var.target_port
   }

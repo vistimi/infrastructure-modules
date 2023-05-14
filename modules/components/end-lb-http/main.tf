@@ -6,7 +6,7 @@ locals {
 #     ECS
 # ------------
 module "ecs" {
-  source = "../../components/ecs-http"
+  source = "../../components/ecs-lb-http"
 
   vpc_id                              = var.vpc_id
   vpc_security_group_ids              = var.vpc_security_group_ids
@@ -39,9 +39,6 @@ module "ecs" {
   maximum_scaling_step_size_spot      = var.maximum_scaling_step_size_spot
   minimum_scaling_step_size_spot      = var.minimum_scaling_step_size_spot
   ami_ssm_architecture_spot           = var.ami_ssm_architecture_spot
-  github_organization                 = var.github_organization
-  github_repository                   = var.github_repository
-  github_branch                       = var.github_branch
   health_check_path                   = var.health_check_path
   account_name                        = var.account_name
   account_region                      = var.account_region
@@ -160,11 +157,32 @@ resource "aws_ecs_task_definition" "service" {
       memory            = var.ecs_task_definition_memory
       memoryReservation = var.ecs_task_definition_memory_reservation
       cpu               = var.ecs_task_definition_cpu
+      logConfiguration : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "/aws/ec2/${var.common_name}",
+          "awslogs-region" : "${var.account_region}",
+          # "awslogs-create-group" : "true",
+          "awslogs-stream-prefix" : "/aws/ec2"
+        }
+      }
 
       image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.common_name}:${var.ecs_task_definition_image_tag}"
       essential = true
     }
   ])
+}
+
+resource "aws_cloudwatch_log_group" "container" {
+  name              = "/aws/ec2/${var.common_name}"
+  retention_in_days = var.ecs_logs_retention_in_days
+
+  tags = var.common_tags
+}
+
+resource "aws_cloudwatch_log_stream" "container" {
+  name           = "/aws/ec2/${var.common_name}"
+  log_group_name = aws_cloudwatch_log_group.container.name
 }
 
 # ------------
@@ -196,41 +214,3 @@ module "ecr" {
 
   tags = var.common_tags
 }
-
-# ------------------------
-#     Github secrets
-# ------------------------
-# resource "null_resource" "action_env_aws_access_key" {
-#   provisioner "local-exec" {
-#     command = "/bin/bash github.sh GH_REPO_ID=${var.github_repository_id} GH_ENV=${var.github_organization} GH_SECRET_KEY=\"AWS_ACCESS_KEY\" GH_SECRET_VALUE=${var.aws_access_key}"
-#   }
-# }
-
-# resource "null_resource" "action_env_aws_secret_key" {
-#   provisioner "local-exec" {
-#     command = "/bin/bash github.sh GH_REPO_ID=${var.github_repository_id} GH_ENV=${var.github_organization} GH_SECRET_KEY=\"AWS_SECRET_KEY\" GH_SECRET_VALUE=${var.aws_secret_key}"
-#   }
-# }
-
-# data "github_repository" "repo" {
-#   full_name = "${var.github_organization}/${var.github_repository}"
-# }
-
-# resource "github_repository_environment" "repo_environment" {
-#   repository  = var.github_repository
-#   environment = lower(var.account_name)
-# }
-
-# resource "github_actions_environment_secret" "aws_access_key" {
-#   repository      = var.github_repository
-#   environment     = github_repository_environment.repo_environment.environment
-#   secret_name     = "AWS_ACCESS_KEY_ID"
-#   plaintext_value = var.aws_access_key
-# }
-
-# resource "github_actions_environment_secret" "aws_secret_key" {
-#   repository      = var.github_repository
-#   environment     = github_repository_environment.repo_environment.environment
-#   secret_name     = "AWS_SECRET_ACCESS_KEY"
-#   plaintext_value = var.aws_secret_key
-# }

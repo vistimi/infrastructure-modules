@@ -65,39 +65,43 @@ prepare-modules-vpc:
 # 	terragrunt init; 
 .SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
-	make load-config MODULE_PATH=modules/services/scraper-backend GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
-	make prepare-github \
-		GITHUB_REPO_ID=497233030 \
-		GITHUB_REPO_OWNER=KookaS \
-		GITHUB_REPO_NAME=scraper-backend \
-		GITHUB_ENV=KookaS \
-		GITHUB_SECRET_KEY=AWS_ACCESS_KEY \
-		GITHUB_SECRET_VALUE=${AWS_ACCESS_KEY}; \
-	make prepare-github \
-		GITHUB_REPO_ID=497233030 \
-		GITHUB_REPO_OWNER=KookaS \
-		GITHUB_REPO_NAME=scraper-backend \
-		GITHUB_ENV=KookaS \
-		GITHUB_SECRET_KEY=AWS_SECRET_KEY \
-		GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
-	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/services/scraper-backend/terraform_override.tfvars; \
-	cd ${ROOT_PATH}/modules/services/scraper-backend; \
+	make load-config MODULE_PATH=modules/services/scraper-backend-lb GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
+	# make prepare-github \
+	# 	GITHUB_REPO_ID=497233030 \
+	# 	GITHUB_REPO_OWNER=KookaS \
+	# 	GITHUB_REPO_NAME=scraper-backend \
+	# 	GITHUB_ENV=KookaS \
+	# 	GITHUB_SECRET_KEY=AWS_ACCESS_KEY \
+	# 	GITHUB_SECRET_VALUE=${AWS_ACCESS_KEY}; \
+	# make prepare-github \
+	# 	GITHUB_REPO_ID=497233030 \
+	# 	GITHUB_REPO_OWNER=KookaS \
+	# 	GITHUB_REPO_NAME=scraper-backend \
+	# 	GITHUB_ENV=KookaS \
+	# 	GITHUB_SECRET_KEY=AWS_SECRET_KEY \
+	# 	GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
+	cd ${ROOT_PATH}/modules/services/scraper-backend-lb; \
 	terragrunt init;
 # .SILENT: load-config
 load-config:
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.yml ${GH_PATH}/config.yml; \
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.go ${GH_PATH}/config.go; \
 	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go;
-.SILENT: prepare-github
-prepare-github:
-	gh api \
-		--method PUT \
-		-H "Accept: application/vnd.github+json" \
-		-f encrypted_value=${GITHUB_SECRET_VALUE} \
-		-f key_id=$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id) \
-		/repositories/${GITHUB_REPO_ID}/environments/${GITHUB_ENV}/secrets/${GITHUB_SECRET_KEY}
-
+# .SILENT: prepare-github
+# prepare-github:
+	# gh api \
+	# 	--method PUT \
+	# 	-H "Accept: application/vnd.github+json" \
+	# 	-f encrypted_value='${GITHUB_SECRET_VALUE}' \
+	# 	-f key_id='$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id)' \
+	# 	/repositories/${GITHUB_REPO_ID}/environments/${GITHUB_ENV}/secrets/${GITHUB_SECRET_KEY}; \
+	# curl -L \
+	# 	-X PUT \
+	# 	-H "Accept: application/vnd.github+json" \
+	# 	-H "Authorization: Bearer ${GITHUB_TOKEN}"\
+	# 	-H "X-GitHub-Api-Version: 2022-11-28" \
+	# 	https://api.github.com/repositories/${GITHUB_REPO_ID}/environments/${GITHUB_ENV}/secrets/${GITHUB_SECRET_KEY} \
+	# 	-d '{"encrypted_value":${GITHUB_SECRET_VALUE},"key_id":"$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id)"}'
 
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc; \
@@ -115,7 +119,6 @@ clean-vpc:
 	fi
 clean-old-vpc:
 	make nuke-old-region-vpc;
-
 
 OLD=4h
 # nuke: ## Nuke all resources

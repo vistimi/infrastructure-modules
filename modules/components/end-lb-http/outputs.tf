@@ -1,4 +1,9 @@
 # ECS
+output "vpc_tier_ids" {
+  value = module.ecs.vpc_tier_ids
+  description = "IDs of the subnets selected"
+}
+
 output "autoscaling_group_name_on_demand" {
   value       = module.ecs.autoscaling_group_name_on_demand
   description = "The name of the Auto Scaling Group"
