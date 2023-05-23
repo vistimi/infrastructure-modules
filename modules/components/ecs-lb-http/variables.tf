@@ -9,7 +9,6 @@ variable "vpc_security_group_ids" {
   type        = list(string)
 }
 
-
 variable "common_name" {
   description = "The common part of the name used for all resources"
   type        = string
@@ -20,17 +19,6 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
-
-variable "account_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
-variable "account_name" {
-  description = "The Name of the AWS account"
-  type        = string
-}
-
 
 # ALB
 variable "listener_port" {
@@ -53,21 +41,68 @@ variable "target_protocol" {
   type        = string
 }
 
-# ECS
-variable "ecs_logs_retention_in_days" {
-  description = "The number of days to keep the logs in Cloudwatch"
+# ------------------------
+#     Task definition
+# ------------------------
+variable "ecs_task_definition_memory" {
+  description = "Amount (in MiB) of memory used by the task"
   type        = number
 }
 
-variable "task_definition_arn" {
-  description = "Family and revision (family:revision) or full ARN of the task definition that you want to run in your service"
-  type        = string
+variable "ecs_task_definition_memory_reservation" {
+  description = "Amount (in MiB) of memory reserved by the task"
+  type        = number
+}
+
+variable "ecs_task_definition_cpu" {
+  description = "Number of cpu units used by the task"
+  type        = number
 }
 
 variable "ecs_task_desired_count" {
   description = "Number of instances of the task definition"
   type        = string
 }
+
+variable "bucket_env_name" {
+  description = "The name of the S3 bucket to store the env file"
+  type        = string
+}
+
+variable "env_file_name" {
+  description = "The name of the env file used for the service docker"
+  type        = string
+}
+
+variable "port_mapping" {
+  description = "The mapping of the isntance ports towards the container ports"
+  type = list(object({
+    hostPort      = number
+    protocol      = string
+    containerPort = number
+  }))
+}
+
+variable "ecs_task_definition_image_tag" {
+  description = "The tag of the image in the ECR repository for deployment"
+  type        = string
+}
+
+# ECS
+variable "use_fargate" {
+  description = "Use Fargate or EC2"
+  type        = bool
+}
+
+variable "ecs_logs_retention_in_days" {
+  description = "The number of days to keep the logs in Cloudwatch"
+  type        = number
+}
+
+# variable "task_definition_arn" {
+#   description = "Family and revision (family:revision) or full ARN of the task definition that you want to run in your service"
+#   type        = string
+# }
 
 # ASG
 variable "target_capacity_cpu" {
@@ -140,7 +175,7 @@ variable "minimum_scaling_step_size_on_demand" {
 variable "ami_ssm_architecture_on_demand" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default = "amazon-linux-2"
+  default     = "amazon-linux-2"
 }
 
 variable "instance_type_spot" {
@@ -176,17 +211,17 @@ variable "minimum_scaling_step_size_spot" {
 variable "ami_ssm_architecture_spot" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default = "amazon-linux-2"
+  default     = "amazon-linux-2"
 }
 
 variable "ami_ssm_name" {
   description = "Map to select an optimized ami for the correct architecture"
-  type = map(string)
+  type        = map(string)
 
   default = {
-    amazon-linux-2 = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
+    amazon-linux-2       = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
     amazon-linux-2-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
-    amazon-linux-2-gpu = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
+    amazon-linux-2-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
   }
 }
 

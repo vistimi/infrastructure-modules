@@ -1,9 +1,4 @@
 # Global
-variable "account_id" {
-  description = "The ID of the AWS account"
-  type        = string
-}
-
 variable "bucket_name" {
   description = "The name of the bucket"
   type        = string
@@ -25,7 +20,8 @@ variable "force_destroy" {
   type        = bool
 }
 
-variable "source_arns" {
-  description = "The ARNs of the sources that have access to this bucket"
-  type        = list(string)
+variable "versioning" {
+  description = "Enable versioning"
+  type        = bool
+  default     = false
 }

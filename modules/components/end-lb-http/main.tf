@@ -1,23 +1,20 @@
-locals {
-  bucket_name = "${var.common_name}-env"
-}
-
 # ------------
 #     ECS
 # ------------
 module "ecs" {
   source = "../../components/ecs-lb-http"
 
-  vpc_id                              = var.vpc_id
-  vpc_security_group_ids              = var.vpc_security_group_ids
-  common_name                         = var.common_name
-  common_tags                         = var.common_tags
+  vpc_id                 = var.vpc_id
+  vpc_security_group_ids = var.vpc_security_group_ids
+  common_name            = var.common_name
+  common_tags            = var.common_tags
+
+  use_fargate                         = var.use_fargate
   listener_port                       = var.listener_port
   listener_protocol                   = var.listener_protocol
   target_port                         = var.target_port
   target_protocol                     = var.target_protocol
   ecs_logs_retention_in_days          = var.ecs_logs_retention_in_days
-  ecs_task_desired_count              = var.ecs_task_desired_count
   target_capacity_cpu                 = var.target_capacity_cpu
   capacity_provider_base              = var.capacity_provider_base
   capacity_provider_weight_on_demand  = var.capacity_provider_weight_on_demand
@@ -40,149 +37,15 @@ module "ecs" {
   minimum_scaling_step_size_spot      = var.minimum_scaling_step_size_spot
   ami_ssm_architecture_spot           = var.ami_ssm_architecture_spot
   health_check_path                   = var.health_check_path
-  account_name                        = var.account_name
-  account_region                      = var.account_region
 
-  task_definition_arn = aws_ecs_task_definition.service.arn
-}
-
-# Policies
-data "aws_iam_policy" "aws_ec2_full_access_policy" {
-  name = "AmazonEC2FullAccess"
-}
-
-data "aws_iam_policy" "aws_ecs_full_access_policy" {
-  name = "AmazonECS_FullAccess"
-}
-
-data "aws_iam_policy" "aws_ecs_task_execution_role_policy" {
-  name = "AmazonECSTaskExecutionRolePolicy"
-}
-
-data "aws_iam_policy_document" "ecs_task_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_policy" "ecs_task_s3_role_policy" {
-  name = var.ecs_task_container_s3_env_policy_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
-        Effect   = "Allow"
-        Resource = "arn:aws:s3:::${local.bucket_name}",
-      },
-      {
-        Action   = ["s3:GetObject"]
-        Effect   = "Allow"
-        Resource = "arn:aws:s3:::${local.bucket_name}/*",
-      },
-    ]
-  })
-}
-
-# The Amazon Resource Name (ARN) of the task execution role that grants the Amazon ECS container agent permission to make AWS API calls on your behalf.
-# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = var.ecs_execution_role_name
-
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
-  managed_policy_arns = [
-    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn,
-    aws_iam_policy.ecs_task_s3_role_policy.arn
-  ]
-
-  tags = var.common_tags
-}
-
-# The short name or full Amazon Resource Name (ARN) of the AWS Identity and Access Management role that grants containers in the task permission to call AWS APIs on your behalf.
-resource "aws_iam_role" "ecs_task_container_role" {
-  name = var.ecs_task_container_role_name
-
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
-  managed_policy_arns = [
-    data.aws_iam_policy.aws_ec2_full_access_policy.arn,
-    data.aws_iam_policy.aws_ecs_full_access_policy.arn,
-    aws_iam_policy.ecs_task_s3_role_policy.arn
-  ]
-
-  tags = var.common_tags
-}
-
-
-# ------------------------
-#     S3 env
-# ------------------------
-module "s3_env" {
-  source        = "../../components/env"
-  account_id    = var.account_id
-  bucket_name   = local.bucket_name
-  common_tags   = var.common_tags
-  vpc_id        = var.vpc_id
-  force_destroy = var.force_destroy
-  source_arns   = [module.ecs.ecs_service_arn]
-}
-
-# ------------------------
-#     Task definition
-# ------------------------
-resource "aws_ecs_task_definition" "service" {
-
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_container_role.arn
-  memory                   = var.ecs_task_definition_memory
-  cpu                      = var.ecs_task_definition_cpu
-  family                   = var.common_name
-  requires_compatibilities = ["EC2"]
-
-  container_definitions = jsonencode([
-    {
-      name = var.common_name
-      environmentFiles : [
-        {
-          "value" : "arn:aws:s3:::${var.common_name}-env/${var.env_file_name}",
-          "type" : "s3"
-        }
-      ]
-      portMappings : var.port_mapping
-      memory            = var.ecs_task_definition_memory
-      memoryReservation = var.ecs_task_definition_memory_reservation
-      cpu               = var.ecs_task_definition_cpu
-      logConfiguration : {
-        "logDriver" : "awslogs",
-        "options" : {
-          "awslogs-group" : "/aws/ec2/${var.common_name}",
-          "awslogs-region" : "${var.account_region}",
-          # "awslogs-create-group" : "true",
-          "awslogs-stream-prefix" : "/aws/ec2"
-        }
-      }
-
-      image     = "${var.account_id}.dkr.ecr.${var.account_region}.amazonaws.com/${var.common_name}:${var.ecs_task_definition_image_tag}"
-      essential = true
-    }
-  ])
-}
-
-resource "aws_cloudwatch_log_group" "container" {
-  name              = "/aws/ec2/${var.common_name}"
-  retention_in_days = var.ecs_logs_retention_in_days
-
-  tags = var.common_tags
-}
-
-resource "aws_cloudwatch_log_stream" "container" {
-  name           = "/aws/ec2/${var.common_name}"
-  log_group_name = aws_cloudwatch_log_group.container.name
+  ecs_task_definition_memory             = var.ecs_task_definition_memory
+  ecs_task_definition_memory_reservation = var.ecs_task_definition_memory_reservation
+  ecs_task_definition_cpu                = var.ecs_task_definition_cpu
+  ecs_task_desired_count                 = var.ecs_task_desired_count
+  bucket_env_name                        = var.bucket_env_name
+  env_file_name                          = var.env_file_name
+  port_mapping                           = var.port_mapping
+  ecs_task_definition_image_tag          = var.ecs_task_definition_image_tag
 }
 
 # ------------
@@ -213,4 +76,16 @@ module "ecr" {
   repository_image_tag_mutability = "MUTABLE"
 
   tags = var.common_tags
+}
+
+# ------------------------
+#     Bucket env
+# ------------------------
+module "bucket_env" {
+  source        = "../../data/bucket"
+  bucket_name   = var.bucket_env_name
+  common_tags   = var.common_tags
+  vpc_id        = var.vpc_id
+  force_destroy = var.force_destroy
+  versioning    = true
 }

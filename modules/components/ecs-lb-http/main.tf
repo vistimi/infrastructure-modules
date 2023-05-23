@@ -1,9 +1,20 @@
+data "aws_region" "current" {}
+data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
+
 locals {
   on_demand = "on-demand"
   spot      = "spot"
 
   capacity_on_demand = "${var.common_name}-${local.on_demand}"
   capacity_spot      = "${var.common_name}-${local.spot}"
+
+  log_prefix_ecs = "ecs"
+
+  account_id = data.aws_caller_identity.current.account_id
+  dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
+  partition  = data.aws_partition.current.partition  // aws
+  region     = data.aws_region.current.name
 }
 
 data "aws_subnets" "tier" {
@@ -17,7 +28,9 @@ data "aws_subnets" "tier" {
   }
 }
 
-# ALB
+#------------------
+#   ALB
+#------------------
 # https://github.com/terraform-aws-modules/terraform-aws-alb/blob/master/examples/complete-alb/main.tf
 # Cognito for authentication
 module "alb" {
@@ -29,25 +42,39 @@ module "alb" {
 
   vpc_id          = var.vpc_id
   subnets         = data.aws_subnets.tier.ids
-  security_groups = [module.alb_sg.security_group_id]
+  security_groups = [module.alb_sg.security_group_id] // TODO: add vpc security group
 
-  http_tcp_listeners = [
+  # access_logs = {
+  #   bucket = module.s3_logs_alb.s3_bucket_id
+  # }
+
+  http_tcp_listeners = var.listener_protocol == "HTTP" ? [
     {
       port               = var.listener_port
       protocol           = var.listener_protocol
       target_group_index = 0
     },
-  ]
+  ] : []
 
+  https_listeners = var.listener_protocol == "HTTPS" ? [
+    {
+      port     = var.listener_port
+      protocol = var.listener_protocol
+      # certificate_arn    = "arn:${local.partition}:iam::123456789012:server-certificate/test_cert-123456789012"
+      target_group_index = 0
+    }
+  ] : []
+
+  // forward listener to target
   target_groups = [
     {
       name             = var.common_name
       backend_protocol = var.target_protocol
       backend_port     = var.target_port
-      target_type      = "instance"
+      target_type      = var.use_fargate ? "ip" : "instance"
       health_check = {
         enabled             = true
-        interval            = 5 // FIXME: make me longer
+        interval            = 10
         path                = var.health_check_path
         port                = var.target_port
         healthy_threshold   = 3
@@ -56,6 +83,7 @@ module "alb" {
         protocol            = var.target_protocol
         matcher             = "200-399"
       }
+      # protocol_version = "HTTP1"
       tags = var.common_tags
     }
   ]
@@ -75,44 +103,593 @@ module "alb_sg" {
   vpc_id      = var.vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
-  ingress_rules       = ["http-80-tcp"]
-  egress_rules        = ["all-all"]
+  # ingress_rules       = ["http-80-tcp"] // TODO: use incoming port var
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = var.listener_port
+      to_port     = var.listener_port
+      protocol    = "tcp"
+      description = "Listner port"
+      cidr_blocks = "0.0.0.0/0"
+    },
+  ]
+  egress_rules = ["all-all"]
 
   tags = var.common_tags
 }
 
-# ECS cluster
-module "ecs" {
-  source = "terraform-aws-modules/ecs/aws"
+# resource "aws_iam_role" "alb" {
+#   name = "${var.common_name}-alb-logs"
+#   tags = var.common_tags
 
-  cluster_name = var.common_name
-  cluster_configuration = {
-    execute_command_configuration = {
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Action = "sts:AssumeRole",
+#         Principal = {
+#           Service = "ec2.amazonaws.com"
+#         },
+#         Effect = "Allow",
+#       },
+#     ]
+#   })
+# }
+
+# data "aws_iam_policy_document" "bucket_policy" {
+#   statement {
+#     principals {
+#       type        = "AWS"
+#       identifiers = [aws_iam_role.alb.arn]
+#     }
+
+#     actions = [
+#       "s3:ListBucket",
+#     ]
+
+#     resources = [
+#       "arn:${local.partition}:s3:::${var.common_name}-alb-logs",
+#     ]
+#   }
+# }
+
+# module "s3_logs_alb" {
+#   source = "terraform-aws-modules/s3-bucket/aws"
+
+#   bucket = "${var.common_name}-alb-logs"
+#   # acl           = "log-delivery-write"
+#   # acl           = "private"
+#   force_destroy = true
+
+#   versioning = {
+#     status     = true
+#     mfa_delete = false
+#   }
+
+#   # control_object_ownership = true
+#   # object_ownership = "ObjectWriter"
+
+#   control_object_ownership = true
+
+#   attach_policy                         = true
+#   policy                                = data.aws_iam_policy_document.bucket_policy.json
+#   attach_elb_log_delivery_policy        = true # Required for ALB logs
+#   attach_lb_log_delivery_policy         = true # Required for ALB/NLB logs
+#   attach_access_log_delivery_policy     = true
+#   attach_deny_insecure_transport_policy = true
+#   attach_require_latest_tls_policy      = true
+
+#   # access_log_delivery_policy_source_accounts = [data.aws_caller_identity.current.account_id]
+#   # access_log_delivery_policy_source_buckets  = ["arn:${local.partition}:s3:::${var.bucket_env_name}"]
+
+#   # logging = {
+#   #   target_bucket = module.log_bucket.s3_bucket_id
+#   #   target_prefix = "log/"
+#   # }
+
+#   # lifecycle_rule = [
+#   #   # {
+#   #   #   id      = "log"
+#   #   #   enabled = true
+
+#   #   #   # filter = {
+#   #   #   #   tags = {
+#   #   #   #     some    = "value"
+#   #   #   #     another = "value2"
+#   #   #   #   }
+#   #   #   # }
+
+#   #   #   transition = [
+#   #   #     {
+#   #   #       days          = 30
+#   #   #       storage_class = "ONEZONE_IA"
+#   #   #       }, {
+#   #   #       days          = 60
+#   #   #       storage_class = "GLACIER"
+#   #   #     }
+#   #   #   ]
+
+#   #   #   #        expiration = {
+#   #   #   #          days = 90
+#   #   #   #          expired_object_delete_marker = true
+#   #   #   #        }
+
+#   #   #   #        noncurrent_version_expiration = {
+#   #   #   #          newer_noncurrent_versions = 5
+#   #   #   #          days = 30
+#   #   #   #        }
+#   #   # },
+#   #   {
+#   #     id                                     = "log1"
+#   #     enabled                                = true
+#   #     abort_incomplete_multipart_upload_days = 7
+
+#   #     noncurrent_version_transition = [
+#   #       {
+#   #         days          = 30
+#   #         storage_class = "STANDARD_IA"
+#   #       },
+#   #       {
+#   #         days          = 60
+#   #         storage_class = "ONEZONE_IA"
+#   #       },
+#   #       {
+#   #         days          = 90
+#   #         storage_class = "GLACIER"
+#   #       },
+#   #     ]
+
+#   #     noncurrent_version_expiration = {
+#   #       days = 300
+#   #     }
+#   #   },
+#   #   # {
+#   #   #   id      = "log2"
+#   #   #   enabled = true
+
+#   #   #   filter = {
+#   #   #     prefix                   = "log1/"
+#   #   #     object_size_greater_than = 200000
+#   #   #     object_size_less_than    = 500000
+#   #   #     tags = {
+#   #   #       some    = "value"
+#   #   #       another = "value2"
+#   #   #     }
+#   #   #   }
+
+#   #   #   noncurrent_version_transition = [
+#   #   #     {
+#   #   #       days          = 30
+#   #   #       storage_class = "STANDARD_IA"
+#   #   #     },
+#   #   #   ]
+
+#   #   #   noncurrent_version_expiration = {
+#   #   #     days = 300
+#   #   #   }
+#   #   # },
+#   # ]
+
+#   # intelligent_tiering = {
+#   #   general = {
+#   #     status = "Enabled"
+#   #     filter = {
+#   #       prefix = "/"
+#   #       tags = {
+#   #         Environment = "dev"
+#   #       }
+#   #     }
+#   #     tiering = {
+#   #       ARCHIVE_ACCESS = {
+#   #         days = 180
+#   #       }
+#   #     }
+#   #   },
+#   #   documents = {
+#   #     status = false
+#   #     filter = {
+#   #       prefix = "documents/"
+#   #     }
+#   #     tiering = {
+#   #       ARCHIVE_ACCESS = {
+#   #         days = 125
+#   #       }
+#   #       DEEP_ARCHIVE_ACCESS = {
+#   #         days = 200
+#   #       }
+#   #     }
+#   #   }
+#   # }
+
+#   # metric_configuration = [
+#   #   {
+#   #     name = "documents"
+#   #     filter = {
+#   #       prefix = "documents/"
+#   #       tags = {
+#   #         priority = "high"
+#   #       }
+#   #     }
+#   #   },
+#   #   {
+#   #     name = "other"
+#   #     filter = {
+#   #       tags = {
+#   #         production = "true"
+#   #       }
+#   #     }
+#   #   },
+#   #   {
+#   #     name = "all"
+#   #   }
+#   # ]
+
+#   tags = var.common_tags
+# }
+
+#---------------
+#   Policies
+#---------------
+
+# Managed policies
+data "aws_iam_policy" "aws_ec2_full_access_policy" {
+  name = "AmazonEC2FullAccess"
+}
+
+data "aws_iam_policy" "aws_ecs_full_access_policy" {
+  name = "AmazonECS_FullAccess"
+}
+
+data "aws_iam_policy" "aws_ecs_task_execution_role_policy" {
+  name = "AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_policy" "ecs_task_logs" {
+  name = "${var.common_name}-ecs-task-container-logs"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+          "logs:PutRetentionPolicy",
+          "logs:CreateLogGroup"
+        ]
+        Effect   = "Allow"
+        Resource = "*" # "arn:${local.partition}:logs:*:*:*" # "arn:${local.partition}:logs:*:*:log-group:/${local.log_prefix_ecs}/*",
+      },
+      {
+        Action = [
+          "logs:GetLogEvents",
+          "logs:PutLogEvents"
+        ]
+        Effect   = "Allow"
+        Resource = "*" # "arn:${local.partition}:logs:*:*:*" # "arn:${local.partition}:logs:*:*:log-group:/${local.log_prefix_ecs}/*:log-stream:*",
+      },
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ecr" {
+  name = "${var.common_name}-ecr"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ecs_task_s3_role_policy" {
+  name = "${var.common_name}-ecs-task-container-s3-env"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.bucket_env_name}",
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.bucket_env_name}/*",
+      },
+      # {
+      #   "Action" : ["kms:GetPublicKey", "kms:GetKeyPolicy", "kms:DescribeKey"],
+      #   "Effect" : "Allow",
+      #   "Resource" : "*",
+      # }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ecs_service" {
+  name = "${var.common_name}-ecs-service"
+
+  description = "ECS service policy that allows Amazon ECS to make calls to your load balancer on your behalf"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ec2:Describe*",
+          "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+          "elasticloadbalancing:DeregisterTargets",
+          "elasticloadbalancing:Describe*",
+          "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+          "elasticloadbalancing:RegisterTargets"
+        ]
+        Effect   = "Allow"
+        Resource = "*",
+      },
+    ]
+  })
+}
+
+# Assume policies
+# data "aws_iam_policy_document" "ec2_instance_assume_role_policy" {
+#   statement {
+#     actions = ["sts:AssumeRole"]
+
+#     principals {
+#       type        = "Service"
+#       identifiers = ["ec2.amazonaws.com"]
+#     }
+#   }
+# }
+
+data "aws_iam_policy_document" "ecs_task_assume_role_policy" {
+  statement {
+    sid     = "ECSTaskExecutionAssumeRole"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.${local.dns_suffix}"]
+    }
+
+    # # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#create_task_iam_policy_and_role
+    # condition {
+    #   test     = "ArnLike"
+    #   variable = "aws:SourceArn"
+    #   values   = ["arn:${local.partition}:ecs:${local.region}:${local.account_id}:*"]
+    # }
+
+    # condition {
+    #   test     = "StringEquals"
+    #   variable = "aws:SourceAccount"
+    #   values   = [local.account_id]
+    # }
+  }
+}
+
+data "aws_iam_policy_document" "ecs_service_assume_role_policy" {
+  statement {
+    sid     = "ECSServiceAssumeRole"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs.${local.dns_suffix}"]
+    }
+  }
+}
+
+# Roles
+# The Amazon Resource Name (ARN) of the task execution role that grants the Amazon ECS container agent permission to make AWS API calls on your behalf.
+# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.common_name}-ecs-execution"
+
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
+  managed_policy_arns = [
+    data.aws_iam_policy.aws_ecs_task_execution_role_policy.arn,
+    aws_iam_policy.ecr.arn,
+    aws_iam_policy.ecs_task_s3_role_policy.arn,
+    aws_iam_policy.ecs_task_logs.arn,
+  ]
+
+  tags = var.common_tags
+}
+
+# The short name or full Amazon Resource Name (ARN) of the AWS Identity and Access Management role that grants containers in the task permission to call AWS APIs on your behalf.
+resource "aws_iam_role" "ecs_task_container_role" {
+  name = "${var.common_name}-ecs-task-container"
+
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role_policy.json
+  managed_policy_arns = [
+    data.aws_iam_policy.aws_ec2_full_access_policy.arn,
+    data.aws_iam_policy.aws_ecs_full_access_policy.arn,
+    aws_iam_policy.ecs_task_logs.arn,
+  ]
+
+  tags = var.common_tags
+}
+
+resource "aws_iam_role" "ecs_service_role" {
+  name = "${var.common_name}-ecs-service"
+
+  assume_role_policy = data.aws_iam_policy_document.ecs_service_assume_role_policy.json
+  managed_policy_arns = [
+    aws_iam_policy.ecs_service.arn,
+    aws_iam_policy.ecs_task_logs.arn,
+    aws_iam_policy.ecs_task_s3_role_policy.arn, // FIXME: remove me
+  ]
+
+  tags = var.common_tags
+}
+
+// TODO: check roles
+// https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/v5.0.1/modules/service/main.tf
+
+# ------------------------
+#     Task definition (EC2, Fargate)
+# ------------------------
+resource "aws_ecs_task_definition" "service" {
+
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_container_role.arn
+  memory                   = var.ecs_task_definition_memory
+  cpu                      = var.ecs_task_definition_cpu
+  family                   = var.common_name
+  requires_compatibilities = var.use_fargate ? ["FARGATE"] : ["EC2"]
+  network_mode             = var.use_fargate ? "awsvpc" : "bridge"
+
+  container_definitions = jsonencode([
+    {
+      name = var.common_name
+      environmentFiles : [
+        {
+          "value" : "arn:${local.partition}:s3:::${var.bucket_env_name}/${var.env_file_name}",
+          "type" : "s3"
+        }
+      ]
+
+      portMappings : var.port_mapping
+      memory            = var.ecs_task_definition_memory
+      memoryReservation = var.ecs_task_definition_memory_reservation
+      cpu               = var.ecs_task_definition_cpu
+      logConfiguration : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : aws_cloudwatch_log_group.cluster.name
+          "awslogs-region" : "${local.region}",
+          "awslogs-stream-prefix" : "/${local.log_prefix_ecs}"
+        }
+      }
+
+      runtime_platform = var.use_fargate ? {
+        "operatingSystemFamily" : "LINUX",
+        "cpuArchitecture" : "X86_64" // "ARM64"
+      } : null                       // TODO: only for var.ami_ssm_architecture linux
+
+      image     = "${local.account_id}.dkr.ecr.${local.region}.${local.dns_suffix}/${var.common_name}:${var.ecs_task_definition_image_tag}"
+      essential = true
+    }
+  ])
+}
+
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/${local.log_prefix_ecs}/${var.common_name}"
+  retention_in_days = var.ecs_logs_retention_in_days
+
+  tags = var.common_tags
+}
+
+#-----------------
+#   ECS (EC2, Fargate)
+#-----------------
+resource "aws_ecs_cluster" "this" {
+  name = var.common_name
+
+  configuration {
+    execute_command_configuration {
       logging = "OVERRIDE"
-      log_configuration = {
-        cloud_watch_log_group_name = "/aws/ecs/${var.common_name}"
+
+      log_configuration {
+        cloud_watch_encryption_enabled = true
+        cloud_watch_log_group_name     = aws_cloudwatch_log_group.cluster.name
       }
     }
   }
-  default_capacity_provider_use_fargate = false
+}
+
+resource "aws_ecs_service" "this" {
+  name    = var.common_name
+  cluster = aws_ecs_cluster.this.id
+
+  desired_count           = var.ecs_task_desired_count // TODO: set to 0 because update in workflow
+  enable_ecs_managed_tags = true
+
+  iam_role = var.use_fargate ? null : aws_iam_role.ecs_service_role.arn
+
+  launch_type = var.use_fargate ? "FARGATE" : "EC2"
+  network_configuration {
+    subnets          = data.aws_subnets.tier.ids
+    assign_public_ip = true // if private subnets, use NAT
+    security_groups  = [module.service_sg.security_group_id]
+  }
+
+  force_new_deployment = true
+  triggers = {
+    redeployment = timestamp()
+  }
+
+  load_balancer {
+    target_group_arn = module.alb.target_group_arns[0] // one LB per target group
+    container_name   = var.common_name
+    container_port   = var.target_port
+  }
+
+  task_definition = aws_ecs_task_definition.service.arn
+
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
+  }
+}
+
+module "service_sg" {
+  source = "terraform-aws-modules/security-group/aws"
+
+  name        = "${var.common_name}-sg-service"
+  description = "Security group for Service within VPC"
+  vpc_id      = var.vpc_id
+
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = var.target_port
+      to_port     = var.target_port
+      protocol    = "tcp"
+      description = "Target port"
+      cidr_blocks = "0.0.0.0/0"
+    },
+  ]
+  # computed_ingress_with_source_security_group_id = [
+  #   {
+  #     rule = "all-all"
+  #     # rule                     = "https-443-tcp"
+  #     source_security_group_id = module.alb_sg.security_group_id
+  #   }
+  # ]
+  # number_of_computed_ingress_with_source_security_group_id = 1
+  egress_rules = ["all-all"]
 
   tags = var.common_tags
 }
 
 resource "aws_ecs_capacity_provider" "this" {
   for_each = {
-    on-demand = {
-      key_name                  = local.on_demand
-      name                      = local.capacity_on_demand
-      maximum_scaling_step_size = var.maximum_scaling_step_size_on_demand
-      minimum_scaling_step_size = var.minimum_scaling_step_size_on_demand
-    },
-    spot = {
-      key_name                  = local.spot
-      name                      = local.capacity_spot
-      maximum_scaling_step_size = var.maximum_scaling_step_size_spot
-      minimum_scaling_step_size = var.minimum_scaling_step_size_spot
-    }
+    for key, value in {
+      on-demand = {
+        key_name                  = local.on_demand
+        name                      = local.capacity_on_demand
+        maximum_scaling_step_size = var.maximum_scaling_step_size_on_demand
+        minimum_scaling_step_size = var.minimum_scaling_step_size_on_demand
+      },
+      spot = {
+        key_name                  = local.spot
+        name                      = local.capacity_spot
+        maximum_scaling_step_size = var.maximum_scaling_step_size_spot
+        minimum_scaling_step_size = var.minimum_scaling_step_size_spot
+      }
+    } : key => value
+    if !var.use_fargate
   }
 
   name = each.value.name
@@ -132,68 +709,25 @@ resource "aws_ecs_capacity_provider" "this" {
 }
 
 resource "aws_ecs_cluster_capacity_providers" "this" {
-  cluster_name       = module.ecs.cluster_name
-  capacity_providers = [aws_ecs_capacity_provider.this[local.on_demand].name, aws_ecs_capacity_provider.this[local.spot].name]
+  cluster_name       = aws_ecs_cluster.this.id
+  capacity_providers = var.use_fargate ? ["FARGATE", "FARGATE_SPOT"] : [aws_ecs_capacity_provider.this[local.on_demand].name, aws_ecs_capacity_provider.this[local.spot].name]
 
   default_capacity_provider_strategy {
     base              = var.capacity_provider_base
     weight            = var.capacity_provider_weight_spot
-    capacity_provider = aws_ecs_capacity_provider.this[local.spot].name
+    capacity_provider = var.use_fargate ? "FARGATE_SPOT" : aws_ecs_capacity_provider.this[local.spot].name
   }
 
   default_capacity_provider_strategy {
     base              = null
     weight            = var.capacity_provider_weight_on_demand
-    capacity_provider = aws_ecs_capacity_provider.this[local.on_demand].name
+    capacity_provider = var.use_fargate ? "FARGATE" : aws_ecs_capacity_provider.this[local.on_demand].name
   }
 }
 
-# resource "aws_cloudwatch_log_group" "ecs" {
-#   name              = "/aws/ecs/${var.common_name}"
-#   retention_in_days = var.ecs_logs_retention_in_days
-
-#   tags = var.common_tags
-# }
-
-# ECS Service
-resource "aws_ecs_service" "this" {
-  name    = var.common_name
-  cluster = module.ecs.cluster_id
-
-  desired_count           = var.ecs_task_desired_count
-  enable_ecs_managed_tags = true
-
-  capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.this[local.spot].name
-    base              = var.capacity_provider_base
-    weight            = var.capacity_provider_weight_spot
-  }
-
-  capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.this[local.on_demand].name
-    base              = null
-    weight            = var.capacity_provider_weight_on_demand
-  }
-
-  force_new_deployment = true
-  triggers = {
-    redeployment = timestamp()
-  }
-
-  load_balancer {
-    target_group_arn = module.alb.target_group_arns[0] // one target group per LB
-    container_name   = var.common_name
-    container_port   = var.target_port
-  }
-
-  task_definition = var.task_definition_arn
-
-  lifecycle {
-    ignore_changes = [task_definition, desired_count]
-  }
-}
-
-# ASG
+#--------------------
+#     ASG (EC2)
+#--------------------
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
 data "aws_ssm_parameter" "ecs_optimized_ami" {
   for_each = {
@@ -212,42 +746,45 @@ module "asg" {
   source = "terraform-aws-modules/autoscaling/aws"
 
   for_each = {
-    on-demand = {
-      key_name                = local.on_demand
-      instance_type           = var.instance_type_on_demand
-      min_size                = var.min_size_on_demand
-      max_size                = var.max_size_on_demand
-      desired_capacity        = var.desired_capacity_on_demand
-      image_id                = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["on-demand"].value)["image_id"]
-      instance_market_options = {}
-      tag_specifications = [
-        {
-          resource_type = "instance"
-          tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
-        }
-      ]
-    }
-    spot = {
-      key_name         = local.spot
-      instance_type    = var.instance_type_spot
-      min_size         = var.min_size_spot
-      max_size         = var.max_size_spot
-      desired_capacity = var.desired_capacity_spot
-      image_id         = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["spot"].value)["image_id"]
-      instance_market_options = {
-        market_type = "spot"
+    for key, value in {
+      on-demand = {
+        key_name                = local.on_demand
+        instance_type           = var.instance_type_on_demand
+        min_size                = var.min_size_on_demand
+        max_size                = var.max_size_on_demand
+        desired_capacity        = var.desired_capacity_on_demand
+        image_id                = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["on-demand"].value)["image_id"]
+        instance_market_options = {}
+        tag_specifications = [
+          {
+            resource_type = "instance"
+            tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
+          }
+        ]
       }
-      tag_specifications = [
-        {
-          resource_type = "instance"
-          tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
-        },
-        {
-          resource_type = "spot-instances-request"
-          tags          = merge(var.common_tags, { Name = "${var.common_name}-spot-instance-request" })
+      spot = {
+        key_name         = local.spot
+        instance_type    = var.instance_type_spot
+        min_size         = var.min_size_spot
+        max_size         = var.max_size_spot
+        desired_capacity = var.desired_capacity_spot
+        image_id         = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami["spot"].value)["image_id"]
+        instance_market_options = {
+          market_type = "spot"
         }
-      ]
-    }
+        tag_specifications = [
+          {
+            resource_type = "instance"
+            tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
+          },
+          {
+            resource_type = "spot-instances-request"
+            tags          = merge(var.common_tags, { Name = "${var.common_name}-spot-instance-request" })
+          }
+        ]
+      }
+    } : key => value
+    if !var.use_fargate
   }
 
   instance_type           = each.value.instance_type
@@ -274,19 +811,22 @@ module "asg" {
   ebs_optimized               = false # optimized ami does not support ebs_optimized
   # key_name = null
 
-  create_iam_instance_profile = true
-  iam_role_name               = var.common_name
-  iam_role_path               = "/ec2/"
-  iam_role_description        = "ASG role for ${var.common_name}"
+  # create_iam_instance_profile = true
+  iam_instance_profile_arn = aws_iam_instance_profile.ssm.arn
+
+  iam_role_name        = var.common_name
+  iam_role_path        = "/ec2/"
+  iam_role_description = "ASG role for ${var.common_name}"
   iam_role_policies = {
-    AmazonEC2ContainerServiceforEC2Role = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-    # AmazonSSMManagedInstanceCore        = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    AmazonEC2ContainerServiceforEC2Role = "arn:${local.partition}:iam::${local.partition}:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+    AmazonSSMManagedInstanceCore        = "arn:${local.partition}:iam::${local.partition}:policy/AmazonSSMManagedInstanceCore"
+    Logs                                = aws_iam_policy.ecs_task_logs.arn // FIXME: remove
   }
-  iam_role_tags = {}
+  iam_role_tags = var.common_tags
 
   vpc_zone_identifier     = data.aws_subnets.tier.ids
   health_check_type       = "EC2"
-  target_group_arns       = module.alb.target_group_arns
+  target_group_arns       = module.alb[*].target_group_arns
   security_groups         = [module.autoscaling_sg.security_group_id]
   service_linked_role_arn = aws_iam_service_linked_role.autoscaling.arn
   user_data               = base64encode(var.user_data)
@@ -422,7 +962,7 @@ module "asg" {
 }
 
 resource "aws_iam_service_linked_role" "autoscaling" {
-  aws_service_name = "autoscaling.amazonaws.com"
+  aws_service_name = "autoscaling.${local.dns_suffix}"
   description      = "A service linked role for autoscaling"
   custom_suffix    = var.common_name
 
@@ -438,18 +978,121 @@ module "autoscaling_sg" {
   source = "terraform-aws-modules/security-group/aws"
 
   name        = "${var.common_name}-sg-as"
-  description = "Autoscaling group security group"
+  description = "Autoscaling group security group" # "Security group with HTTP port open for everyone, and HTTPS open just for the default security group"
   vpc_id      = var.vpc_id
 
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+
+  // only accept incoming traffic from load balancer 
   computed_ingress_with_source_security_group_id = [
     {
-      rule                     = "all-all"
+      rule = "all-all"
+      # rule                     = "https-443-tcp"
       source_security_group_id = module.alb_sg.security_group_id
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
-
-  egress_rules = ["all-all"]
+  egress_rules                                             = ["all-all"]
 
   tags = var.common_tags
 }
+
+resource "aws_iam_instance_profile" "ssm" {
+  name = "${var.common_name}-ssm"
+  role = aws_iam_role.ssm.name
+  tags = var.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm" {
+  for_each = toset([
+    # "arn:${local.partition}:iam::${local.partition}:policy/AmazonEC2FullAccess", 
+    # "arn:${local.partition}:iam::${local.partition}:policy/AmazonS3FullAccess",
+    "arn:${local.partition}:iam::${local.partition}:policy/service-role/AmazonEC2RoleforSSM",
+    "arn:${local.partition}:iam::${local.partition}:policy/CloudWatchAgentServerPolicy"
+  ])
+
+  role       = aws_iam_role.ssm.name
+  policy_arn = each.value
+}
+
+resource "aws_iam_role_policy" "ssm" {
+  name = "EC2-Inline-Policy"
+  role = aws_iam_role.ssm.id
+  policy = jsonencode(
+    {
+      "Version" : "2012-10-17",
+      "Statement" : [
+        {
+          "Effect" : "Allow",
+          "Action" : [
+            "ssm:GetParameter"
+          ],
+          "Resource" : "*"
+        }
+      ]
+    }
+  )
+}
+
+resource "aws_iam_role" "ssm" {
+  name = "${var.common_name}-ssm"
+  tags = var.common_tags
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Principal = {
+          Service = "ec2.${local.dns_suffix}"
+        }
+        Effect = "Allow"
+      },
+      # {
+      #   Action = [
+      #     "logs:CreateLogStream",
+      #     "logs:PutLogEvents",
+      #     "logs:DescribeLogStreams",
+      #     "logs:PutRetentionPolicy",
+      #     "logs:CreateLogGroup"
+      #   ]
+      #   Effect   = "Allow"
+      #   Resource = "arn:${local.partition}:logs:*:*:*" # "arn:${local.partition}:logs:*:*:log-group:/${local.log_prefix_ecs}/*",
+      # },
+      # {
+      #   Action = [
+      #     "logs:GetLogEvents",
+      #     "logs:PutLogEvents"
+      #   ]
+      #   Effect   = "Allow"
+      #   Resource = "arn:${local.partition}:logs:*:*:*" # "arn:${local.partition}:logs:*:*:log-group:/${local.log_prefix_ecs}/*:log-stream:*",
+      # },
+    ]
+  })
+}
+
+# module "s3_logs_instance" {
+#   source = "terraform-aws-modules/s3-bucket/aws"
+
+#   bucket = "${var.common_name}-instance-logs"
+#   # acl    = "private"
+#   acl = "log-delivery-write"
+
+#   versioning = {
+#     enabled = false
+#   }
+
+#   # control_object_ownership = true
+#   # object_ownership = "ObjectWriter"
+
+#   force_destroy = true
+
+#   tags = merge(var.common_tags)
+# }
+
+# resource "aws_ssm_parameter" "cw_agent" {
+#   description = "Cloudwatch agent config to configure custom log"
+#   name        = "${var.common_name}-cw-agent"
+#   type        = "String"
+#   value       = file("cw_agent_config.json")
+# }

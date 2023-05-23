@@ -4,14 +4,13 @@
 module "end" {
   source = "../../components/end-lb-http"
 
-  vpc_id                                 = var.vpc_id
-  vpc_tier                               = var.vpc_tier
-  vpc_security_group_ids                 = var.vpc_security_group_ids
-  common_name                            = var.common_name
-  common_tags                            = var.common_tags
-  account_name                           = var.account_name
-  account_region                         = var.account_region
-  account_id                             = var.account_id
+  vpc_id                 = var.vpc_id
+  vpc_tier               = var.vpc_tier
+  vpc_security_group_ids = var.vpc_security_group_ids
+  common_name            = var.common_name
+  common_tags            = var.common_tags
+
+  use_fargate                            = var.use_fargate
   ecs_task_definition_image_tag          = var.ecs_task_definition_image_tag
   listener_port                          = var.listener_port
   listener_protocol                      = var.listener_protocol
@@ -38,9 +37,6 @@ module "end" {
   maximum_scaling_step_size_spot         = var.maximum_scaling_step_size_spot
   minimum_scaling_step_size_spot         = var.minimum_scaling_step_size_spot
   ami_ssm_architecture_spot              = var.ami_ssm_architecture_spot
-  ecs_execution_role_name                = var.ecs_execution_role_name
-  ecs_task_container_role_name           = var.ecs_task_container_role_name
-  ecs_task_container_s3_env_policy_name  = var.ecs_task_container_s3_env_policy_name
   ecs_task_definition_memory             = var.ecs_task_definition_memory
   ecs_task_definition_memory_reservation = var.ecs_task_definition_memory_reservation
   ecs_task_definition_cpu                = var.ecs_task_definition_cpu
@@ -53,8 +49,11 @@ module "end" {
   env_file_name                          = var.env_file_name
 }
 
+# ------------------------
+#     Dynamodb tables
+# ------------------------
 module "dynamodb_table" {
-  source = "terraform-aws-modules/dynamodb-table/aws"
+  source = "../../data/dynamodb"
 
   for_each = {
     for index, dt in var.dynamodb_tables :
@@ -62,38 +61,24 @@ module "dynamodb_table" {
   }
 
   # TODO: handle no sort key
-  name      = "${var.common_name}-${each.value.name}"
-  hash_key  = each.value.primary_key_name
-  range_key = each.value.sort_key_name
-  attributes = [
-    {
-      name = each.value.primary_key_name
-      type = each.value.primary_key_type
-    },
-    {
-      name = each.value.sort_key_name
-      type = each.value.sort_key_type
-    },
-  ]
+  table_name       = "${var.common_name}-${each.value.name}"
+  primary_key_name = each.value.primary_key_name
+  primary_key_type = each.value.primary_key_type
+  sort_key_name    = each.value.sort_key_name
+  sort_key_type    = each.value.sort_key_type
+  autoscaling      = var.dynamodb_autoscaling
 
-  billing_mode        = "PROVISIONED"
-  read_capacity       = 5
-  write_capacity      = 5
-  autoscaling_enabled = true
+  common_tags = var.common_tags
+}
 
-  autoscaling_read = {
-    scale_in_cooldown  = 50
-    scale_out_cooldown = 40
-    target_value       = 45
-    max_capacity       = 10
-  }
-
-  autoscaling_write = {
-    scale_in_cooldown  = 50
-    scale_out_cooldown = 40
-    target_value       = 45
-    max_capacity       = 10
-  }
-
-  tags = var.common_tags
+# ------------------------
+#     Bucket picture
+# ------------------------
+module "bucket_picture" {
+  source        = "../../data/bucket"
+  bucket_name   = var.bucket_picture_name
+  common_tags   = var.common_tags
+  vpc_id        = var.vpc_id
+  force_destroy = var.force_destroy
+  versioning    = true
 }

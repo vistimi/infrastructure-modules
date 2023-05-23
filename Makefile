@@ -20,6 +20,9 @@ GH_ORG=KookaS
 ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
+# silent all commands below
+.SILENT:
+
 fmt: ## Format all files
 	terraform fmt -recursive
 
@@ -30,13 +33,14 @@ test: ## Setup the test environment, run the tests and clean the environment
 	cd ${ROOT_PATH}; \
 	go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
+test-clean-cache:
+	go clean -testcache;
 
 prepare: ## Setup the test environment
 	make prepare-account; \
 	make prepare-modules-data-mongodb; \
 	make prepare-modules-vpc; \
 	make prepare-modules-services-scraper-backend;
-.SILENT: prepare-account
 prepare-account:
 	echo 'locals {' 							> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
@@ -57,13 +61,6 @@ prepare-modules-vpc:
 		terragrunt init; \
 		terragrunt apply -auto-approve; \
 	fi
-# .SILENT: prepare-modules-data-mongodb
-# prepare-modules-data-mongodb:
-# 	echo 'aws_access_key="${AWS_ACCESS_KEY}"' > 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
-# 	echo 'aws_secret_key="${AWS_SECRET_KEY}"' >> 	${ROOT_PATH}/modules/data/mongodb/terraform_override.tfvars; \
-# 	cd ${ROOT_PATH}/modules/data/mongodb; \
-# 	terragrunt init; 
-.SILENT: prepare-modules-services-scraper-backend
 prepare-modules-services-scraper-backend:
 	make load-config MODULE_PATH=modules/services/scraper-backend-lb GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
 	# make prepare-github \
@@ -82,13 +79,11 @@ prepare-modules-services-scraper-backend:
 	# 	GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
 	cd ${ROOT_PATH}/modules/services/scraper-backend-lb; \
 	terragrunt init;
-# .SILENT: load-config
 load-config:
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.yml ${GH_PATH}/config.yml; \
 	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.go ${GH_PATH}/config.go; \
-	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go;
-# .SILENT: prepare-github
-# prepare-github:
+	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go;	# add package name to go file
+prepare-github:
 	# gh api \
 	# 	--method PUT \
 	# 	-H "Accept: application/vnd.github+json" \
@@ -105,18 +100,32 @@ load-config:
 
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc; \
-	make clean-vpc;
+	make clean-vpc; \
+
+	echo "Deleting cloudwatch alarms..."; for alarmName in $(aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do aws cloudwatch delete-alarms --alarm-names $alarmName; done; \
+
+	echo "Diregistring task definitions..."; for taskDefinition in $(aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]'); do aws ecs deregister-task-definition --task-definition $taskDefinition --query 'taskDefinition.taskDefinitionArn'; done; \
+
+	# echo "Deleting task definitions..."; for taskDefinition in $(aws ecs list-task-definitions --status INACTIVE --query 'taskDefinitionArns[]'); do aws ecs delete-task-definitions --task-definition $taskDefinition --query 'taskDefinition.taskDefinitionArn'; done; \
+
+	echo "Delete registries..."; for repositoryName in $(aws ecr describe-repositories --query 'repositories[].repositoryName'); do aws ecr delete-repository --repository-name $repositoryName --force --query 'repository.repositoryName'; done;
+
+	echo "Deleteing state files..."; for filePath in $(find . -type f -name "*.tfstate"); do echo $filePath; rm $filePath; done; \
+	echo "Deleteing override files..."; for filePath in $(find . -type f -name "*_override.*"); do echo $filePath; rm $filePath; done;
+
 clean-old: ## Clean the test environment that is old
 	make nuke-old-region-exclude-vpc; \
 	make clean-old-vpc;
 clean-vpc:
-	if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
-		make nuke-region-vpc; \
-	else \
-		cd ${VPC_PATH}; \
-		terragrunt destroy -auto-approve; \
-		rm ${VPC_PATH}/terraform.tfstate; \
-	fi
+	# if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
+	# 	make nuke-region-vpc; \
+	# else \
+	# 	echo "Deleting network acl..."; for networkAclId in $(aws ec2 describe-network-acls --query 'NetworkAcls[].NetworkAclId'); do aws ec2 delete-network-acl --network-acl-id $networkAclId; done; \
+	# 	cd ${VPC_PATH}; \
+	# 	terragrunt destroy -auto-approve; \
+	# 	rm ${VPC_PATH}/terraform.tfstate; \
+	# fi
+	make nuke-region-vpc;
 clean-old-vpc:
 	make nuke-old-region-vpc;
 
@@ -125,9 +134,7 @@ OLD=4h
 # 	cloud-nuke aws;
 # nuke-region: ## Nuke within the user's region all resources
 # 	cloud-nuke aws --region ${AWS_REGION} --force;
-nuke-region-exclude-vpc-nat: ## Nuke within the user's region all resources excluding vpc and nat, e.g. for repeating tests manually
-	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --exclude-resource-type nat-gateway --force;
-nuke-region-exclude-vpc:
+nuke-region-exclude-vpc: ## Nuke within the user's region all resources excluding vpc, e.g. for repeating tests manually
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --force;
 nuke-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
@@ -135,7 +142,6 @@ nuke-old-region-exclude-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --older-than $OLD --force;
 nuke-old-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
-
 
 # it needs the tfstate files which are generated with apply
 graph:
@@ -148,7 +154,6 @@ graph-modules-services-scraper-backend: ## Generate the graph for the scraper ba
 	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-backend
 graph-modules-services-scraper-frontend: ## Generate the graph for the scraper frontend
 	make graph INFRAMAP_PATH=${ROOT_PATH}/modules/services/scraper-frontend
-
 
 rover-vpc:
 	make rover-docker ROVER_MODULE=modules/vpc

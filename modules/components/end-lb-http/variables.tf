@@ -1,19 +1,4 @@
 # Global
-variable "account_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
-variable "account_id" {
-  description = "The ID of the AWS account"
-  type        = string
-}
-
-variable "account_name" {
-  description = "The Name of the AWS account"
-  type        = string
-}
-
 variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
@@ -44,24 +29,9 @@ variable "force_destroy" {
 # ------------
 #     ECS
 # ------------
-variable "ecs_execution_role_name" {
-  description = "The name of the role for ECS task execution"
-  type        = string
-}
-
-variable "ecs_task_container_role_name" {
-  description = "The name of the role for task container"
-  type        = string
-}
-
-variable "ecs_task_definition_image_tag" {
-  description = "The tag of the image in the ECR repository for deployment"
-  type        = string
-}
-
-variable "ecs_task_container_s3_env_policy_name" {
-  description = "The name of the policy to access the S3 env bucket"
-  type        = string
+variable "use_fargate" {
+  description = "Use Fargate or EC2"
+  type        = bool
 }
 
 # Cloudwatch
@@ -162,7 +132,7 @@ variable "minimum_scaling_step_size_on_demand" {
 variable "ami_ssm_architecture_on_demand" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default = "amazon-linux-2"
+  default     = "amazon-linux-2"
 }
 
 variable "instance_type_spot" {
@@ -198,7 +168,7 @@ variable "minimum_scaling_step_size_spot" {
 variable "ami_ssm_architecture_spot" {
   description = "The name of the ssm name to select the optimized AMI architecture"
   type        = string
-  default = "amazon-linux-2"
+  default     = "amazon-linux-2"
 }
 
 # ------------------------
@@ -241,6 +211,11 @@ variable "port_mapping" {
     protocol      = string
     containerPort = number
   }))
+}
+
+variable "ecs_task_definition_image_tag" {
+  description = "The tag of the image in the ECR repository for deployment"
+  type        = string
 }
 
 # ------------

@@ -133,7 +133,7 @@ AWS_ID=***
 AWS_ROLE=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
-ENVIRONMENT_NAME=***
+ENVIRONMENT_NAME=test
 GITHUB_TOKEN=***
 ```
 
@@ -146,6 +146,7 @@ Content: Read-only
   Environments: Read and write
   Metadata: Read-only
   Secrets: Read and write
+  Variables: Read and write
 
 In [AWS]()
 

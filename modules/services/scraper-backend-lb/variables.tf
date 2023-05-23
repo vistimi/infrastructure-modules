@@ -1,19 +1,4 @@
 # Global
-variable "account_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
-variable "account_id" {
-  description = "The ID of the AWS account"
-  type        = string
-}
-
-variable "account_name" {
-  description = "The Name of the AWS account"
-  type        = string
-}
-
 variable "vpc_id" {
   description = "The IDs of the VPC which contains the subnets"
   type        = string
@@ -44,23 +29,13 @@ variable "force_destroy" {
 # ------------
 #     ECS
 # ------------
-variable "ecs_execution_role_name" {
-  description = "The name of the role for ECS task execution"
-  type        = string
-}
-
-variable "ecs_task_container_role_name" {
-  description = "The name of the role for task container"
-  type        = string
+variable "use_fargate" {
+  description = "Use Fargate or EC2"
+  type        = bool
 }
 
 variable "ecs_task_definition_image_tag" {
   description = "The tag of the image in the repository"
-  type        = string
-}
-
-variable "ecs_task_container_s3_env_policy_name" {
-  description = "The name of the policy to access the S3 env bucket"
   type        = string
 }
 
@@ -212,6 +187,7 @@ variable "ecs_task_definition_memory" {
 variable "ecs_task_definition_memory_reservation" {
   description = "Amount (in MiB) of memory reserved by the task"
   type        = number
+  default     = null
 }
 
 variable "ecs_task_definition_cpu" {
@@ -225,7 +201,12 @@ variable "ecs_task_desired_count" {
 }
 
 variable "bucket_env_name" {
-  description = "The name of the S3 bucket to store the env file"
+  description = "The name of the bucket to store the env file"
+  type        = string
+}
+
+variable "bucket_picture_name" {
+  description = "The name of the bucket to store the pictures"
   type        = string
 }
 
@@ -272,4 +253,10 @@ variable "dynamodb_tables" {
     sort_key_name    = string
     sort_key_type    = string
   }))
+}
+
+variable "dynamodb_autoscaling" {
+  description = "Enable autoscaling, it will add cloudwatch alarms"
+  type        = bool
+  default     = false
 }

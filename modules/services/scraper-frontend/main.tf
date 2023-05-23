@@ -6,9 +6,6 @@ module "end" {
   vpc_security_group_ids                 = var.vpc_security_group_ids
   common_name                            = var.common_name
   common_tags                            = var.common_tags
-  account_name                           = var.account_name
-  account_region                         = var.account_region
-  account_id                             = var.account_id
   ecs_task_definition_image_tag          = var.ecs_task_definition_image_tag
   listener_port                          = var.listener_port
   listener_protocol                      = var.listener_protocol
