@@ -17,14 +17,6 @@ variable "vpc" {
   })
 }
 
-variable "deployment" {
-  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate"
-  type = object({
-    use_load_balancer = bool
-    use_fargate       = optional(bool)
-  })
-}
-
 variable "log" {
   type = object({
     retention_days = number
@@ -44,6 +36,18 @@ variable "traffic" {
     target_protocol   = string
     health_check_path = optional(string, "/")
   })
+}
+
+variable "deployment" {
+  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate with ECS"
+  type = object({
+    use_load_balancer = bool
+    use_fargate       = optional(bool)
+  })
+  default = {
+    use_load_balancer = true
+    use_fargate       = true
+  }
 }
 
 variable "user_data" {

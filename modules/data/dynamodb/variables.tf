@@ -29,8 +29,45 @@ variable "sort_key_type" {
   type        = string
 }
 
-variable "autoscaling" {
-  description = "Enable autoscaling, it will add cloudwatch alarms"
+variable "predictable_workload" {
+  description = "PROVISIONED billing mode for predictable workloads vs PAY_PER_REQUEST for unpredictable"
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "predictable_capacity" {
+  description = "Enable autoscaling for predicatable workload, it will add cloudwatch alarms. The capacity is the read/write per second. The target is the CPU utilization % to reach for autoscaling"
+  type = object({
+    autoscaling = bool
+    read = optional(object({
+      capacity           = number
+      scale_in_cooldown  = number
+      scale_out_cooldown = number
+      target_value       = number
+      max_capacity       = number
+      }), {
+      capacity           = 5
+      scale_in_cooldown  = 50
+      scale_out_cooldown = 40
+      target_value       = 45
+      max_capacity       = 10
+    })
+    write = optional(object({
+      capacity           = number
+      scale_in_cooldown  = number
+      scale_out_cooldown = number
+      target_value       = number
+      max_capacity       = number
+      }), {
+      capacity           = 5
+      scale_in_cooldown  = 50
+      scale_out_cooldown = 40
+      target_value       = 45
+      max_capacity       = 10
+    })
+  })
+
+  default = {
+    autoscaling = false
+  }
 }

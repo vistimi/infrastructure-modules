@@ -198,28 +198,9 @@ cidrhost("192.168.0.0/16", -1)
 
 ## test 
 
-  go test -timeout 30m -p 1 ./...
-
-  cloud-nuke aws
-  cloud-nuke aws --exclude-resource-type vpc
-
-### options
-
-```hcl
-terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "../",
-		// Variables to pass to our Terraform code using -var options
-		Vars: map[string]interface{}{
-			"aws_region": "us-west-1",
-            ...
-		},
-		RetryableTerraformErrors: map[string]string{
-			"net/http: TLS handshake timeout": "Terraform bug",
-		},
-		MaxRetries: 3,
-		TimeBetweenRetries: 3*time.Second,
-	})
-```
+  - make prepare
+  - run each test
+  - make clean
 
 ### local
 

@@ -18,6 +18,7 @@ variable "vpc_id" {
 variable "force_destroy" {
   description = "If true, will delete the resources that still contain elements"
   type        = bool
+  default     = true
 }
 
 variable "versioning" {

@@ -15,13 +15,14 @@ BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
 # Github
 GH_ORG=KookaS
+GH_BRANCH=master
 
 # absolute path
 ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
-# silent all commands below
-.SILENT:
+.SILENT:	# silent all commands below
+MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
 
 fmt: ## Format all files
 	terraform fmt -recursive
@@ -29,8 +30,8 @@ fmt: ## Format all files
 test: ## Setup the test environment, run the tests and clean the environment
 	make clean; \
 	make prepare; \
-	# -p 1 flag to test each package sequentially; \
 	cd ${ROOT_PATH}; \
+	# p1 will not mix the logs when multiple tests are used
 	go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
 test-clean-cache:
@@ -38,16 +39,16 @@ test-clean-cache:
 
 prepare: ## Setup the test environment
 	make prepare-account; \
-	make prepare-modules-data-mongodb; \
 	make prepare-modules-vpc; \
-	make prepare-modules-services-scraper-backend;
+	make prepare-modules-services-scraper-backend; \
+	make prepare-modules-services-scraper-frontend \
 prepare-account:
 	echo 'locals {' 							> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_name="${AWS_PROFILE}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_id="${AWS_ID}"' 			>> 	${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_access_key="${AWS_ACCESS_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
-	echo 'aws_secret_key="${AWS_SECRET_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	# echo 'aws_access_key="${AWS_ACCESS_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
+	# echo 'aws_secret_key="${AWS_SECRET_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo '}'									>> 	${ROOT_PATH}/modules/account.hcl;
 prepare-modules-vpc:
 	# remove the state file in the vpc folder to create a new one \
@@ -62,7 +63,8 @@ prepare-modules-vpc:
 		terragrunt apply -auto-approve; \
 	fi
 prepare-modules-services-scraper-backend:
-	make load-config MODULE_PATH=modules/services/scraper-backend-lb GH_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/production/config; \
+	$(eval MODULE_PATH=modules/services/scraper-backend)
+	make load-config MODULE_PATH=${MODULE_PATH} GH_REPO_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/${GH_BRANCH}; \
 	# make prepare-github \
 	# 	GITHUB_REPO_ID=497233030 \
 	# 	GITHUB_REPO_OWNER=KookaS \
@@ -77,12 +79,16 @@ prepare-modules-services-scraper-backend:
 	# 	GITHUB_ENV=KookaS \
 	# 	GITHUB_SECRET_KEY=AWS_SECRET_KEY \
 	# 	GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
-	cd ${ROOT_PATH}/modules/services/scraper-backend-lb; \
+	cd ${ROOT_PATH}/${MODULE_PATH}; \
+	terragrunt init;
+prepare-modules-services-scraper-frontend:
+	$(eval MODULE_PATH=modules/services/scraper-frontend)
+	cd ${ROOT_PATH}/${MODULE_PATH}; \
 	terragrunt init;
 load-config:
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.yml ${GH_PATH}/config.yml; \
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -o ${MODULE_PATH}/config_override.go ${GH_PATH}/config.go; \
-	sed -i 's/package .*/package test/' ${MODULE_PATH}/config_override.go;	# add package name to go file
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -H "Cache-Control: no-cache" -o ${MODULE_PATH}/config_override.yml ${GH_REPO_PATH}/config/config.yml; \
+	curl -H 'Authorization: token ${GITHUB_TOKEN}' -H "Cache-Control: no-cache" -o ${MODULE_PATH}/config_override.go ${GH_REPO_PATH}/config/config.go; \
+	sed -i 's/package .*/package scraper_backend_test/' ${MODULE_PATH}/config_override.go;	# add package name to go file
 prepare-github:
 	# gh api \
 	# 	--method PUT \
@@ -99,23 +105,37 @@ prepare-github:
 	# 	-d '{"encrypted_value":${GITHUB_SECRET_VALUE},"key_id":"$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id)"}'
 
 clean: ## Clean the test environment
-	make nuke-region-exclude-vpc; \
-	make clean-vpc; \
+	make nuke-region-exclude-vpc;
+	make clean-vpc;
 
-	echo "Deleting cloudwatch alarms..."; for alarmName in $(aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do aws cloudwatch delete-alarms --alarm-names $alarmName; done; \
+	# echo "Deleting cloudwatch alarms...";  \
+	# while [ -n "$(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName' --max-items 1)" ]; do \
+	# 	make clean-cloudwatch; \
+	# done;
 
-	echo "Diregistring task definitions..."; for taskDefinition in $(aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]'); do aws ecs deregister-task-definition --task-definition $taskDefinition --query 'taskDefinition.taskDefinitionArn'; done; \
+	# echo "Diregistring task definitions..."; \
+	# while [ -n "$(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]' --max-items 1)" ]; do \
+	# 	make clean-task-definition; \
+	# done;
 
-	# echo "Deleting task definitions..."; for taskDefinition in $(aws ecs list-task-definitions --status INACTIVE --query 'taskDefinitionArns[]'); do aws ecs delete-task-definitions --task-definition $taskDefinition --query 'taskDefinition.taskDefinitionArn'; done; \
+	# echo "Delete registries..."; \
+	# while [ -n "$(shell aws ecr describe-repositories --query 'repositories[].repositoryName' --max-items 1)" ]; do \
+	# 	make clean-registries; \
+	# done;
 
-	echo "Delete registries..."; for repositoryName in $(aws ecr describe-repositories --query 'repositories[].repositoryName'); do aws ecr delete-repository --repository-name $repositoryName --force --query 'repository.repositoryName'; done;
+	make clean-cloudwatch; \
+	make clean-task-definition; \
+	make clean-registries; \
 
-	echo "Deleteing state files..."; for filePath in $(find . -type f -name "*.tfstate"); do echo $filePath; rm $filePath; done; \
-	echo "Deleteing override files..."; for filePath in $(find . -type f -name "*_override.*"); do echo $filePath; rm $filePath; done;
-
-clean-old: ## Clean the test environment that is old
-	make nuke-old-region-exclude-vpc; \
-	make clean-old-vpc;
+	echo "Deleteing state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
+	echo "Deleteing override files..."; for filePath in $(shell find . -type f -name "*_override.*"); do echo $$filePath; rm $$filePath; done; \
+	echo "Deleteing temp folder..."; for folderPath in $(shell find . -type d -name ".terraform"); do echo $$folderPath; rm -Rf $$folderPath; done;
+clean-cloudwatch:
+	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do  echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
+clean-task-definition:
+	for taskDefinition in $(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]'); do aws ecs deregister-task-definition --task-definition $$taskDefinition --query 'taskDefinition.taskDefinitionArn'; done;
+clean-registries:
+	for repositoryName in $(shell aws ecr describe-repositories --query 'repositories[].repositoryName'); do aws ecr delete-repository --repository-name $$repositoryName --force --query 'repository.repositoryName'; done;
 clean-vpc:
 	# if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 	# 	make nuke-region-vpc; \
@@ -126,22 +146,24 @@ clean-vpc:
 	# 	rm ${VPC_PATH}/terraform.tfstate; \
 	# fi
 	make nuke-region-vpc;
-clean-old-vpc:
-	make nuke-old-region-vpc;
 
-OLD=4h
-# nuke: ## Nuke all resources
-# 	cloud-nuke aws;
-# nuke-region: ## Nuke within the user's region all resources
-# 	cloud-nuke aws --region ${AWS_REGION} --force;
+nuke: ## Nuke all resources in all regions
+	cloud-nuke aws;
 nuke-region-exclude-vpc: ## Nuke within the user's region all resources excluding vpc, e.g. for repeating tests manually
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --force;
 nuke-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
-nuke-old-region-exclude-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --older-than $OLD --force;
-nuke-old-region-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
+
+# clean-old: ## Clean the test environment that is old
+# 	make nuke-old-region-exclude-vpc; \
+# 	make clean-old-vpc;
+# clean-old-vpc:
+# 	make nuke-old-region-vpc;
+# OLD=4h
+# nuke-old-region-exclude-vpc:
+# 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --older-than $OLD --force;
+# nuke-old-region-vpc:
+# 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
 
 # it needs the tfstate files which are generated with apply
 graph:

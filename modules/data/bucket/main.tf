@@ -86,9 +86,9 @@ module "s3_bucket" {
   bucket = var.bucket_name
   # acl    = "private"
 
-  versioning = {
-    enabled = var.versioning
-  }
+  versioning = var.versioning ? {
+    enabled = true
+  } : {}
 
   attach_policy = true
   policy        = data.aws_iam_policy_document.bucket_policy.json
