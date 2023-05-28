@@ -29,9 +29,9 @@ fi
 
 # login to ECR
 if [[ $AWS_CLI_SERVICE == ecr ]]; then
-  docker login --username AWS --password $ECR_LOGIN_PASSWORD $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+  aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 elif [[ $AWS_CLI_SERVICE == ecr-public ]]; then
-  docker login --username AWS --password $ECR_LOGIN_PASSWORD public.ecr.aws
+  aws ecr-public get-login-password --region $AWS_REGION | docker login --username AWS ---password-stdin public.ecr.aws
 fi
 
 # Create ECR repository
@@ -44,9 +44,9 @@ aws ecr create-repository \
 
 # Build, tag, and push image to Amazon ECR
 export ECR_URI=$(aws ecr describe-repositories --repository-names $COMMON_NAME --output text --query "repositories[].[repositoryUri]")
-  echo "ECR_URI= $ECR_URI"
-  docker build -t $ECR_URI/$IMAGE_TAG -f $DOCKER_FOLDER_PATH .
-  docker tag $(docker images -q $ECR_URI/$IMAGE_TAG) $ECR_URI:$IMAGE_TAG
-  docker push $ECR_URI:$IMAGE_TAG
+echo "ECR_URI= $ECR_URI"
+docker build -t $ECR_URI/$IMAGE_TAG -f $DOCKER_FOLDER_PATH .
+docker tag $(docker images -q $ECR_URI/$IMAGE_TAG) $ECR_URI:$IMAGE_TAG
+docker push $ECR_URI:$IMAGE_TAG
 
 echo ECR_LOGIN_PASSWORD=$ECR_LOGIN_PASSWORD
