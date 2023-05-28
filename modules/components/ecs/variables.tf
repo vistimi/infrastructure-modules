@@ -62,11 +62,17 @@ variable "service_task_desired_count" {
   type        = string
 }
 
-variable "use_fargate" {
-  description = "Use Fargate or EC2"
-  type        = bool
+variable "deployment" {
+  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate with ECS"
+  type = object({
+    use_load_balancer = bool
+    use_fargate       = optional(bool)
+  })
+  default = {
+    use_load_balancer = true
+    use_fargate       = true
+  }
 }
-
 variable "user_data" {
   description = "The user data to provide when launching the instance"
   type        = string

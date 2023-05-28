@@ -4,15 +4,13 @@
 module "ecs" {
   source = "../../components/ecs"
 
-  count = var.deployment.use_load_balancer ? 1 : 0
-
   common_name = var.common_name
   common_tags = var.common_tags
   vpc         = var.vpc
 
-  use_fargate = var.deployment.use_fargate
-  traffic     = var.traffic
-  log         = var.log
+  deployment = var.deployment
+  traffic    = var.traffic
+  log        = var.log
 
   user_data         = var.user_data
   instance          = var.instance

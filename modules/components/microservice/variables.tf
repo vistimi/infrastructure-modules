@@ -44,10 +44,6 @@ variable "deployment" {
     use_load_balancer = bool
     use_fargate       = optional(bool)
   })
-  default = {
-    use_load_balancer = true
-    use_fargate       = true
-  }
 }
 
 variable "user_data" {

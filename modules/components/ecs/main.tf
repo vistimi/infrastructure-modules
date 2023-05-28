@@ -69,7 +69,7 @@ module "alb" {
       name             = var.common_name
       backend_protocol = var.traffic.target_protocol
       backend_port     = var.traffic.target_port
-      target_type      = var.use_fargate ? "ip" : "instance" # "ip" non awsvpc network 
+      target_type      = var.deployment.use_fargate ? "ip" : "instance" # "ip" non awsvpc network 
       health_check = {
         enabled             = true
         interval            = 10
@@ -542,8 +542,8 @@ resource "aws_ecs_task_definition" "service" {
   memory                   = var.task_definition.memory
   cpu                      = var.task_definition.cpu
   family                   = var.common_name
-  requires_compatibilities = var.use_fargate ? ["FARGATE"] : ["EC2"]
-  network_mode             = var.use_fargate ? "awsvpc" : "bridge"
+  requires_compatibilities = var.deployment.use_fargate ? ["FARGATE"] : ["EC2"]
+  network_mode             = var.deployment.use_fargate ? "awsvpc" : "bridge"
 
   // only one container per instance
   container_definitions = jsonencode([
@@ -570,7 +570,7 @@ resource "aws_ecs_task_definition" "service" {
       }
 
       // fargate AMI
-      runtime_platform = var.use_fargate ? {
+      runtime_platform = var.deployment.use_fargate ? {
         "operatingSystemFamily" : var.instance.fargate.os,
         "cpuArchitecture" : var.instance.fargate.architecture
       } : null
@@ -619,7 +619,7 @@ resource "aws_ecs_capacity_provider" "this" {
       minimum_scaling_step_size = var.capacity_provider[key].scaling.minimum_scaling_step_size
       target_capacity           = var.capacity_provider[key].scaling.target_capacity_cpu_percent # utilization for the capacity provider
     }
-    if !var.use_fargate
+    if !var.deployment.use_fargate
   }
 
   name = each.value.name
@@ -641,7 +641,7 @@ resource "aws_ecs_capacity_provider" "this" {
 # Attach capacity providers to the cluster
 resource "aws_ecs_cluster_capacity_providers" "this" {
   cluster_name       = aws_ecs_cluster.this.id
-  capacity_providers = var.use_fargate ? [for v in values(var.capacity_provider) : v.fargate] : [for cp in aws_ecs_capacity_provider.this : cp.name]
+  capacity_providers = var.deployment.use_fargate ? [for v in values(var.capacity_provider) : v.fargate] : [for cp in aws_ecs_capacity_provider.this : cp.name]
 }
 
 #---------------------
@@ -654,14 +654,14 @@ resource "aws_ecs_service" "this" {
   desired_count           = var.service_task_desired_count
   enable_ecs_managed_tags = true
 
-  # iam_role = var.use_fargate ? null : aws_iam_role.ecs_service_role.arn
+  # iam_role = var.deployment.use_fargate ? null : aws_iam_role.ecs_service_role.arn
   iam_role = null
 
-  launch_type = var.use_fargate ? null : "EC2"
+  launch_type = var.deployment.use_fargate ? null : "EC2"
 
   # network awsvpc
   dynamic "network_configuration" {
-    for_each = var.use_fargate ? [1] : []
+    for_each = var.deployment.use_fargate ? [1] : []
     content {
       subnets          = local.subnets
       assign_public_ip = true // if private subnets, use NAT
@@ -688,7 +688,7 @@ resource "aws_ecs_service" "this" {
     content {
       base              = cp.value.base
       weight            = cp.value.weight_percent
-      capacity_provider = var.use_fargate ? cp.value.fargate : aws_ecs_capacity_provider.this[cp.key].name
+      capacity_provider = var.deployment.use_fargate ? cp.value.fargate : aws_ecs_capacity_provider.this[cp.key].name
     }
   }
 
@@ -752,7 +752,7 @@ module "asg" {
         tags          = merge(var.common_tags, { Name = "${var.common_name}-spot-instance-request" })
       }] : []
     }
-    if !var.use_fargate
+    if !var.deployment.use_fargate
   }
 
   name             = each.value.name

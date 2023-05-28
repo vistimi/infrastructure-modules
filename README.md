@@ -212,14 +212,14 @@ defer func() {
         // destroy all resources if panic
         terraform.Destroy(t, terraformOptions)
     }
-    test_structure.RunTestStage(t, "cleanup_mongodb", func() {
+    terratest_structure.RunTestStage(t, "cleanup_mongodb", func() {
         terraform.Destroy(t, terraformOptions)
     })
 }()
-test_structure.RunTestStage(t, "deploy_mongodb", func() {
+terratest_structure.RunTestStage(t, "deploy_mongodb", func() {
     terraform.InitAndApply(t, terraformOptions)
 })
-test_structure.RunTestStage(t, "validate_mongodb", func() {
+terratest_structure.RunTestStage(t, "validate_mongodb", func() {
     s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
     s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
     assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)

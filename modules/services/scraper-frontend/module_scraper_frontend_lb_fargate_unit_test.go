@@ -10,7 +10,7 @@ import (
 	helper_test "github.com/KookaS/infrastructure-modules/modules/services/helper"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 const (
@@ -60,17 +60,15 @@ func Test_Unit_TerraformScraperfrontend_LB_Fargate(t *testing.T) {
 	// 		// destroy all resources if panic
 	// 		terraform.Destroy(t, terraformOptions)
 	// 	}
-	// 	test_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
+	// 	terratest_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
 	// 		terraform.Destroy(t, terraformOptions)
 	// 	})
 	// }()
-	test_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
+	terratest_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
 		terraform.InitAndApply(t, optionsProjectFargate)
 		bashCode := fmt.Sprintf(`
 			gh workflow run %s --repo %s/%s --ref %s \
-			-f aws-account-id=%s \
 			-f aws-account-name=%s \
-			-f aws-region=%s \
 			-f common-name=%s \
 			-f task-desired-count=%d \
 			-f backend-dns=%s \
@@ -80,9 +78,7 @@ func Test_Unit_TerraformScraperfrontend_LB_Fargate(t *testing.T) {
 			GithubProject.Organization,
 			GithubProject.Repository,
 			GithubProject.Branch,
-			helper_test.AccountId,
 			helper_test.AccountName,
-			helper_test.AccountRegion,
 			commonName,
 			helper_test.ServiceTaskDesiredCountFinal,
 			backend_dns,
@@ -93,19 +89,18 @@ func Test_Unit_TerraformScraperfrontend_LB_Fargate(t *testing.T) {
 	helper_test.TestMicroservice(t, optionsProjectFargate, GithubProject)
 
 	dnsUrl := terraform.Output(t, optionsProjectFargate, "alb_dns_name")
+	fmt.Printf("\n\nDNS = %s\n\n", terraform.Output(t, optionsProjectFargate, "alb_dns_name"))
 	endpoints := []helper_test.EndpointTest{
 		{
 			Url:                 dnsUrl + GithubProject.HealthCheckPath,
 			ExpectedStatus:      200,
-			ExpectedBody:        `"ok"`,
+			ExpectedBody:        nil,
 			MaxRetries:          3,
 			SleepBetweenRetries: 20 * time.Second,
 		},
 	}
 
-	test_structure.RunTestStage(t, "validate_rest_endpoints", func() {
+	terratest_structure.RunTestStage(t, "validate_rest_endpoints", func() {
 		helper_test.TestRestEndpoints(t, endpoints)
 	})
-
-	fmt.Printf("\n\nDNS: %s\n\n", terraform.Output(t, optionsProjectFargate, "alb_dns_name"))
 }

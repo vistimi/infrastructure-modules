@@ -1,6 +1,6 @@
 # ECS
 output "vpc_tier_ids" {
-  value       = module.ecs[*].vpc_tier_ids
+  value       = module.ecs.vpc_tier_ids
   description = "IDs of the subnets selected"
 }
 
@@ -25,12 +25,12 @@ output "vpc_tier_ids" {
 # }
 
 output "alb_dns_name" {
-  value       = module.ecs[*].alb_dns_name
+  value       = module.ecs.alb_dns_name
   description = "The domain name of the load balancer"
 }
 
 output "alb_security_group_id" {
-  value       = module.ecs[*].alb_security_group_id
+  value       = module.ecs.alb_security_group_id
   description = "The ID of the security group"
 }
 

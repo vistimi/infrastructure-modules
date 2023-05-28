@@ -14,12 +14,12 @@ import (
 	awsSDK "github.com/aws/aws-sdk-go/aws"
 	"github.com/likexian/gokit/assert"
 
-	test_aws "github.com/gruntwork-io/terratest/modules/aws"
-	test_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
-	test_logger "github.com/gruntwork-io/terratest/modules/logger"
-	test_shell "github.com/gruntwork-io/terratest/modules/shell"
+	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
+	terratest_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
+	terratest_logger "github.com/gruntwork-io/terratest/modules/logger"
+	terratest_shell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 var (
@@ -51,7 +51,7 @@ type GithubProjectInformation struct {
 type EndpointTest struct {
 	Url                 string
 	ExpectedStatus      int
-	ExpectedBody        string
+	ExpectedBody        *string
 	MaxRetries          int
 	SleepBetweenRetries time.Duration
 }
@@ -61,11 +61,11 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	// setup terraform override variables
 	bashCode := `terragrunt init;`
-	command := test_shell.Command{
+	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	test_shell.RunCommandAndGetOutput(t, command)
+	terratest_shell.RunCommandAndGetOutput(t, command)
 
 	// global variables
 	id := RandomID(8)
@@ -80,7 +80,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	}
 	common_tags_json, err := json.Marshal(common_tags)
 	if err != nil {
-		test_logger.Log(t, err)
+		terratest_logger.Log(t, err)
 	}
 
 	// end variables
@@ -158,14 +158,14 @@ func TestMicroservice(t *testing.T, terraformOptions *terraform.Options, githubI
 
 	common_name, ok := terraformOptions.Vars["common_name"].(string)
 	if !ok {
-		test_logger.Log(t, "terraformOptions misses common_name as string")
+		terratest_logger.Log(t, "terraformOptions misses common_name as string")
 	}
 
-	test_structure.RunTestStage(t, "validate_ecr", func() {
+	terratest_structure.RunTestStage(t, "validate_ecr", func() {
 		testEcr(t, common_name, AccountRegion)
 	})
 
-	test_structure.RunTestStage(t, "validate_ecs", func() {
+	terratest_structure.RunTestStage(t, "validate_ecs", func() {
 		testEcs(t, common_name, AccountRegion, common_name, strconv.Itoa(Cpu), strconv.Itoa(Memory), ServiceTaskDesiredCountFinal)
 	})
 }
@@ -202,11 +202,11 @@ func RunGithubWorkflow(
 		githubInformations.Branch,
 		githubInformations.WorkflowName,
 	)
-	command := test_shell.Command{
+	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	test_shell.RunCommandAndGetOutput(t, command)
+	terratest_shell.RunCommandAndGetOutput(t, command)
 }
 
 func testEcr(t *testing.T, common_name, account_region string) {
@@ -214,14 +214,14 @@ func testEcr(t *testing.T, common_name, account_region string) {
 		common_name,
 		account_region,
 	)
-	command := test_shell.Command{
+	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	output := strings.TrimSpace(test_shell.RunCommandAndGetOutput(t, command))
+	output := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
 	ecrImagesAmount, err := strconv.Atoi(output)
 	if err != nil {
-		test_logger.Log(t, fmt.Sprintf("String to int conversion failed: %s", output))
+		terratest_logger.Log(t, fmt.Sprintf("String to int conversion failed: %s", output))
 	}
 
 	assert.Equal(t, 1, ecrImagesAmount, fmt.Sprintf("No image published to repository: %v", ecrImagesAmount))
@@ -230,12 +230,12 @@ func testEcr(t *testing.T, common_name, account_region string) {
 // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_ecs_example_test.go
 func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory string, service_task_desired_count int) {
 	// cluster
-	cluster := test_aws.GetEcsCluster(t, account_region, common_name)
+	cluster := terratest_aws.GetEcsCluster(t, account_region, common_name)
 	services_amount := int64(1)
 	assert.Equal(t, services_amount, awsSDK.Int64Value(cluster.ActiveServicesCount))
 
 	// tasks in service
-	service := test_aws.GetEcsService(t, account_region, common_name, common_name)
+	service := terratest_aws.GetEcsService(t, account_region, common_name, common_name)
 	service_desired_count := int64(service_task_desired_count)
 	assert.Equal(t, service_desired_count, awsSDK.Int64Value(service.DesiredCount), "amount of running tasks in service do not match the expected value")
 
@@ -251,14 +251,14 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 		account_region,
 		family_name,
 	)
-	command := test_shell.Command{
+	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	latestTaskDefinitionArn := strings.TrimSpace(test_shell.RunCommandAndGetOutput(t, command))
+	latestTaskDefinitionArn := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nlatestTaskDefinitionArn = %s\n\n", latestTaskDefinitionArn)
 
-	task := test_aws.GetEcsTaskDefinition(t, account_region, latestTaskDefinitionArn)
+	task := terratest_aws.GetEcsTaskDefinition(t, account_region, latestTaskDefinitionArn)
 	assert.Equal(t, cpu, awsSDK.StringValue(task.Cpu))
 	assert.Equal(t, memory, awsSDK.StringValue(task.Memory))
 
@@ -273,14 +273,14 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 		account_region,
 		common_name,
 	)
-	command = test_shell.Command{
+	command = terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	runningTaskArns := strings.Fields(test_shell.RunCommandAndGetOutput(t, command))
+	runningTaskArns := strings.Fields(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nrunningTaskArns = %v\n\n", runningTaskArns)
 	if len(runningTaskArns) == 0 {
-		test_logger.Log(t, "No running tasks")
+		terratest_logger.Log(t, "No running tasks")
 		return
 	}
 
@@ -301,30 +301,30 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 		common_name,
 		runningTasks,
 	)
-	command = test_shell.Command{
+	command = terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	runningTaskDefinitionArns := strings.Fields(test_shell.RunCommandAndGetOutput(t, command))
+	runningTaskDefinitionArns := strings.Fields(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nrunningTaskDefinitionArns = %v\n\n", runningTaskDefinitionArns)
 	if len(runningTaskDefinitionArns) == 0 {
-		test_logger.Log(t, "No running tasks definition")
+		terratest_logger.Log(t, "No running tasks definition")
 		return
 	}
 
 	for _, runningTaskDefinitionArn := range runningTaskDefinitionArns {
 		if latestTaskDefinitionArn != runningTaskDefinitionArn {
-			test_logger.Log(t, "The tasks ARN need to match otherwise the latest version is not the one running")
+			terratest_logger.Log(t, "The tasks ARN need to match otherwise the latest version is not the one running")
 		}
 	}
 }
 
 // func testCapacityProviders(t *testing.T, account_region, common_name string) {
-// 	cluster := test_aws.GetEcsCluster(t, account_region, common_name)
+// 	cluster := terratest_aws.GetEcsCluster(t, account_region, common_name)
 // 	cluster.CapacityProviders
 // 	cluster.RegisteredContainerInstancesCount
 
-// 	service := test_aws.GetEcsService(t, account_region, common_name, common_name)
+// 	service := terratest_aws.GetEcsService(t, account_region, common_name, common_name)
 // 	for _, lb := range(service.LoadBalancers) {
 // 		lb.
 // 	}
@@ -342,11 +342,11 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 // 		account_region,
 // 		family_name,
 // 	)
-// 	command := test_shell.Command{
+// 	command := terratest_shell.Command{
 // 		Command: "bash",
 // 		Args:    []string{"-c", bashCode},
 // 	}
-// 	latestTaskDefinitionArn := strings.TrimSpace(test_shell.RunCommandAndGetOutput(t, command))
+// 	latestTaskDefinitionArn := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
 // 	fmt.Printf("\nlatestTaskDefinitionArn = %s\n", latestTaskDefinitionArn)
 
 // }
@@ -354,6 +354,19 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	tlsConfig := tls.Config{}
 	for _, endpoint := range endpoints {
-		test_http_helper.HttpGetWithRetry(t, endpoint.Url, &tlsConfig, endpoint.ExpectedStatus, endpoint.ExpectedBody, endpoint.MaxRetries, endpoint.SleepBetweenRetries)
+		if endpoint.ExpectedBody == nil {
+			options := terratest_http_helper.HttpGetOptions{Url: endpoint.Url, TlsConfig: &tlsConfig, Timeout: 10}
+			gotStatus, _ := terratest_http_helper.HttpGetWithOptions(t, options)
+			for i := 0; i < endpoint.MaxRetries; i++ {
+				if gotStatus == endpoint.ExpectedStatus {
+					return
+				}
+				terratest_logger.Log(t, fmt.Sprintf("Response status do not match: expect %v, got %v", endpoint.ExpectedStatus, gotStatus))
+				time.Sleep(time.Second * endpoint.SleepBetweenRetries)
+			}
+			t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Url, endpoint.MaxRetries)
+		} else {
+			terratest_http_helper.HttpGetWithRetry(t, endpoint.Url, &tlsConfig, endpoint.ExpectedStatus, *endpoint.ExpectedBody, endpoint.MaxRetries, endpoint.SleepBetweenRetries)
+		}
 	}
 }

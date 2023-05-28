@@ -41,7 +41,7 @@ prepare: ## Setup the test environment
 	make prepare-account; \
 	make prepare-modules-vpc; \
 	make prepare-modules-services-scraper-backend; \
-	make prepare-modules-services-scraper-frontend \
+	make prepare-modules-services-scraper-frontend;
 prepare-account:
 	echo 'locals {' 							> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
