@@ -133,16 +133,20 @@ AWS_ID=***
 AWS_ROLE=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
-ENVIRONMENT_NAME=***
+ENVIRONMENT_NAME=test
 GITHUB_TOKEN=***
 ```
 
 :warning: The `GITHUB_TOKEN` is a default name
 In [Github](https://github.com/settings/personal-access-tokens/new):
+Content: Read-only
+
   Actions: Read and write
+  Contents: Read-only
   Environments: Read and write
   Metadata: Read-only
   Secrets: Read and write
+  Variables: Read and write
 
 In [AWS]()
 
@@ -194,28 +198,9 @@ cidrhost("192.168.0.0/16", -1)
 
 ## test 
 
-  go test -timeout 30m -p 1 ./...
-
-  cloud-nuke aws
-  cloud-nuke aws --exclude-resource-type vpc
-
-### options
-
-```hcl
-terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: "../",
-		// Variables to pass to our Terraform code using -var options
-		Vars: map[string]interface{}{
-			"aws_region": "us-east-1",
-            ...
-		},
-		RetryableTerraformErrors: map[string]string{
-			"net/http: TLS handshake timeout": "Terraform bug",
-		},
-		MaxRetries: 3,
-		TimeBetweenRetries: 3*time.Second,
-	})
-```
+  - make prepare
+  - run each test
+  - make clean
 
 ### local
 
@@ -227,14 +212,14 @@ defer func() {
         // destroy all resources if panic
         terraform.Destroy(t, terraformOptions)
     }
-    test_structure.RunTestStage(t, "cleanup_mongodb", func() {
+    terratest_structure.RunTestStage(t, "cleanup_mongodb", func() {
         terraform.Destroy(t, terraformOptions)
     })
 }()
-test_structure.RunTestStage(t, "deploy_mongodb", func() {
+terratest_structure.RunTestStage(t, "deploy_mongodb", func() {
     terraform.InitAndApply(t, terraformOptions)
 })
-test_structure.RunTestStage(t, "validate_mongodb", func() {
+terratest_structure.RunTestStage(t, "validate_mongodb", func() {
     s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
     s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
     assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)

@@ -91,7 +91,6 @@ RUN apk add -q --no-cache make gcc libc-dev
 # Golang
 COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
 COPY --from=builder-alpine-go /go/ /go/
-# ENV GOROOT /go
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$PATH
 ENV PATH $GOPATH/bin:$PATH
@@ -113,11 +112,6 @@ RUN apk add -q --no-cache graphviz
 COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
 RUN inframap version
 
-# aws cli
-COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
-COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
-RUN aws --version
-
 # terraform
 COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
@@ -130,9 +124,6 @@ RUN terragrunt --version
 COPY --from=ghcr.io/terraform-linters/tflint:v0.43.0 /usr/local/bin/tflint /usr/local/bin/tflint
 RUN tflint --version
 
-# github cli
-RUN apk add --no-cache -q github-cli
-
 RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/fatih/gomodifytags@latest \
     && go install github.com/josharian/impl@latest \
@@ -140,7 +131,6 @@ RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest
-
 
 #-------------------------
 #    RUNNER
@@ -170,6 +160,14 @@ USER $USER_NAME
 #    RUNNER DEVCONTAINER
 #-------------------------
 FROM builder-final AS runner-devcontainer
+
+# github cli
+RUN apk add --no-cache -q github-cli
+
+# aws cli
+COPY --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
+COPY --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
+RUN aws --version
 
 #-------------------------
 #       RUNNER

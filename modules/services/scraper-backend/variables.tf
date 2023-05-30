@@ -1,29 +1,3 @@
-# Global
-variable "account_region" {
-  description = "The region on which the project is running, (e.g `us-east-1`)"
-  type        = string
-}
-
-variable "account_id" {
-  description = "The ID of the AWS account"
-  type        = string
-}
-
-variable "account_name" {
-  description = "The Name of the AWS account"
-  type        = string
-}
-
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
-}
-
-variable "vpc_security_group_ids" {
-  description = "The IDs of the security group of the VPC"
-  type        = list(string)
-}
-
 variable "common_name" {
   description = "The common part of the name used for all resources"
   type        = string
@@ -35,81 +9,41 @@ variable "common_tags" {
   default     = {}
 }
 
-variable "force_destroy" {
-  description = "If true, will delete the resources that still contain elements"
-  type        = bool
+variable "vpc" {
+  type = object({
+    id                 = string
+    security_group_ids = list(string)
+    tier               = string
+  })
 }
 
-
-# ------------
-#     ECS
-# ------------
-variable "ecs_execution_role_name" {
-  description = "The name of the role for ECS task execution"
-  type        = string
+variable "deployment" {
+  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate"
+  type = object({
+    use_load_balancer = bool
+    use_fargate       = optional(bool)
+  })
 }
 
-variable "ecs_task_container_role_name" {
-  description = "The name of the role for task container"
-  type        = string
+variable "log" {
+  type = object({
+    retention_days = number
+    prefix         = optional(string)
+  })
+  default = {
+    retention_days = 30
+    prefix         = "ecs"
+  }
 }
 
-variable "ecs_task_definition_image_tag" {
-  description = "The tag of the image in the repository"
-  type        = string
-}
-
-variable "ecs_task_container_s3_env_policy_name" {
-  description = "The name of the policy to access the S3 env bucket"
-  type        = string
-}
-
-# Cloudwatch
-variable "ecs_logs_retention_in_days" {
-  description = "The number of days to keep the logs in Cloudwatch"
-  type        = number
-}
-
-# ALB
-variable "listener_port" {
-  description = "The port used by the containers, e.g. 8080"
-  type        = number
-}
-
-variable "listener_protocol" {
-  description = "The protocol used by the containers, e.g. http or https"
-  type        = string
-}
-
-variable "target_port" {
-  description = "The port used by the containers, e.g. 8080"
-  type        = number
-}
-
-variable "target_protocol" {
-  description = "The protocol used by the containers, e.g. http or https"
-  type        = string
-}
-
-# ASG
-variable "target_capacity_cpu" {
-  description = "aws_ecs_capacity_provider"
-  type        = number
-}
-
-variable "capacity_provider_base" {
-  description = "It designates how many tasks, at a minimum, to run on the specified capacity provider. Only one capacity provider in a capacity provider strategy can have a base defined"
-  type        = number
-}
-
-variable "capacity_provider_weight_on_demand" {
-  description = "It designates the relative percentage of the total number of launched tasks that should use the specified capacity provider"
-  type        = number
-}
-
-variable "capacity_provider_weight_spot" {
-  description = "It designates the relative percentage of the total number of launched tasks that should use the specified capacity provider"
-  type        = number
+variable "traffic" {
+  type = object({
+    listener_port     = number
+    listener_protocol = string
+    target_port       = number
+    target_protocol   = string
+    health_check_path = optional(string, "/")
+  })
 }
 
 variable "user_data" {
@@ -118,198 +52,120 @@ variable "user_data" {
   default     = null
 }
 
-variable "protect_from_scale_in" {
-  description = "Allows setting instance protection. The autoscaling group will not select instances with this setting for termination during scale in events."
-  type        = bool
-  default     = false
+variable "instance" {
+  type = object({
+    user_data = optional(string)
+    ec2 = optional(object({
+      ami_ssm_architecture = string
+      instance_type        = string
+    }))
+    fargate = optional(object({
+      os           = string
+      architecture = string
+    }))
+  })
 }
 
-variable "vpc_tier" {
-  description = "The Tier of the vpc, e.g. `Public` or `Private`"
-  type        = string
+variable "capacity_provider" {
+  description = "only one base for all capacity providers. The map key must be matching between capacity_providers/autoscaling"
+  type = map(object({
+    base           = optional(number)
+    weight_percent = number
+    fargate        = optional(string)
+    scaling = optional(object({
+      target_capacity_cpu_percent = number
+      maximum_scaling_step_size   = number
+      minimum_scaling_step_size   = number
+    }))
+  }))
 }
 
-variable "instance_type_on_demand" {
-  description = "The type of EC2 Instances to run (e.g. t2.micro)"
-  type        = string
+variable "autoscaling_group" {
+  description = "The map key must be matching between capacity_providers/autoscaling"
+  type = map(object({
+    min_size     = number
+    desired_size = number
+    max_size     = number
+    use_spot     = bool
+  }))
+  default = {}
 }
 
-variable "min_size_on_demand" {
-  description = "The minimum number of EC2 Instances in the ASG"
-  type        = number
+variable "task_definition" {
+  type = object({
+    memory             = number
+    memory_reservation = optional(number)
+    cpu                = number
+    env_bucket_name    = string
+    env_file_name      = string
+    port_mapping = list(object({
+      hostPort      = number
+      protocol      = string
+      containerPort = number
+    }))
+    registry_image_tag = string
+  })
 }
 
-variable "max_size_on_demand" {
-  description = "The maximum number of EC2 Instances in the ASG"
-  type        = number
-}
-
-variable "desired_capacity_on_demand" {
-  description = "The maximum number of EC2 Instances in the ASG"
-  type        = number
-}
-
-variable "maximum_scaling_step_size_on_demand" {
-  description = "Maximum step adjustment size. A number between 1 and 10,000"
-  type        = number
-}
-
-variable "minimum_scaling_step_size_on_demand" {
-  description = "Minimum step adjustment size. A number between 1 and 10,000"
-  type        = number
-}
-
-variable "instance_type_spot" {
-  description = "The type of EC2 Instances to run (e.g. t2.micro)"
-  type        = string
-}
-
-variable "min_size_spot" {
-  description = "The minimum number of EC2 Instances in the ASG"
-  type        = number
-}
-
-variable "max_size_spot" {
-  description = "The maximum number of EC2 Instances in the ASG"
-  type        = number
-}
-
-variable "desired_capacity_spot" {
-  description = "The maximum number of EC2 Instances in the ASG"
-  type        = number
-}
-
-variable "maximum_scaling_step_size_spot" {
-  description = "Maximum step adjustment size. A number between 1 and 10,000"
-  type        = number
-}
-
-variable "minimum_scaling_step_size_spot" {
-  description = "Minimum step adjustment size. A number between 1 and 10,000"
-  type        = number
-}
-
-variable "ami_ssm_architecture_on_demand" {
-  description = "The name of the ssm name to select the optimized AMI architecture"
-  type        = number
-  default = "amazon-linux-2"
-}
-
-variable "ami_ssm_architecture_spot" {
-  description = "The name of the ssm name to select the optimized AMI architecture"
-  type        = number
-  default = "amazon-linux-2"
-}
-
-# ------------------------
-#     Task definition
-# ------------------------
-variable "ecs_task_definition_memory" {
-  description = "Amount (in MiB) of memory used by the task"
-  type        = number
-}
-
-variable "ecs_task_definition_memory_reservation" {
-  description = "Amount (in MiB) of memory reserved by the task"
-  type        = number
-}
-
-variable "ecs_task_definition_cpu" {
-  description = "Number of cpu units used by the task"
-  type        = number
-}
-
-variable "ecs_task_desired_count" {
+variable "service_task_desired_count" {
   description = "Number of instances of the task definition"
   type        = string
 }
 
-variable "bucket_env_name" {
-  description = "The name of the S3 bucket to store the env file"
-  type        = string
+variable "bucket_env" {
+  type = object({
+    name          = string
+    force_destroy = bool
+    versioning    = bool
+  })
 }
 
-variable "env_file_name" {
-  description = "The name of the env file used for the service docker"
-  type        = string
+variable "ecr" {
+  description = "The registry config"
+  type = object({
+    image_keep_count = number
+    force_destroy    = bool
+  })
+
+  default = {
+    image_keep_count = 1
+    force_destroy    = true
+  }
 }
 
-variable "port_mapping" {
-  description = "The mapping of the isntance ports towards the container ports"
+variable "dynamodb_tables" {
+  description = "The mapping of the DynamoDB tables"
   type = list(object({
-    hostPort      = number
-    protocol      = string
-    containerPort = number
+    name                 = string
+    primary_key_name     = string
+    primary_key_type     = string
+    sort_key_name        = string
+    sort_key_type        = string
+    predictable_workload = bool
+    predictable_capacity = optional(object({
+      autoscaling = bool
+      read = optional(object({
+        capacity           = number
+        scale_in_cooldown  = number
+        scale_out_cooldown = number
+        target_value       = number
+        max_capacity       = number
+      }))
+      write = optional(object({
+        capacity           = number
+        scale_in_cooldown  = number
+        scale_out_cooldown = number
+        target_value       = number
+        max_capacity       = number
+      }))
+    }))
   }))
 }
 
-# ------------
-#     ECR
-# ------------
-variable "repository_image_keep_count" {
-  description = "The amount of images to keep in the registry"
-  type        = number
-}
-
-# ------------------------
-#     Github
-# ------------------------
-variable "github_organization" {
-  description = "The name of the Github organization that contains the repo"
-  type        = string
-}
-
-variable "github_repository" {
-  description = "The name of the repository"
-  type        = string
-}
-
-variable "github_branch" {
-  description = "The name of the branch"
-  type        = string
-}
-
-variable "health_check_path" {
-  description = "The path for the healthcheck"
-  type        = string
-  default     = "/"
-}
-
-# ------------------------
-#     MongoDB
-# ------------------------
-
-variable "ami_id" {
-  description = "The ID of the AMI used for the EC2 instance"
-  type        = string
-  default     = "ami-09d3b3274b6c5d4aa"
-}
-
-variable "instance_type" {
-  description = "The type of EC2 Instances to run (e.g. t2.micro)"
-  type        = string
-}
-
-variable "user_data_path" {
-  description = "Bash script path to run after creation of instance"
-  type        = string
-  default     = ""
-}
-
-variable "user_data_args" {
-  description = "Bash script arguments to pass to the bash script"
-  type        = map(any)
-  default     = {}
-}
-
-variable "aws_access_key" {
-  description = "The public key for AWS"
-  type        = string
-  sensitive   = true
-}
-
-variable "aws_secret_key" {
-  description = "The private key for AWS"
-  type        = string
-  sensitive   = true
+variable "bucket_picture" {
+  type = object({
+    name          = string
+    force_destroy = bool
+    versioning    = bool
+  })
 }
