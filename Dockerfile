@@ -91,7 +91,6 @@ RUN apk add -q --no-cache make gcc libc-dev
 # Golang
 COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
 COPY --from=builder-alpine-go /go/ /go/
-# ENV GOROOT /go
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$PATH
 ENV PATH $GOPATH/bin:$PATH
@@ -132,7 +131,6 @@ RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest \
     && go install honnef.co/go/tools/cmd/staticcheck@latest \
     && go install golang.org/x/tools/gopls@latest
-
 
 #-------------------------
 #    RUNNER

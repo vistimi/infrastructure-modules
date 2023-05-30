@@ -2,32 +2,17 @@
 	"name": "Alpine",
 	"build": {
 		"dockerfile": "../Dockerfile",
-		"args": { "VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16", "RUNNER": "devcontainer" },
+		"args": {
+			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16",
+			"RUNNER": "devcontainer"
+		},
 		"target": "runner"
 	},
-	// Mount the docker daemon on the container, must run outside the container as well
-	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
 	"runArgs": [
 		"--env-file",
 		".devcontainer/devcontainer.env"
 	],
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
 	"postStartCommand": "aws configure set aws_access_key_id $AWS_ACCESS_KEY --profile $AWS_PROFILE && aws configure set --profile $AWS_PROFILE aws_secret_access_key $AWS_SECRET_KEY --profile $AWS_PROFILE && aws configure set region $AWS_REGION --profile $AWS_PROFILE && aws configure set output 'text' --profile $AWS_PROFILE && aws configure list && tflint --init",
-	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	// "remoteUser": "vscode",
-	"features": {
-		// "ghcr.io/devcontainers/features/go:1": {
-		// 	"version": "1.18"
-		// },
-		// "terraform": {
-		// 	"version": "latest",
-		// 	"tflint": "latest",
-		// 	"terratest": "latest"
-		// }
-		// "aws-cli": "latest",
-		// "github-cli": "latest"
-	},
 	"customizations": {
 		"vscode": {
 			"extensions": [

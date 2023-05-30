@@ -66,6 +66,7 @@ func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
 	// 		terraform.Destroy(t, terraformOptions)
 	// 	})
 	// }()
+
 	terratest_structure.RunTestStage(t, "deploy_scraper_backend", func() {
 		terraform.InitAndApply(t, optionsProjectFargate)
 		bashCode := fmt.Sprintf(`
