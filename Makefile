@@ -13,16 +13,12 @@ GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty") # If working copy has
 GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
-# Github
-GH_ORG=KookaS
-GH_BRANCH=master
-
 # absolute path
 ROOT_PATH=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 VPC_PATH=${ROOT_PATH}/modules/vpc
 
 .SILENT:	# silent all commands below
-MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
+# MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
 
 fmt: ## Format all files
 	terraform fmt -recursive
@@ -38,6 +34,7 @@ test-clean-cache:
 	go clean -testcache;
 
 prepare: ## Setup the test environment
+	make github-cli-auth; \
 	make prepare-account; \
 	make prepare-modules-vpc; \
 	make prepare-modules-services-scraper-backend; \
@@ -47,8 +44,6 @@ prepare-account:
 	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_name="${AWS_PROFILE}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo 'aws_account_id="${AWS_ID}"' 			>> 	${ROOT_PATH}/modules/account.hcl; \
-	# echo 'aws_access_key="${AWS_ACCESS_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
-	# echo 'aws_secret_key="${AWS_SECRET_KEY}"' 	>> 	${ROOT_PATH}/modules/account.hcl; \
 	echo '}'									>> 	${ROOT_PATH}/modules/account.hcl;
 prepare-modules-vpc:
 	# remove the state file in the vpc folder to create a new one \
@@ -64,32 +59,31 @@ prepare-modules-vpc:
 	fi
 prepare-modules-services-scraper-backend:
 	$(eval MODULE_PATH=modules/services/scraper-backend)
-	make load-config MODULE_PATH=${MODULE_PATH} GH_REPO_PATH=https://raw.githubusercontent.com/${GH_ORG}/scraper-backend/${GH_BRANCH}; \
-	# make prepare-github \
-	# 	GITHUB_REPO_ID=497233030 \
-	# 	GITHUB_REPO_OWNER=KookaS \
-	# 	GITHUB_REPO_NAME=scraper-backend \
-	# 	GITHUB_ENV=KookaS \
-	# 	GITHUB_SECRET_KEY=AWS_ACCESS_KEY \
-	# 	GITHUB_SECRET_VALUE=${AWS_ACCESS_KEY}; \
-	# make prepare-github \
-	# 	GITHUB_REPO_ID=497233030 \
-	# 	GITHUB_REPO_OWNER=KookaS \
-	# 	GITHUB_REPO_NAME=scraper-backend \
-	# 	GITHUB_ENV=KookaS \
-	# 	GITHUB_SECRET_KEY=AWS_SECRET_KEY \
-	# 	GITHUB_SECRET_VALUE=${AWS_SECRET_KEY}; \
+	$(eval GH_ORG=KookaS)
+	$(eval GH_REPO=scraper-backend)
+	$(eval GH_BRANCH=master)
+	make github-load-file MODULE_PATH=${MODULE_PATH} GH_TERRA_TOKEN=${GH_TERRA_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.yml; \
+	make github-load-file MODULE_PATH=${MODULE_PATH} GH_TERRA_TOKEN=${GH_TERRA_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.go; \
+	sed -i 's/package .*/package scraper_backend_test/' ${MODULE_PATH}/config_override.go; \
 	cd ${ROOT_PATH}/${MODULE_PATH}; \
 	terragrunt init;
 prepare-modules-services-scraper-frontend:
 	$(eval MODULE_PATH=modules/services/scraper-frontend)
+	$(eval GH_ORG=KookaS)
+	$(eval GH_REPO=scraper-frontend)
+	$(eval GH_BRANCH=master)
+	make github-load-file MODULE_PATH=${MODULE_PATH} GH_TERRA_TOKEN=${GH_TERRA_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.yml; \
 	cd ${ROOT_PATH}/${MODULE_PATH}; \
 	terragrunt init;
-load-config:
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -H "Cache-Control: no-cache" -o ${MODULE_PATH}/config_override.yml ${GH_REPO_PATH}/config/config.yml; \
-	curl -H 'Authorization: token ${GITHUB_TOKEN}' -H "Cache-Control: no-cache" -o ${MODULE_PATH}/config_override.go ${GH_REPO_PATH}/config/config.go; \
-	sed -i 's/package .*/package scraper_backend_test/' ${MODULE_PATH}/config_override.go;	# add package name to go file
-prepare-github:
+github-cli-auth:
+	gh auth login --with-token ${GH_TERRA_TOKEN}
+github-load-file:
+	curl -L -o ${MODULE_PATH}/$(shell basename ${GH_PATH} | cut -d. -f1)_override.$(shell basename ${GH_PATH} | cut -d. -f2) \
+			-H "Accept: application/vnd.github.v3.raw" \
+			-H "Authorization: Bearer ${GH_TERRA_TOKEN}" \
+			-H "X-GitHub-Api-Version: 2022-11-28" \
+			https://api.github.com/repos/${GH_ORG}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_BRANCH}
+github-set-environment:
 	# gh api \
 	# 	--method PUT \
 	# 	-H "Accept: application/vnd.github+json" \
@@ -99,7 +93,7 @@ prepare-github:
 	# curl -L \
 	# 	-X PUT \
 	# 	-H "Accept: application/vnd.github+json" \
-	# 	-H "Authorization: Bearer ${GITHUB_TOKEN}"\
+	# 	-H "Authorization: Bearer ${GH_TERRA_TOKEN}"\
 	# 	-H "X-GitHub-Api-Version: 2022-11-28" \
 	# 	https://api.github.com/repositories/${GITHUB_REPO_ID}/environments/${GITHUB_ENV}/secrets/${GITHUB_SECRET_KEY} \
 	# 	-d '{"encrypted_value":${GITHUB_SECRET_VALUE},"key_id":"$(shell gh api -H "Accept: application/vnd.github+json" /repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/actions/secrets/public-key --jq .key_id)"}'
