@@ -1,4 +1,74 @@
-# infrastructure
+# infrastructure-modules
+
+
+
+## build
+
+```shell
+eval COMMON_NAME=infrastrucutre-modules-common; \
+eval NAME=infrastrucutre-modules; \
+sudo docker build -t $COMMON_NAME -f Dockerfile.common .; \
+sudo docker build -t $NAME -f Dockerfile --build-arg="VARIANT=$COMMON_NAME" .; \
+sudo docker run --rm -it --name $NAME --env-file .devcontainer/devcontainer.env $NAME
+```
+
+## devcontainer
+
+```
+AWS_REGION=***
+AWS_PROFILE=***
+AWS_ID=***
+AWS_ACCESS_KEY=***
+AWS_SECRET_KEY=***
+ENVIRONMENT_NAME=local
+GITHUB_TOKEN=***GH_TERRA_TOKEN***
+```
+GITHUB_TOKEN is required for the github cli. Otherwise terratest will print the token in the logs, for login or curl requests, which is not a safe behaviour.
+
+In [Github](https://github.com/settings/personal-access-tokens/new):
+:warning: The `GITHUB_TOKEN` is a default name
+
+`GH_TERRA_TOKEN`:
+```
+Repository access
+  Only select repositories: [infrastructure-modules, infrastructure-live, scraper-backend, scraper-frontend, ...]
+
+Repository permissions
+  Actions: Read and write
+  Contents: Read-only
+  Environments: Read and write
+  Metadata: Read-only
+  Secrets: Read and write
+  Variables: Read and write
+```
+
+`GH_INFRA_TOKEN`:
+```
+Repository access
+  Only select repositories: [infrastructure-modules]
+
+Repository permissions
+  Contents: Read-only
+  Metadata: Read-only
+```
+
+In [AWS]():
+
+# Github
+
+Repo secrets:
+- GH_TERRA_TOKEN
+
+Environment secrets:
+- AWS_ACCESS_KEY
+- AWS_SECRET_KEY
+
+Environment variables:
+- AWS_REGION
+- AWS_ACCOUNT_ID
+- AWS_PROFILE
+
+# terraform
 
 ## run
 
@@ -23,20 +93,6 @@ terraform output
 # destroy the infrastructure
 terraform destroy
 ```
-
-## nuke
-
-[Github](https://github.com/gruntwork-io/cloud-nuke)
-
-```
-cloud-nuke aws
-```
-
-## makefile
-Use premade commands
-make <make_command>
-
-## terraform
 
 <details><summary> <b>Links</b> </summary>
 
@@ -89,28 +145,9 @@ provider "aws" {
 }
 ```
 
-For running a bash script after the creation of the resource:
-```hcl
-resource "aws_resource_type" "resource_name" {
-  user_data = templatefile("user-data.sh", {
-    var_to_inject = "something"
-  })
-}
-```
-
-Inside `user-data.sh`:
-
-```shell
-#!/bin/bash
-
-...
-${db_address}
-...
-```
-
 </details>
 
-## terragrunt
+# terragrunt
 
 #### dependencies
 
@@ -119,36 +156,6 @@ ${db_address}
 ```shell
 terragrunt graph-dependencies | dot -Tsvg > graph.svg
 ```
-
-
-
-## env
-
-#### devcontainer
-
-```
-AWS_REGION=***
-AWS_PROFILE=***
-AWS_ID=***
-AWS_ROLE=***
-AWS_ACCESS_KEY=***
-AWS_SECRET_KEY=***
-ENVIRONMENT_NAME=test
-GITHUB_TOKEN=***
-```
-
-:warning: The `GITHUB_TOKEN` is a default name
-In [Github](https://github.com/settings/personal-access-tokens/new):
-Content: Read-only
-
-  Actions: Read and write
-  Contents: Read-only
-  Environments: Read and write
-  Metadata: Read-only
-  Secrets: Read and write
-  Variables: Read and write
-
-In [AWS]()
 
 ## variables
 
@@ -196,7 +203,7 @@ cidrhost("192.168.0.0/16", -1)
 
 
 
-## test 
+# terratest 
 
   - make prepare
   - run each test
@@ -241,7 +248,7 @@ If you need to enable one functionality:
 unset SKIP_cleanup_mongodb
 ```
 
-## graphs
+# graphs
 
 #### VPC
 

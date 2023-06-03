@@ -1,11 +1,8 @@
 {
 	"name": "Alpine",
 	"build": {
-		"dockerfile": "../Dockerfile",
-		"args": {
-			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16",
-			"RUNNER": "devcontainer"
-		},
+		"dockerfile": "../Dockerfile.common",
+		"args": {"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"},
 		"target": "runner"
 	},
 	"runArgs": [
@@ -22,7 +19,8 @@
 				"shd101wyy.markdown-preview-enhanced",
 				"premparihar.gotestexplorer",
 				"hashicorp.terraform",
-				"bierner.markdown-emoji"
+				"bierner.markdown-emoji",
+				"github.vscode-github-actions"
 			]
 		}
 	}
