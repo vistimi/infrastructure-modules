@@ -114,9 +114,7 @@ RUN rover --version
 
 # inframap
 RUN sudo apk add -q --no-cache graphviz
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
-RUN inframap version
-
+COPY --chown=$USERNAME:$USER_GID --from=build-O /MIME-Base64-3.16.tar.gz
 # terraform
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
@@ -136,6 +134,9 @@ RUN sudo apk add --no-cache -q github-cli
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
 RUN aws --version
+
+# encryption
+# RUN sudo apk add --no-cache libsodium-dev
 
 RUN go install github.com/cweill/gotests/gotests@latest \
     && go install github.com/fatih/gomodifytags@latest \

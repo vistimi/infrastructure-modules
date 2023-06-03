@@ -19,7 +19,8 @@
 				"shd101wyy.markdown-preview-enhanced",
 				"premparihar.gotestexplorer",
 				"hashicorp.terraform",
-				"bierner.markdown-emoji"
+				"bierner.markdown-emoji",
+				"github.vscode-github-actions"
 			]
 		}
 	}
