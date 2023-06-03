@@ -56,35 +56,35 @@ export TASKS=$(aws ecs list-tasks \
 
 echo Wait for tasks $TASKS to be RUNNING
 
-aws ecs wait tasks-running \
-  --region $AWS_REGION \
-  --cluster $COMMON_NAME \
-  --tasks $TASKS
+# aws ecs wait tasks-running \
+#   --region $AWS_REGION \
+#   --cluster $COMMON_NAME \
+#   --tasks $TASKS
 
-# export LATEST_TASK_DEFINITION_ARN=$(aws ecs list-task-definitions \
-# --region $AWS_REGION \
-# --family-prefix $COMMON_NAME \
-# --sort DESC \
-# --query 'taskDefinitionArns[0]' \
-# --output text)
-# for task in $TASKS; do
-#   export tasksDescription=$(aws ecs describe-tasks --region $AWS_REGION --cluster $COMMON_NAME --tasks $task --query 'tasks[]' --output json) || exit 1
-#   echo "tasksDescription=$tasksDescription"
-#   export latestStatus=$(jq -r  '.[]|.lastStatus' <<< $tasksDescription)
-#   export taskDefinitionArn=$(jq -r  '.[]|.taskDefinitionArn' <<< $tasksDescription)
-#   echo "Waiting for task $task to be RUNNING, currently $latestStatus"
-#   echo "Waiting for task $task to have definition ARN $LATEST_TASK_DEFINITION_ARN, currently $taskDefinitionArn"
+export LATEST_TASK_DEFINITION_ARN=$(aws ecs list-task-definitions \
+--region $AWS_REGION \
+--family-prefix $COMMON_NAME \
+--sort DESC \
+--query 'taskDefinitionArns[0]' \
+--output text)
+for task in $TASKS; do
+  export tasksDescription=$(aws ecs describe-tasks --region $AWS_REGION --cluster $COMMON_NAME --tasks $task --query 'tasks[]' --output json) || exit 1
+  echo "tasksDescription=$tasksDescription"
+  export latestStatus=$(jq -r  '.[]|.lastStatus' <<< $tasksDescription)
+  export taskDefinitionArn=$(jq -r  '.[]|.taskDefinitionArn' <<< $tasksDescription)
+  echo "Waiting for task $task to be RUNNING, currently $latestStatus"
+  echo "Waiting for task $task to have definition ARN $LATEST_TASK_DEFINITION_ARN, currently $taskDefinitionArn"
   
-#   export i=0
-#   while [[ $latestStatus != "RUNNING" && taskDefinitionArn != $LATEST_TASK_DEFINITION_ARN ]]; do
-#     export tasksDescription=$(aws ecs describe-tasks --region $AWS_REGION --cluster $COMMON_NAME --tasks $task --query 'tasks[]' --output json)
-#     export latestStatus=$(jq -r  '.[]|.lastStatus' <<< $tasksDescription)
-#     export taskDefinitionArn=$(jq -r  '.[]|.taskDefinitionArn' <<< $tasksDescription)
-#     echo "Waiting for task $task to be RUNNING, currently $latestStatus"
-#     echo "Waiting for task $task to have definition ARN $LATEST_TASK_DEFINITION_ARN, currently $taskDefinitionArn"
-#     sleep 10s
+  export i=0
+  while [[ $latestStatus != "RUNNING" && $taskDefinitionArn != $LATEST_TASK_DEFINITION_ARN ]]; do
+    export tasksDescription=$(aws ecs describe-tasks --region $AWS_REGION --cluster $COMMON_NAME --tasks $task --query 'tasks[]' --output json)
+    export latestStatus=$(jq -r  '.[]|.lastStatus' <<< $tasksDescription)
+    export taskDefinitionArn=$(jq -r  '.[]|.taskDefinitionArn' <<< $tasksDescription)
+    echo "Waiting for task $task to be RUNNING, currently $latestStatus"
+    echo "Waiting for task $task to have definition ARN $LATEST_TASK_DEFINITION_ARN, currently $taskDefinitionArn"
+    sleep 10s
 
-#     if [ $i -gt 30 ] || [ "$latestStatus" = "STOPPED" ]; then exit 1; fi
-#     export i=$((i+1))
-#   done
-# done
+    if [ $i -gt 30 ] || [ "$latestStatus" = "STOPPED" ]; then exit 1; fi
+    export i=$((i+1))
+  done
+done
