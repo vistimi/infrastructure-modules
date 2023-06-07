@@ -2,7 +2,9 @@
 	"name": "Alpine",
 	"build": {
 		"dockerfile": "../Dockerfile.common",
-		"args": {"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"},
+		"args": {
+			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"
+		},
 		"target": "runner"
 	},
 	"runArgs": [
@@ -20,7 +22,7 @@
 				"premparihar.gotestexplorer",
 				"hashicorp.terraform",
 				"bierner.markdown-emoji",
-				"github.vscode-github-actions"
+				"ms-vscode.makefile-tools"
 			]
 		}
 	}

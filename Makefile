@@ -167,34 +167,33 @@ clean: ## Clean the test environment
 	make nuke-region-exclude-vpc;
 	make clean-vpc;
 
-	# echo "Deleting cloudwatch alarms...";  \
-	# while [ -n "$(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName' --max-items 1)" ]; do \
-	# 	make clean-cloudwatch; \
-	# done;
-
-	# echo "Diregistring task definitions..."; \
-	# while [ -n "$(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]' --max-items 1)" ]; do \
-	# 	make clean-task-definition; \
-	# done;
-
-	# echo "Delete registries..."; \
-	# while [ -n "$(shell aws ecr describe-repositories --query 'repositories[].repositoryName' --max-items 1)" ]; do \
-	# 	make clean-registries; \
-	# done;
-
+	# Delete launch template and target groups
 	make clean-cloudwatch; \
 	make clean-task-definition; \
 	make clean-registries; \
+	make clean-iam; \
+	make clean-ec2; \
+	make clean-elb; \
 
-	echo "Deleteing state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
-	echo "Deleteing override files..."; for filePath in $(shell find . -type f -name "*_override.*"); do echo $$filePath; rm $$filePath; done; \
-	echo "Deleteing temp folder..."; for folderPath in $(shell find . -type d -name ".terraform"); do echo $$folderPath; rm -Rf $$folderPath; done;
+	echo "Delete state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
+	echo "Delete state backup files..."; for folderPath in $(shell find . -type f -name "terraform.tfstate.backup"); do echo $$folderPath; rm -Rf $$folderPath; done; \
+	echo "Delete override files..."; for filePath in $(shell find . -type f -name "*_override.*"); do echo $$filePath; rm $$filePath; done; \
+	echo "Delete lock files..."; for folderPath in $(shell find . -type f -name "terraform.lock.hcl"); do echo $$folderPath; rm -Rf $$folderPath; done;
+
+	echo "Delete temp folder..."; for folderPath in $(shell find . -type d -name ".terraform"); do echo $$folderPath; rm -Rf $$folderPath; done;
 clean-cloudwatch:
-	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do  echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
+	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
 clean-task-definition:
 	for taskDefinition in $(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]'); do aws ecs deregister-task-definition --task-definition $$taskDefinition --query 'taskDefinition.taskDefinitionArn'; done;
 clean-registries:
 	for repositoryName in $(shell aws ecr describe-repositories --query 'repositories[].repositoryName'); do aws ecr delete-repository --repository-name $$repositoryName --force --query 'repository.repositoryName'; done;
+clean-iam:
+	for policyArn in $(shell aws iam list-policies --query 'Policies[].Arn'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done; \
+	for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done;
+clean-ec2:
+	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
+clean-elb:
+	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
 clean-vpc:
 	# if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 	# 	make nuke-region-vpc; \

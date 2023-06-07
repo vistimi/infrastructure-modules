@@ -49,9 +49,12 @@ variable "task_definition" {
     env_bucket_name    = string
     env_file_name      = string
     port_mapping = list(object({
-      hostPort      = number
-      protocol      = string
-      containerPort = number
+      appProtocol        = optional(string)
+      containerPort      = optional(number)
+      containerPortRange = optional(string)
+      hostPort           = optional(number)
+      name               = optional(string)
+      protocol           = optional(string)
     }))
     registry_image_tag = string
   })
@@ -147,8 +150,49 @@ variable "ami_ssm_name" {
   type        = map(string)
 
   default = {
-    amazon-linux-2       = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
-    amazon-linux-2-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
-    amazon-linux-2-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
+    amazon-linux-2          = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
+    amazon-linux-2-arm64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
+    amazon-linux-2-gpu      = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
+    amazon-linux-2-inf      = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended"
+    amazon-linux-2023       = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended"
+    amazon-linux-2023-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended"
+    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended"
+    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended"
   }
 }
+
+# ebs_device_map = {
+#   amazon2       = "/dev/sdf"
+#   amazon2023    = "/dev/sdf"
+#   amazoneks     = "/dev/sdf"
+#   amazonecs     = "/dev/xvdcz"
+#   rhel7         = "/dev/sdf"
+#   rhel8         = "/dev/sdf"
+#   centos7       = "/dev/sdf"
+#   ubuntu18      = "/dev/sdf"
+#   ubuntu20      = "/dev/sdf"
+#   debian10      = "/dev/sdf"
+#   debian11      = "/dev/sdf"
+#   windows2012r2 = "xvdf"
+#   windows2016   = "xvdf"
+#   windows2019   = "xvdf"
+#   windows2022   = "xvdf"
+# }
+
+# root_device_map = {
+#   amazon2       = "/dev/xvda"
+#   amazon2023    = "/dev/xvda"
+#   amazoneks     = "/dev/xvda"
+#   amazonecs     = "/dev/xvda"
+#   rhel7         = "/dev/sda1"
+#   rhel8         = "/dev/sda1"
+#   centos7       = "/dev/sda1"
+#   ubuntu18      = "/dev/sda1"
+#   ubuntu20      = "/dev/sda1"
+#   windows2012r2 = "/dev/sda1"
+#   windows2016   = "/dev/sda1"
+#   windows2019   = "/dev/sda1"
+#   windows2022   = "/dev/sda1"
+#   debian10      = "/dev/sda1"
+#   debian11      = "/dev/sda1"
+# }

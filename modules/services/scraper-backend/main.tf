@@ -1,3 +1,9 @@
+data "aws_partition" "current" {}
+
+locals {
+  partition = data.aws_partition.current.partition // aws
+}
+
 module "microservice" {
   source = "../../components/microservice"
 
@@ -19,28 +25,6 @@ module "microservice" {
   ecr             = var.ecr
   bucket_env      = var.bucket_env
 }
-
-// TODO: attach policy to containers
-# resource "aws_iam_role" "dynamodb" {
-#   name = "${var.table_name}-ec2"
-#   tags = var.common_tags
-
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         "Sid" : "DescribeQueryScanBooksTable",
-#         "Effect" : "Allow",
-#         "Action" : [
-#           "dynamodb:DescribeTable",
-#           "dynamodb:Query",
-#           "dynamodb:Scan"
-#         ],
-#         "Resource" : "arn:aws:dynamodb:us-west-2:account-id:table/Books"
-#       }
-#     ]
-#   })
-# }
 
 module "dynamodb_table" {
   source = "../../data/dynamodb"
@@ -69,4 +53,29 @@ module "bucket_picture" {
   vpc_id        = var.vpc.id
   force_destroy = var.bucket_picture.force_destroy
   versioning    = var.bucket_picture.versioning
+}
+
+resource "aws_iam_policy" "bucket_picture" {
+  name = "${var.common_name}-ecs-task-container-s3-picture"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.bucket_picture.name}",
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.bucket_picture.name}/*",
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "bucket_picture" {
+  role       = module.microservice.ecs_task_role_name
+  policy_arn = aws_iam_policy.bucket_picture.arn
 }

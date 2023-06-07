@@ -25,30 +25,12 @@ module "ecs" {
 #     ECR
 # ------------
 module "ecr" {
-  source = "terraform-aws-modules/ecr/aws"
-
-  repository_name = var.common_name
-  repository_lifecycle_policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1,
-        description  = "Keep last ${var.ecr.image_keep_count} images",
-        selection = {
-          tagStatus     = "tagged",
-          tagPrefixList = ["v"],
-          countType     = "imageCountMoreThan",
-          countNumber   = var.ecr.image_keep_count
-        },
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-  repository_force_delete         = var.ecr.force_destroy
-  repository_image_tag_mutability = "MUTABLE"
-
-  tags = var.common_tags
+  source           = "../../components/ecr"
+  common_name      = var.common_name
+  common_tags      = var.common_tags
+  vpc_id           = var.vpc.id
+  force_destroy    = var.ecr.force_destroy
+  image_keep_count = var.ecr.image_keep_count
 }
 
 # ------------------------

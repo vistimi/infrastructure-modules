@@ -35,12 +35,24 @@ output "alb_security_group_id" {
   description = "The ID of the security group"
 }
 
-output "ecs_cluster_arn" {
-  value       = aws_ecs_cluster.this.arn
-  description = "ARN that identifies the cluster"
-}
+# output "cluster_arn" {
+#   value       = aws_ecs_cluster.this.arn
+#   description = "ARN that identifies the cluster"
+# }
 
 # output "ecs_service_arn" {
 #   value       = aws_ecs_service.this.id
 #   description = "ARN that identifies the service"
 # }
+
+output "task_role_arn" {
+  # value       = aws_iam_role.ecs_task.arn
+  value       = module.ecs.services[var.common_name].tasks_iam_role_arn
+  description = "ARN of the task role that runs container"
+}
+
+output "task_role_name" {
+  # value       = aws_iam_role.ecs_task.name
+  value       = module.ecs.services[var.common_name].tasks_iam_role_name
+  description = "Name of the task role that runs container"
+}

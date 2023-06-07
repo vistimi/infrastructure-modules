@@ -1,5 +1,35 @@
+// TODO: attach policy to containers
+# resource "aws_iam_role" "dynamodb" {
+#   name = "${var.table_name}-ec2"
+#   tags = var.common_tags
+
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         "Sid" : "DescribeQueryScanBooksTable",
+#         "Effect" : "Allow",
+#         "Action" : [
+#           "dynamodb:DescribeTable",
+#           "dynamodb:BatchGet*",
+#                 "dynamodb:DescribeStream",
+#                 "dynamodb:Get*",
+#                 "dynamodb:Query",
+#                 "dynamodb:Scan",
+#                 "dynamodb:BatchWrite*",
+#                 "dynamodb:Delete*",
+#                 "dynamodb:Update*",
+#                 "dynamodb:PutItem"
+#         ],
+#         "Resource" : "arn:aws:dynamodb:us-west-2:account-id:table/Books"
+#       }
+#     ]
+#   })
+# }
+
 module "dynamodb_table" {
-  source = "terraform-aws-modules/dynamodb-table/aws"
+  source  = "terraform-aws-modules/dynamodb-table/aws"
+  version = "3.3.0"
 
   name = var.table_name
 
@@ -39,87 +69,6 @@ module "dynamodb_table" {
 
   tags = var.common_tags
 }
-
-# resource "aws_iam_role" "ec2" {
-#   name = "${var.table_name}-ec2"
-#   tags = var.common_tags
-
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole",
-#         Principal = {
-#           Service = "ec2.amazonaws.com"
-#         },
-#         Effect = "Allow",
-#       },
-#     ]
-#   })
-# }
-
-# data "aws_iam_policy_document" "bucket_policy" {
-#   statement {
-#     actions = ["s3:GetBucketLocation", "s3:ListBucket"]
-
-#     resources = [
-#       "arn:aws:s3:::${var.bucket_name}",
-#     ]
-
-#     principals {
-#       type        = "AWS"
-#       identifiers = [aws_iam_role.ec2.arn]
-#     }
-
-#     condition {
-#       test     = "ForAnyValue:StringEquals"
-#       variable = "aws:SourceVpce"
-#       values   = ["${var.vpc_id}"]
-#     }
-#   }
-
-#   statement {
-#     actions = ["s3:GetObject"]
-
-#     resources = [
-#       "arn:aws:s3:::${var.bucket_name}/*",
-#     ]
-
-#     principals {
-#       type        = "AWS"
-#       identifiers = [aws_iam_role.ec2.arn]
-#     }
-
-#     condition {
-#       test     = "ForAnyValue:StringEquals"
-#       variable = "aws:SourceVpce"
-#       values   = ["${var.vpc_id}"]
-#     }
-#   }
-
-#   # statement {
-#   #   actions = [
-#   #     "kms:GetPublicKey",
-#   #     "kms:GetKeyPolicy",
-#   #     "kms:DescribeKey"
-#   #   ]
-
-#   #   resources = [
-#   #     "*",
-#   #   ]
-
-#   #   principals {
-#   #     type        = "AWS"
-#   #     identifiers = ["*"]
-#   #   }
-
-#   #   condition {
-#   #     test     = "ForAnyValue:StringEquals"
-#   #     variable = "aws:SourceVpce"
-#   #     values   = ["${var.vpc_id}"]
-#   #   }
-#   # }
-# }
 
 # {
 #     "Version": "2012-10-17",

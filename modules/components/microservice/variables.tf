@@ -52,6 +52,7 @@ variable "user_data" {
   default     = null
 }
 
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
 variable "instance" {
   type = object({
     user_data = optional(string)
@@ -99,9 +100,12 @@ variable "task_definition" {
     env_bucket_name    = string
     env_file_name      = string
     port_mapping = list(object({
-      hostPort      = number
-      protocol      = string
-      containerPort = number
+      appProtocol        = optional(string)
+      containerPort      = optional(number)
+      containerPortRange = optional(string)
+      hostPort           = optional(number)
+      name               = optional(string)
+      protocol           = optional(string)
     }))
     registry_image_tag = string
   })

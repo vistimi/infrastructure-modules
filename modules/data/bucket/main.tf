@@ -1,19 +1,7 @@
-resource "aws_iam_role" "ec2" {
-  name = "${var.bucket_name}-ec2"
-  tags = var.common_tags
+data "aws_partition" "current" {}
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Effect = "Allow",
-      },
-    ]
-  })
+locals {
+  dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
 }
 
 data "aws_iam_policy_document" "bucket_policy" {
@@ -25,8 +13,17 @@ data "aws_iam_policy_document" "bucket_policy" {
     ]
 
     principals {
-      type        = "AWS"
-      identifiers = [aws_iam_role.ec2.arn]
+      type = "Service"
+      identifiers = [
+        "ec2.${local.dns_suffix}",
+        // FIXME: remove below
+        "ecs.${local.dns_suffix}",
+        "ecs-tasks.${local.dns_suffix}",
+        "ecs.application-autoscaling.${local.dns_suffix}",
+        "ec2.application-autoscaling.${local.dns_suffix}",
+        "application-autoscaling.${local.dns_suffix}",
+        "autoscaling.${local.dns_suffix}",
+      ]
     }
 
     condition {
@@ -44,8 +41,17 @@ data "aws_iam_policy_document" "bucket_policy" {
     ]
 
     principals {
-      type        = "AWS"
-      identifiers = [aws_iam_role.ec2.arn]
+      type = "Service"
+      identifiers = [
+        "ec2.${local.dns_suffix}",
+        // FIXME: remove below
+        "ecs.${local.dns_suffix}",
+        "ecs-tasks.${local.dns_suffix}",
+        "ecs.application-autoscaling.${local.dns_suffix}",
+        "ec2.application-autoscaling.${local.dns_suffix}",
+        "application-autoscaling.${local.dns_suffix}",
+        "autoscaling.${local.dns_suffix}",
+      ]
     }
 
     condition {
@@ -55,36 +61,18 @@ data "aws_iam_policy_document" "bucket_policy" {
     }
   }
 
-  # statement {
-  #   actions = [
   #     "kms:GetPublicKey",
   #     "kms:GetKeyPolicy",
   #     "kms:DescribeKey"
-  #   ]
-
-  #   resources = [
-  #     "*",
-  #   ]
-
-  #   principals {
-  #     type        = "AWS"
-  #     identifiers = ["*"]
-  #   }
-
-  #   condition {
-  #     test     = "ForAnyValue:StringEquals"
-  #     variable = "aws:SourceVpce"
-  #     values   = ["${var.vpc_id}"]
-  #   }
-  # }
 }
 
 // TODO: add encryption
 module "s3_bucket" {
-  source = "terraform-aws-modules/s3-bucket/aws"
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "3.11.0"
 
   bucket = var.bucket_name
-  # acl    = "private"
+  # acl    = "private"  # no need if policy is tight
 
   versioning = var.versioning ? {
     enabled = true

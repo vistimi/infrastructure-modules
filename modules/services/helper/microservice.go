@@ -30,13 +30,11 @@ var (
 
 const (
 	serviceTaskDesiredCountInit  = 0 // before CI/CD pileline
-	ServiceTaskDesiredCountFinal = 2 // at least two for
+	ServiceTaskDesiredCountFinal = 1 // one for each fargate capacity provider
 	TaskDefinitionImageTag       = "latest"
 
-	// task definition variables (fargate and ec2 compatible for ease of use)
-	Cpu    = 512
-	Memory = 1024
-	// Memory_reservation := 1024
+	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/memory-management.html#ecs-reserved-memory
+	ECSReservedMemory = 100
 )
 
 type GithubProjectInformation struct {
@@ -60,7 +58,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	rand.Seed(time.Now().UnixNano())
 
 	// setup terraform override variables
-	bashCode := `terragrunt init;`
+	bashCode := `gh auth login --with-token %s;terragrunt init;`
 	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
@@ -84,16 +82,21 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	}
 
 	// end variables
+	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles
+	// ECS_ENABLE_TASK_IAM_ROLE=true // Uses IAM roles for tasks for containers with the bridge and default network modes
+	// ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true // Uses IAM roles for tasks for containers with the host network mode
 	user_data := fmt.Sprintf(`#!/bin/bash
 	cat <<'EOF' >> /etc/ecs/ecs.config
 	ECS_CLUSTER=%s
-	ECS_ENABLE_TASK_IAM_ROLE=true
 	ECS_LOGLEVEL=debug
 	ECS_AVAILABLE_LOGGING_DRIVERS='["json-file","awslogs"]'
 	ECS_ENABLE_AWSLOGS_EXECUTIONROLE_OVERRIDE=true
 	ECS_CONTAINER_INSTANCE_TAGS=%s
 	ECS_ENABLE_SPOT_INSTANCE_DRAINING=true
-	EOF`, common_name, common_tags_json)
+	ECS_RESERVED_MEMORY=%d
+	ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true 
+	EOF
+	`, common_name, common_tags_json, ECSReservedMemory)
 
 	// vpc variables
 	vpcId := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
@@ -120,9 +123,6 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 			"user_data":                  user_data,
 
 			"task_definition": map[string]any{
-				"memory": Memory,
-				// "memory_reservation": memory_reservation,
-				"cpu":                Cpu,
 				"env_bucket_name":    bucketEnvName,
 				"registry_image_tag": TaskDefinitionImageTag,
 			},
@@ -166,7 +166,7 @@ func TestMicroservice(t *testing.T, terraformOptions *terraform.Options, githubI
 	})
 
 	terratest_structure.RunTestStage(t, "validate_ecs", func() {
-		testEcs(t, common_name, AccountRegion, common_name, strconv.Itoa(Cpu), strconv.Itoa(Memory), ServiceTaskDesiredCountFinal)
+		testEcs(t, common_name, AccountRegion, common_name, ServiceTaskDesiredCountFinal)
 	})
 }
 
@@ -179,22 +179,19 @@ func RunGithubWorkflow(
 
 	bashCode := fmt.Sprintf(`
 		%s
-		echo "Sleep 10 seconds for spawning action"
-		sleep 10s
+		echo "Sleep 10 seconds for spawning action"; sleep 10s
 		echo "Continue to check the status"
-		# while workflow status == in_progress, wait
+		# wait while workflow is in_progress
 		workflowStatus="preparing"
 		while [ "${workflowStatus}" != "completed" ]
 		do
-			workflowStatus=$(gh run list --repo %s/%s --branch %s --workflow %s --limit 1 | awk '{print $1}')
-			echo $workflowStatus
+			workflowStatus=$(gh run list --repo %s/%s --branch %s --workflow %s --limit 1 | awk '{print $1}'); echo $workflowStatus
 			if [[ $workflowStatus  =~ "could not find any workflows" ]]; then exit 1; fi
 			echo "Waiting for status workflow to complete: "${workflowStatus}
 			sleep 30s
 		done
 		echo "Workflow finished: $workflowStatus"
-		sleep 10s
-		echo "Sleep 10 seconds"
+		echo "Sleep 10 seconds"; sleep 10s
 	`,
 		commandStartWorkflow,
 		githubInformations.Organization,
@@ -228,7 +225,7 @@ func testEcr(t *testing.T, common_name, account_region string) {
 }
 
 // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_ecs_example_test.go
-func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory string, service_task_desired_count int) {
+func testEcs(t *testing.T, family_name, account_region, common_name string, service_task_desired_count int) {
 	// cluster
 	cluster := terratest_aws.GetEcsCluster(t, account_region, common_name)
 	services_amount := int64(1)
@@ -258,9 +255,9 @@ func testEcs(t *testing.T, family_name, account_region, common_name, cpu, memory
 	latestTaskDefinitionArn := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nlatestTaskDefinitionArn = %s\n\n", latestTaskDefinitionArn)
 
-	task := terratest_aws.GetEcsTaskDefinition(t, account_region, latestTaskDefinitionArn)
-	assert.Equal(t, cpu, awsSDK.StringValue(task.Cpu))
-	assert.Equal(t, memory, awsSDK.StringValue(task.Memory))
+	// task := terratest_aws.GetEcsTaskDefinition(t, account_region, latestTaskDefinitionArn)
+	// assert.Equal(t, cpu, awsSDK.StringValue(task.Cpu))
+	// assert.Equal(t, memory, awsSDK.StringValue(task.Memory))
 
 	// running tasks
 	bashCode = fmt.Sprintf(`
@@ -368,5 +365,13 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 		} else {
 			terratest_http_helper.HttpGetWithRetry(t, endpoint.Url, &tlsConfig, endpoint.ExpectedStatus, *endpoint.ExpectedBody, endpoint.MaxRetries, endpoint.SleepBetweenRetries)
 		}
+	}
+}
+
+func CheckUrlPrefix(url string) string {
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		return url
+	} else {
+		return "http://" + url
 	}
 }

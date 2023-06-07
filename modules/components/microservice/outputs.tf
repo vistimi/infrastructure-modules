@@ -43,3 +43,13 @@ output "alb_security_group_id" {
 #   value       = aws_ecs_task_definition.service.revision
 #   description = "Revision of the task in a particular family"
 # }
+
+output "ecs_task_role_arn" {
+  value       = module.ecs.task_role_arn
+  description = "ARN of the task role that runs container"
+}
+
+output "ecs_task_role_name" {
+  value       = module.ecs.task_role_name
+  description = "Name of the task role that runs container"
+}

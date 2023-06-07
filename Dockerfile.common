@@ -114,7 +114,9 @@ RUN rover --version
 
 # inframap
 RUN sudo apk add -q --no-cache graphviz
-COPY --chown=$USERNAME:$USER_GID --from=build-O /MIME-Base64-3.16.tar.gz
+COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+RUN inframap version
+
 # terraform
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
@@ -128,7 +130,7 @@ COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:v0.43.0
 RUN tflint --version
 
 # github cli
-RUN sudo apk add --no-cache -q github-cli
+RUN sudo apk add --no-cache -q github-cli && gh --version
 
 # aws cli
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
