@@ -58,6 +58,7 @@ variable "instance" {
     ec2 = optional(object({
       ami_ssm_architecture = string
       instance_type        = string
+      key_name             = optional(string)
     }))
     fargate = optional(object({
       os           = string

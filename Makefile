@@ -166,13 +166,13 @@ github-set-environment-secret:
 clean: ## Clean the test environment
 	make nuke-region-exclude-vpc;
 	make clean-vpc;
+	make nuke-global;
 
-	# Delete launch template and target groups
-	make clean-cloudwatch; \
+	# make clean-cloudwatch; \
 	make clean-task-definition; \
-	make clean-registries; \
-	make clean-iam; \
-	make clean-ec2; \
+	# make clean-registries; \
+	# make clean-iam; \
+	# make clean-ec2; \
 	make clean-elb; \
 
 	echo "Delete state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
@@ -188,8 +188,9 @@ clean-task-definition:
 clean-registries:
 	for repositoryName in $(shell aws ecr describe-repositories --query 'repositories[].repositoryName'); do aws ecr delete-repository --repository-name $$repositoryName --force --query 'repository.repositoryName'; done;
 clean-iam:
-	for policyArn in $(shell aws iam list-policies --query 'Policies[].Arn'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done; \
-	for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done;
+	# roles are attached to policies
+	for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done; \
+	for policyArn in $(shell aws iam list-policies --max-items 200 --no-only-attached --query 'Policies[].Arn'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done;
 clean-ec2:
 	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
 clean-elb:
@@ -211,6 +212,8 @@ nuke-region-exclude-vpc: ## Nuke within the user's region all resources excludin
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --force;
 nuke-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
+nuke-global:
+	cloud-nuke aws --region global --force;
 
 # clean-old: ## Clean the test environment that is old
 # 	make nuke-old-region-exclude-vpc; \

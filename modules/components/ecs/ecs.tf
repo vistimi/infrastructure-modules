@@ -106,6 +106,11 @@ module "ecs" {
           ]
           effect    = "Allow"
           resources = ["*"],
+          # condition = {
+          #   test     = "StringEquals"
+          #   variable = "aws:SourceAccount"
+          #   values   = [local.account_id]
+          # }
         },
         ecr = {
           actions = [
@@ -115,18 +120,46 @@ module "ecs" {
             "ecr:BatchGetImage",
           ]
           effect    = "Allow"
-          resources = ["arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"]
+          resources = ["arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"],
+          # condition = {
+          #   test     = "StringEquals"
+          #   variable = "aws:SourceAccount"
+          #   values   = [local.account_id]
+          # }
         },
         bucket-env = {
           actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
           effect    = "Allow"
           resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}"],
+          # condition = {
+          #   test     = "StringEquals"
+          #   variable = "aws:SourceAccount"
+          #   values   = [local.account_id]
+          # }
         },
         bucket-env-files = {
           actions   = ["s3:GetObject"]
           effect    = "Allow"
           resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
+          # condition = {
+          #   test     = "StringEquals"
+          #   variable = "aws:SourceAccount"
+          #   values   = [local.account_id]
+          # }
         },
+        # user-assume = {
+        #   actions = ["sts:AssumeRole"]
+        #   effect  = "Allow"
+        #   principals = {
+        #     type        = "AWS"
+        #     identifiers = [local.account_arn]
+        #   }
+        #   # condition = {
+        #   #   test     = "Bool"
+        #   #   variable = "aws:MultiFactorAuthPresent"
+        #   #   values   = ["true"]
+        #   # }
+        # }
       }
 
 
@@ -230,7 +263,25 @@ module "ecs" {
           ]
           effect    = "Allow"
           resources = ["*"],
+          # condition = {
+          #   test     = "StringEquals"
+          #   variable = "aws:SourceAccount"
+          #   values   = [local.account_id]
+          # }
         },
+        # user-assume = {
+        #   actions = ["sts:AssumeRole"]
+        #   effect  = "Allow"
+        #   principals = {
+        #     type        = "AWS"
+        #     identifiers = [local.account_arn]
+        #   }
+        #   # condition = {
+        #   #   test     = "Bool"
+        #   #   variable = "aws:MultiFactorAuthPresent"
+        #   #   values   = ["true"]
+        #   # }
+        # }
       }
       tasks_iam_role_policies = {
         AmazonEC2FullAccess  = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
@@ -254,61 +305,20 @@ module "ecs" {
               "type"  = "s3"
             }
           ]
-          # environment = [
-          #   {
-          #     "name" : "CLOUD_HOST",
-          #     "value" : "aws"
-          #   },
-          #   {
-          #     "name" : "COMMON_NAME",
-          #     "value" : var.common_name
-          #   },
-          #   {
-          #     "name" : "FLICKR_PRIVATE_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" : "FLICKR_PUBLIC_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" : "UNSPLASH_PRIVATE_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" : "UNSPLASH_PUBLIC_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" : "PEXELS_PUBLIC_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" : "AWS_REGION",
-          #     "value" : "us-west-1"
-          #   },
-          #   {
-          #     "name" : "AWS_ACCESS_KEY",
-          #     "value" : "123"
-          #   },
-          #   {
-          #     "name" = "AWS_SECRET_KEY",
-          #     "value" = "123"
-          #   }
-          # ],
 
           port_mappings      = var.task_definition.port_mapping
           memory             = var.task_definition.memory
           memory_reservation = var.task_definition.memory_reservation
           cpu                = var.task_definition.cpu
-          log_configuration = {
-            "logDriver" = "awslogs",
-            "options" = {
-              "awslogs-group"         = aws_cloudwatch_log_group.cluster.name
-              "awslogs-region"        = "${local.region}",
-              "awslogs-stream-prefix" = "/${var.log.prefix}"
-            }
-          }
+          log_configuration  = null
+          # var.deployment.use_fargate ? {
+          #   "logDriver" = "awslogs",
+          #   "options" = {
+          #     "awslogs-group"         = aws_cloudwatch_log_group.cluster.name
+          #     "awslogs-region"        = "${local.region}",
+          #     "awslogs-stream-prefix" = "/${var.log.prefix}"
+          #   }
+          # } : null
 
           // fargate AMI
           runtime_platform = var.deployment.use_fargate ? {
@@ -324,7 +334,8 @@ module "ecs" {
       #------------
       # Service
       #------------
-      launch_type = var.deployment.use_fargate ? "FARGATE" : "EC2"
+      desired_count = var.service_task_desired_count
+      launch_type   = var.deployment.use_fargate ? "FARGATE" : "EC2"
       # capacity_provider_strategy = {
       #   for key, value in var.capacity_provider :
       #   key => {

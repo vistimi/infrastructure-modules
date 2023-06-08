@@ -1,4 +1,4 @@
-package helper_test
+package microservice
 
 import (
 	"crypto/tls"
@@ -35,6 +35,29 @@ const (
 
 	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/memory-management.html#ecs-reserved-memory
 	ECSReservedMemory = 100
+)
+
+type EC2Instance struct {
+	Name          string
+	Cpu           int
+	Memory        int
+	MemoryAllowed int
+}
+
+var (
+	// for amazon 2023 at least
+	T3Small = EC2Instance{
+		Name:          "t3.small",
+		Cpu:           2048,
+		Memory:        2048,
+		MemoryAllowed: 1780, // TODO: double check under infra of cluster + ECSReservedMemory
+	}
+	T3Medium = EC2Instance{
+		Name:          "t3.medium",
+		Cpu:           2048,
+		Memory:        4096,
+		MemoryAllowed: 3828,
+	}
 )
 
 type GithubProjectInformation struct {
@@ -85,16 +108,20 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles
 	// ECS_ENABLE_TASK_IAM_ROLE=true // Uses IAM roles for tasks for containers with the bridge and default network modes
 	// ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true // Uses IAM roles for tasks for containers with the host network mode
+
+	// awslogs log driver, Amazon ECS container instances require at least version 1.9.0 of the container agent
+	// sudo yum update -y ecs-init && sudo systemctl restart docker
+	// ECS_AVAILABLE_LOGGING_DRIVERS='["json-file","awslogs"]'
+	// ECS_ENABLE_AWSLOGS_EXECUTIONROLE_OVERRIDE=true # https://github.com/aws/amazon-ecs-agent/issues/1395#issuecomment-391930395
+
 	user_data := fmt.Sprintf(`#!/bin/bash
 	cat <<'EOF' >> /etc/ecs/ecs.config
 	ECS_CLUSTER=%s
 	ECS_LOGLEVEL=debug
-	ECS_AVAILABLE_LOGGING_DRIVERS='["json-file","awslogs"]'
-	ECS_ENABLE_AWSLOGS_EXECUTIONROLE_OVERRIDE=true
 	ECS_CONTAINER_INSTANCE_TAGS=%s
+	ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true
 	ECS_ENABLE_SPOT_INSTANCE_DRAINING=true
 	ECS_RESERVED_MEMORY=%d
-	ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true 
 	EOF
 	`, common_name, common_tags_json, ECSReservedMemory)
 

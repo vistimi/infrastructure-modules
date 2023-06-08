@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	helper_test "github.com/KookaS/infrastructure-modules/modules/services/helper"
+	"github.com/KookaS/infrastructure-modules/modules/services/microservice"
 	"github.com/KookaS/infrastructure-modules/util"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	GithubProject = helper_test.GithubProjectInformation{
+	GithubProject = microservice.GithubProjectInformation{
 		Organization:     "KookaS",
 		Repository:       "scraper-backend",
 		Branch:           "master",
@@ -38,7 +38,7 @@ var (
 
 func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
-	optionsMicroservice, commonName := helper_test.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, commonName := microservice.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	// yml
 	path, err := filepath.Abs("config_override.yml")
@@ -133,27 +133,27 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 			GithubProject.Organization,
 			GithubProject.Repository,
 			GithubProject.Branch,
-			helper_test.AccountName,
+			microservice.AccountName,
 			commonName,
-			helper_test.ServiceTaskDesiredCountFinal,
+			microservice.ServiceTaskDesiredCountFinal,
 		)
-		helper_test.RunGithubWorkflow(t, GithubProject, bashCode)
+		microservice.RunGithubWorkflow(t, GithubProject, bashCode)
 	})
 
-	helper_test.TestMicroservice(t, options, GithubProject)
+	microservice.TestMicroservice(t, options, GithubProject)
 
 	dnsUrl := terraform.Output(t, options, "alb_dns_name")
 	fmt.Printf("\n\nDNS = %s\n\n", terraform.Output(t, options, "alb_dns_name"))
-	endpoints := []helper_test.EndpointTest{
+	endpoints := []microservice.EndpointTest{
 		{
-			Url:                 helper_test.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),
+			Url:                 microservice.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),
 			ExpectedStatus:      200,
 			ExpectedBody:        util.Ptr(`"ok"`),
 			MaxRetries:          3,
 			SleepBetweenRetries: 20 * time.Second,
 		},
 		{
-			Url:                 helper_test.CheckUrlPrefix(dnsUrl + "/tags/wanted"),
+			Url:                 microservice.CheckUrlPrefix(dnsUrl + "/tags/wanted"),
 			ExpectedStatus:      200,
 			ExpectedBody:        util.Ptr(`[]`),
 			MaxRetries:          3,
@@ -162,6 +162,6 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	}
 
 	terratest_structure.RunTestStage(t, "validate_rest_endpoints", func() {
-		helper_test.TestRestEndpoints(t, endpoints)
+		microservice.TestRestEndpoints(t, endpoints)
 	})
 }

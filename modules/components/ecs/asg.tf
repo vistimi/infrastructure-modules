@@ -29,7 +29,7 @@ module "asg" {
   }
 
   name     = each.value.name
-  key_name = "local" # to SSH into instance // FIXME: null
+  key_name = var.instance.ec2.key_name # to SSH into instance
 
   # iam configuration
   # iam_instance_profile_arn = aws_iam_instance_profile.ssm.arn // FIXME: try using ssm role
@@ -249,9 +249,6 @@ module "autoscaling_sg" {
   name        = "${var.common_name}-sg-asg"
   description = "Autoscaling group security group" # "Security group with HTTP port open for everyone, and HTTPS open just for the default security group"
   vpc_id      = var.vpc.id
-
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-
   // FIXME: add again
   // only accept incoming traffic from load balancer 
   computed_ingress_with_source_security_group_id = [
@@ -262,7 +259,17 @@ module "autoscaling_sg" {
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
-  # ingress_rules = ["all-all"]
+  ingress_cidr_blocks                                      = ["0.0.0.0/0"]
+  # ingress_rules                                            = ["all-all"]
+  ingress_with_cidr_blocks = var.instance.ec2.key_name != null ? [
+    {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      description = "SSH"
+      cidr_blocks = "0.0.0.0/0"
+    },
+  ] : []
   egress_rules = ["all-all"]
 
   tags = var.common_tags

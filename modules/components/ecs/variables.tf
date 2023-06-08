@@ -88,6 +88,7 @@ variable "instance" {
     ec2 = optional(object({
       ami_ssm_architecture = string
       instance_type        = string
+      key_name             = optional(string)
       }), {
       ami_ssm_architecture = "amazon-linux-2"
       instance_type        = "t2.micro"

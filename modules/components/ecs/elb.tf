@@ -38,20 +38,19 @@ module "alb" {
       name             = var.common_name
       backend_protocol = var.traffic.target_protocol
       backend_port     = var.traffic.target_port
-      target_type      = var.deployment.use_fargate ? "ip" : "instance" # "ip" for awsvpc network 
-      # health_check = {
-      #   enabled             = true
-      #   interval            = 10
-      #   path                = var.traffic.health_check_path
-      #   port                = var.traffic.target_port
-      #   healthy_threshold   = 3
-      #   unhealthy_threshold = 3
-      #   timeout             = 5
-      #   protocol            = var.traffic.target_protocol
-      #   matcher             = "200-399"
-      # }
+      target_type      = var.deployment.use_fargate ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
+      health_check = {
+        enabled             = true
+        interval            = 15 // seconds before new request
+        path                = var.traffic.health_check_path
+        port                = var.traffic.target_port
+        healthy_threshold   = 3 // consecutive health check failures before healthy
+        unhealthy_threshold = 3 // consecutive health check failures before unhealthy
+        timeout             = 5 // seconds for timeout of request
+        protocol            = var.traffic.target_protocol
+        matcher             = "200-299"
+      }
       # # protocol_version = "HTTP1"
-      # tags = var.common_tags
     }
   ]
 

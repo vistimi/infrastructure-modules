@@ -44,12 +44,25 @@ module "ecr" {
         Resource = [
           "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"
         ],
-        Condition : {
+        Condition = {
           "ForAnyValue:StringEquals" : {
             "aws:SourceVpce" : ["${var.vpc_id}"]
           }
         }
-      }
+      },
+      # {
+      #   Action = ["sts:AssumeRole"]
+      #   Effect = "Allow"
+      #   Principal = {
+      #     type        = "AWS"
+      #     identifiers = [local.account_arn]
+      #   }
+      #   # condition {
+      #   #   test     = "Bool"
+      #   #   variable = "aws:MultiFactorAuthPresent"
+      #   #   values   = ["true"]
+      #   # }
+      # }
     ]
   })
 

@@ -1,6 +1,8 @@
+data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 locals {
+  account_id = data.aws_caller_identity.current.account_id
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
 }
 
@@ -17,12 +19,12 @@ data "aws_iam_policy_document" "bucket_policy" {
       identifiers = [
         "ec2.${local.dns_suffix}",
         // FIXME: remove below
-        "ecs.${local.dns_suffix}",
-        "ecs-tasks.${local.dns_suffix}",
-        "ecs.application-autoscaling.${local.dns_suffix}",
-        "ec2.application-autoscaling.${local.dns_suffix}",
-        "application-autoscaling.${local.dns_suffix}",
-        "autoscaling.${local.dns_suffix}",
+        # "ecs.${local.dns_suffix}",
+        # "ecs-tasks.${local.dns_suffix}",
+        # "ecs.application-autoscaling.${local.dns_suffix}",
+        # "ec2.application-autoscaling.${local.dns_suffix}",
+        # "application-autoscaling.${local.dns_suffix}",
+        # "autoscaling.${local.dns_suffix}",
       ]
     }
 
@@ -31,6 +33,12 @@ data "aws_iam_policy_document" "bucket_policy" {
       variable = "aws:SourceVpce"
       values   = ["${var.vpc_id}"]
     }
+
+    # condition {
+    #   test     = "StringEquals"
+    #   variable = "aws:SourceAccount"
+    #   values   = [local.account_id]
+    # }
   }
 
   statement {
@@ -45,12 +53,12 @@ data "aws_iam_policy_document" "bucket_policy" {
       identifiers = [
         "ec2.${local.dns_suffix}",
         // FIXME: remove below
-        "ecs.${local.dns_suffix}",
-        "ecs-tasks.${local.dns_suffix}",
-        "ecs.application-autoscaling.${local.dns_suffix}",
-        "ec2.application-autoscaling.${local.dns_suffix}",
-        "application-autoscaling.${local.dns_suffix}",
-        "autoscaling.${local.dns_suffix}",
+        # "ecs.${local.dns_suffix}",
+        # "ecs-tasks.${local.dns_suffix}",
+        # "ecs.application-autoscaling.${local.dns_suffix}",
+        # "ec2.application-autoscaling.${local.dns_suffix}",
+        # "application-autoscaling.${local.dns_suffix}",
+        # "autoscaling.${local.dns_suffix}",
       ]
     }
 
@@ -59,7 +67,27 @@ data "aws_iam_policy_document" "bucket_policy" {
       variable = "aws:SourceVpce"
       values   = ["${var.vpc_id}"]
     }
+
+    # condition {
+    #   test     = "StringEquals"
+    #   variable = "aws:SourceAccount"
+    #   values   = [local.account_id]
+    # }
   }
+
+  # statement {
+  #   actions = ["sts:AssumeRole"]
+  #   effect  = "Allow"
+  #   principals {
+  #     type        = "AWS"
+  #     identifiers = [local.account_arn]
+  #   }
+  #   # condition {
+  #   #   test     = "Bool"
+  #   #   variable = "aws:MultiFactorAuthPresent"
+  #   #   values   = ["true"]
+  #   # }
+  # }
 
   #     "kms:GetPublicKey",
   #     "kms:GetKeyPolicy",

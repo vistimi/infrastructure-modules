@@ -7,8 +7,7 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	helper_test "github.com/KookaS/infrastructure-modules/modules/services/helper"
-
+	"github.com/KookaS/infrastructure-modules/modules/services/microservice"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -26,7 +25,7 @@ const (
 )
 
 var (
-	GithubProject = helper_test.GithubProjectInformation{
+	GithubProject = microservice.GithubProjectInformation{
 		Organization:     "KookaS",
 		Repository:       "scraper-frontend",
 		Branch:           "master",
@@ -38,7 +37,7 @@ var (
 
 func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
-	optionsMicroservice, commonName := helper_test.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, commonName := microservice.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: "",
@@ -99,21 +98,21 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 			GithubProject.Organization,
 			GithubProject.Repository,
 			GithubProject.Branch,
-			helper_test.AccountName,
+			microservice.AccountName,
 			commonName,
-			helper_test.ServiceTaskDesiredCountFinal,
+			microservice.ServiceTaskDesiredCountFinal,
 			backend_dns,
 		)
-		helper_test.RunGithubWorkflow(t, GithubProject, bashCode)
+		microservice.RunGithubWorkflow(t, GithubProject, bashCode)
 	})
 
-	helper_test.TestMicroservice(t, options, GithubProject)
+	microservice.TestMicroservice(t, options, GithubProject)
 
 	dnsUrl := terraform.Output(t, options, "alb_dns_name")
 	fmt.Printf("\n\nDNS = %s\n\n", terraform.Output(t, options, "alb_dns_name"))
-	endpoints := []helper_test.EndpointTest{
+	endpoints := []microservice.EndpointTest{
 		{
-			Url:                 helper_test.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),
+			Url:                 microservice.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),
 			ExpectedStatus:      200,
 			ExpectedBody:        nil,
 			MaxRetries:          3,
@@ -122,6 +121,6 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	}
 
 	terratest_structure.RunTestStage(t, "validate_rest_endpoints", func() {
-		helper_test.TestRestEndpoints(t, endpoints)
+		microservice.TestRestEndpoints(t, endpoints)
 	})
 }

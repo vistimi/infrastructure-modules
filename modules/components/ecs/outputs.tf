@@ -1,3 +1,6 @@
+# TODO: aggregate output like variables
+// data, ecs, asg, elb...
+
 output "vpc_tier_ids" {
   value       = data.aws_subnets.tier.ids
   description = "IDs of the subnets selected"
