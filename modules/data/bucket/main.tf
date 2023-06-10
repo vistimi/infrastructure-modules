@@ -11,7 +11,7 @@ data "aws_iam_policy_document" "bucket_policy" {
     actions = ["s3:GetBucketLocation", "s3:ListBucket"]
 
     resources = [
-      "arn:aws:s3:::${var.bucket_name}",
+      "arn:aws:s3:::${var.name}",
     ]
 
     principals {
@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "bucket_policy" {
     actions = ["s3:GetObject"]
 
     resources = [
-      "arn:aws:s3:::${var.bucket_name}/*",
+      "arn:aws:s3:::${var.name}/*",
     ]
 
     principals {
@@ -99,7 +99,7 @@ module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "3.11.0"
 
-  bucket = var.bucket_name
+  bucket = var.name
   # acl    = "private"  # no need if policy is tight
 
   versioning = var.versioning ? {
@@ -113,5 +113,5 @@ module "s3_bucket" {
   # control_object_ownership = true
   # object_ownership         = "ObjectWriter"
 
-  tags = merge(var.common_tags, { Name = var.bucket_name })
+  tags = merge(var.common_tags, { Name = var.name })
 }

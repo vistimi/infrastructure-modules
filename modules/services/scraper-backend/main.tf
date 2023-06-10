@@ -11,20 +11,19 @@ module "microservice" {
   common_tags = var.common_tags
   vpc         = var.vpc
 
-  deployment                 = var.deployment
-  user_data                  = var.user_data
-  instance                   = var.instance
-  service_task_desired_count = var.service_task_desired_count
-  traffic                    = var.traffic
-  log                        = var.log
-
-  capacity_provider = var.capacity_provider
-  autoscaling_group = var.autoscaling_group
-
-  task_definition = var.task_definition
-  ecr             = var.ecr
-  bucket_env      = var.bucket_env
+  ecs        = var.ecs
+  ecr        = var.ecr
+  bucket_env = var.bucket_env
 }
+
+#--------------
+# Dynamodb
+#--------------
+
+# for_each = {
+#     for index, dt in var.dynamodb_tables :
+#     dt.name => dt # Perfect, since DT names also need to be unique
+#   }
 
 module "dynamodb_table" {
   source = "../../data/dynamodb"
@@ -46,9 +45,42 @@ module "dynamodb_table" {
   common_tags = var.common_tags
 }
 
+// TODO: attach policy to containers
+# resource "aws_iam_role" "dynamodb" {
+#   name = "${var.table_name}-ec2"
+#   tags = var.common_tags
+
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         "Sid" : "DescribeQueryScanBooksTable",
+#         "Effect" : "Allow",
+#         "Action" : [
+#           "dynamodb:DescribeTable",
+#           "dynamodb:BatchGet*",
+#                 "dynamodb:DescribeStream",
+#                 "dynamodb:Get*",
+#                 "dynamodb:Query",
+#                 "dynamodb:Scan",
+#                 "dynamodb:BatchWrite*",
+#                 "dynamodb:Delete*",
+#                 "dynamodb:Update*",
+#                 "dynamodb:PutItem"
+#         ],
+#         "Resource" : "arn:aws:dynamodb:us-west-2:account-id:table/Books"
+#       }
+#     ]
+#   })
+# }
+
+#--------------
+# Pictures
+#--------------
+
 module "bucket_picture" {
   source        = "../../data/bucket"
-  bucket_name   = var.bucket_picture.name
+  name          = var.bucket_picture.name
   common_tags   = var.common_tags
   vpc_id        = var.vpc.id
   force_destroy = var.bucket_picture.force_destroy
@@ -76,6 +108,6 @@ resource "aws_iam_policy" "bucket_picture" {
 }
 
 resource "aws_iam_role_policy_attachment" "bucket_picture" {
-  role       = module.microservice.ecs_task_role_name
+  role       = module.microservice.ecs.service.task_iam_role_name
   policy_arn = aws_iam_policy.bucket_picture.arn
 }

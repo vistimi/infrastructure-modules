@@ -1,0 +1,2 @@
+- use userdata to setup the project vs Dockerfile
+- docker with s3 env file ??

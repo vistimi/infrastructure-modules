@@ -1,55 +1,16 @@
-# ECS
-output "vpc_tier_ids" {
-  value       = module.ecs.vpc_tier_ids
-  description = "IDs of the subnets selected"
+output "ecs" {
+  value = {
+    elb     = module.ecs.elb
+    asg     = module.ecs.asg
+    cluster = module.ecs.cluster
+    service = module.ecs.service
+  }
 }
 
-# output "autoscaling_group_name_on_demand" {
-#   value       = module.ecs.autoscaling_group_name_on_demand
-#   description = "The name of the Auto Scaling Group"
-# }
-
-# output "autoscaling_group_arn_on_demand" {
-#   value       = module.ecs.autoscaling_group_arn_on_demand
-#   description = "ARN of the Auto Scaling Group"
-# }
-
-# output "autoscaling_group_name_spot" {
-#   value       = module.ecs.autoscaling_group_name_spot
-#   description = "The name of the Auto Scaling Group"
-# }
-
-# output "autoscaling_group_arn_spot" {
-#   value       = module.ecs.autoscaling_group_arn_spot
-#   description = "ARN of the Auto Scaling Group"
-# }
-
-output "alb_dns_name" {
-  value       = module.ecs.alb_dns_name
-  description = "The domain name of the load balancer"
+output "ecr" {
+  value = module.ecr
 }
 
-output "alb_security_group_id" {
-  value       = module.ecs.alb_security_group_id
-  description = "The ID of the security group"
-}
-
-# output "ecs_task_definition_arn" {
-#   value       = aws_ecs_task_definition.service.arn
-#   description = "Full ARN of the Task Definition (including both family and revision)"
-# }
-
-# output "ecs_task_definition_revision" {
-#   value       = aws_ecs_task_definition.service.revision
-#   description = "Revision of the task in a particular family"
-# }
-
-output "ecs_task_role_arn" {
-  value       = module.ecs.task_role_arn
-  description = "ARN of the task role that runs container"
-}
-
-output "ecs_task_role_name" {
-  value       = module.ecs.task_role_name
-  description = "Name of the task role that runs container"
+output "bucket_env" {
+  value = module.bucket_env
 }

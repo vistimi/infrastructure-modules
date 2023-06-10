@@ -1,14 +1,17 @@
 package scraper_backend_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/modules/services/microservice"
+	"github.com/KookaS/infrastructure-modules/modules/components/microservice"
 	"github.com/KookaS/infrastructure-modules/util"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -19,10 +22,12 @@ const (
 	projectName = "scraper"
 	serviceName = "backend"
 
-	listenerPort     = 80
-	listenerProtocol = "HTTP"
-	targetPort       = 8080
-	targetProtocol   = "HTTP"
+	listenerPort            = 80
+	listenerProtocol        = "http"
+	listenerProtocolVersion = "http"
+	targetPort              = 8080
+	targetProtocol          = "http"
+	targetProtocolVersion   = "http"
 )
 
 var (
@@ -71,13 +76,6 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	optionsProject := &terraform.Options{
 		TerraformDir: "",
 		Vars: map[string]any{
-			"traffic": map[string]any{
-				"listener_port":     listenerPort,
-				"listener_protocol": listenerProtocol,
-				"target_port":       targetPort,
-				"target_protocol":   targetProtocol,
-				"health_check_path": GithubProject.HealthCheckPath,
-			},
 			"dynamodb_tables": dynamodb_tables,
 			"bucket_picture": map[string]any{
 				"name":          bucket_picture_name,
@@ -88,25 +86,28 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	}
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["task_definition"].(map[string]any), map[string]any{
-		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
-		"port_mapping": []map[string]any{
-			{
-				"name":          "container-port",
-				"hostPort":      targetPort,
-				"protocol":      "tcp",
-				"containerPort": targetPort,
-				// "appProtocol":   "http",
-			},
+	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
+		"traffic": map[string]any{
+			"listener_port":             listenerPort,
+			"listener_protocol":         listenerProtocol,
+			"listener_protocol_version": listenerProtocolVersion,
+			"target_port":               targetPort,
+			"target_protocol":           targetProtocol,
+			"target_protocol_version":   targetProtocolVersion,
+			"health_check_path":         GithubProject.HealthCheckPath,
 		},
+	})
+	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
 	})
 
 	return optionsProject, commonName
 }
 
-func RunTest(t *testing.T, options *terraform.Options, commonName string) {
+func runTest(t *testing.T, options *terraform.Options, commonName string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
+	// FIXME: activate me
 	// defer func() {
 	// 	if r := recover(); r != nil {
 	// 		// destroy all resources if panic
@@ -142,8 +143,22 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 
 	microservice.TestMicroservice(t, options, GithubProject)
 
-	dnsUrl := terraform.Output(t, options, "alb_dns_name")
-	fmt.Printf("\n\nDNS = %s\n\n", terraform.Output(t, options, "alb_dns_name"))
+}
+
+func RunTestLB(t *testing.T, options *terraform.Options, commonName string) {
+	runTest(t, options, commonName)
+
+	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
+	jsonFile, err := os.Open("terraform.tfstate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	var result map[string]any
+	json.Unmarshal([]byte(byteValue), &result)
+	dnsUrl := result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"].(map[string]any)["lb_dns_name"].(string)
+	fmt.Printf("\n\nDNS = %s\n\n", dnsUrl)
 	endpoints := []microservice.EndpointTest{
 		{
 			Url:                 microservice.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),
@@ -164,4 +179,10 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	terratest_structure.RunTestStage(t, "validate_rest_endpoints", func() {
 		microservice.TestRestEndpoints(t, endpoints)
 	})
+}
+
+func RunTestSingle(t *testing.T, options *terraform.Options, commonName string) {
+	runTest(t, options, commonName)
+
+	// find here ip
 }

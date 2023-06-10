@@ -1,3 +1,18 @@
+# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
+data "aws_ssm_parameter" "ecs_optimized_ami" {
+  for_each = {
+    for key, value in var.ec2 :
+    key => {
+      name = var.ami_ssm_name[value.ami_ssm_architecture]
+      # name = "${var.ami_ssm_name[var.instance.ec2.ami_ssm_architecture]}/image_id"
+    }
+    if !var.service.use_fargate
+  }
+
+  name = each.value.name
+}
+
+
 #------------------------
 #     EC2 autoscaler
 #------------------------
@@ -7,12 +22,12 @@ module "asg" {
   version = "6.10.0"
 
   for_each = {
-    for key, value in var.autoscaling_group :
+    for key, value in var.ec2 :
     key => {
       name             = "${var.common_name}-${key}"
-      min_size         = value.min_size
-      desired_capacity = value.desired_size
-      max_size         = value.max_size
+      min_size         = value.asg.min_size
+      desired_capacity = value.asg.desired_size
+      max_size         = value.asg.max_size
       instance_market_options = value.use_spot ? {
         # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
         market_type = "spot"
@@ -24,12 +39,18 @@ module "asg" {
         resource_type = "spot-instances-request"
         tags          = merge(var.common_tags, { Name = "${var.common_name}-spot-instance-request" })
       }] : []
+      instance_type = value.instance_type
+      key_name      = value.key_name # to SSH into instance
+      image_id      = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami[key].value)["image_id"]
+      # image_id = data.aws_ssm_parameter.ecs_optimized_ami.value
+      user_data        = base64encode(value.user_data)
+      instance_refresh = value.asg.instance_refresh
     }
-    if !var.deployment.use_fargate
+    if !var.service.use_fargate
   }
 
   name     = each.value.name
-  key_name = var.instance.ec2.key_name # to SSH into instance
+  key_name = each.value.key_name # to SSH into instance
 
   # iam configuration
   # iam_instance_profile_arn = aws_iam_instance_profile.ssm.arn // FIXME: try using ssm role
@@ -41,28 +62,27 @@ module "asg" {
   iam_role_policies = {
     AmazonEC2ContainerServiceforEC2Role = "arn:${local.partition}:iam::${local.partition}:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
     AmazonSSMManagedInstanceCore        = "arn:${local.partition}:iam::${local.partition}:policy/AmazonSSMManagedInstanceCore"
-    Custom                              = aws_iam_policy.ecs_agent.arn,
-    AmazonEC2FullAccess                 = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-    # Env                                 = aws_iam_policy.bucket_env.arn
-    AmazonECS_FullAccess = "arn:aws:iam::aws:policy/AmazonECS_FullAccess" # FIXME: remove
+    Custom                              = aws_iam_policy.ecs_agent.arn,                  # FIXME: remove
+    AmazonEC2FullAccess                 = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"  # FIXME: remove
+    AmazonECS_FullAccess                = "arn:aws:iam::aws:policy/AmazonECS_FullAccess" # FIXME: remove
   }
   iam_role_tags = var.common_tags
 
 
   # launch template configuration
+  create_launch_template = true
   tag_specifications = concat(each.value.tag_specifications, [{
     resource_type = "instance"
     tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
   }])
   instance_market_options     = each.value.instance_market_options
-  instance_type               = var.instance.ec2.instance_type
-  image_id                    = local.image_id
-  create_launch_template      = true
+  instance_type               = each.value.instance_type
+  image_id                    = each.value.image_id
+  user_data                   = each.value.user_data
   launch_template_name        = var.common_name
   launch_template_description = "${var.common_name} asg launch template"
   update_default_version      = true
   ebs_optimized               = false # optimized ami does not support ebs_optimized
-  user_data                   = base64encode(var.user_data)
   # metadata_options = {
   # # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#metadata-options
   #   http_endpoint               = "enabled"
@@ -80,16 +100,16 @@ module "asg" {
   # maintenance_options = { // new
   # auto_recovery = "default"
   # }
-  # key_name = null
 
+  // for public subnets
+  // https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces
   network_interfaces = [
-    // https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces
     {
       associate_public_ip_address = true
       delete_on_termination       = true
       description                 = "eth0"
       device_index                = 0
-      security_groups             = [module.autoscaling_sg.security_group_id]
+      security_groups             = [module.autoscaling_sg[each.key].security_group_id]
     }
   ]
   # cpu_options = {
@@ -124,18 +144,9 @@ module "asg" {
   vpc_zone_identifier             = local.subnets
   health_check_type               = "EC2"
   target_group_arns               = module.alb.target_group_arns
-  security_groups                 = [module.autoscaling_sg.security_group_id]
+  security_groups                 = [module.autoscaling_sg[each.key].security_group_id]
   service_linked_role_arn         = aws_iam_service_linked_role.autoscaling.arn
-  instance_refresh = {
-    strategy = "Rolling"
-    preferences = {
-      checkpoint_delay       = 600
-      checkpoint_percentages = [35, 70, 100]
-      instance_warmup        = 300
-      min_healthy_percentage = 50
-    }
-    triggers = ["tag"]
-  }
+  instance_refresh                = each.value.instance_refresh
 
   # initial_lifecycle_hooks = [
   #   {
@@ -246,22 +257,35 @@ module "autoscaling_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "5.0.0"
 
-  name        = "${var.common_name}-sg-asg"
+  for_each = {
+    for key, value in var.ec2 :
+    key => {
+      name     = "${var.common_name}-${key}-asg"
+      key_name = value.key_name # to SSH into instance
+    }
+    if !var.service.use_fargate
+  }
+
   description = "Autoscaling group security group" # "Security group with HTTP port open for everyone, and HTTPS open just for the default security group"
   vpc_id      = var.vpc.id
-  // FIXME: add again
+  name        = each.value.name
+
+
   // only accept incoming traffic from load balancer 
+  ingress_cidr_blocks = ["0.0.0.0/0"]
   computed_ingress_with_source_security_group_id = [
     {
+      // dynamic port mapping requires all the ports open
       rule = "all-all"
-      # rule                     = "https-443-tcp"
+      # target port or the following
+      # from_port   = 32768
+      # to_port     = 65535
       source_security_group_id = module.alb_sg.security_group_id
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
-  ingress_cidr_blocks                                      = ["0.0.0.0/0"]
-  # ingress_rules                                            = ["all-all"]
-  ingress_with_cidr_blocks = var.instance.ec2.key_name != null ? [
+  // accept SSH if key
+  ingress_with_cidr_blocks = each.value.key_name != null ? [
     {
       from_port   = 22
       to_port     = 22
@@ -277,9 +301,9 @@ module "autoscaling_sg" {
 
 resource "aws_autoscaling_attachment" "ecs" {
   for_each = {
-    for key, _ in var.autoscaling_group :
+    for key, _ in var.ec2 :
     key => {}
-    if !var.deployment.use_fargate
+    if !var.service.use_fargate
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
   lb_target_group_arn    = module.alb.target_group_arns[0] # works only with one tg
@@ -334,6 +358,7 @@ resource "aws_autoscaling_attachment" "ecs" {
 #   }
 # }
 
+# FIXME: remove
 resource "aws_iam_policy" "ecs_agent" {
   name = "${var.common_name}-ecs-agent"
 

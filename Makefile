@@ -34,7 +34,7 @@ test-clean-cache:
 	go clean -testcache;
 
 prepare: ## Setup the test environment
-	make github-cli-auth; \
+	# make github-cli-auth; \
 	make prepare-account; \
 	make prepare-modules-vpc; \
 	# make prepare-modules-infrastructure-modules; \

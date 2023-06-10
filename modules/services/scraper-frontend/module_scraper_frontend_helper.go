@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/modules/services/microservice"
+	"github.com/KookaS/infrastructure-modules/modules/components/microservice"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )

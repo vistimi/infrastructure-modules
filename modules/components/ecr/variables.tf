@@ -23,4 +23,5 @@ variable "force_destroy" {
 variable "image_keep_count" {
   description = "The amount of images to keep in the repository"
   type        = number
+  default     = 1
 }

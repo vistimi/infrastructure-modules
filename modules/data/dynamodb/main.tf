@@ -1,32 +1,3 @@
-// TODO: attach policy to containers
-# resource "aws_iam_role" "dynamodb" {
-#   name = "${var.table_name}-ec2"
-#   tags = var.common_tags
-
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         "Sid" : "DescribeQueryScanBooksTable",
-#         "Effect" : "Allow",
-#         "Action" : [
-#           "dynamodb:DescribeTable",
-#           "dynamodb:BatchGet*",
-#                 "dynamodb:DescribeStream",
-#                 "dynamodb:Get*",
-#                 "dynamodb:Query",
-#                 "dynamodb:Scan",
-#                 "dynamodb:BatchWrite*",
-#                 "dynamodb:Delete*",
-#                 "dynamodb:Update*",
-#                 "dynamodb:PutItem"
-#         ],
-#         "Resource" : "arn:aws:dynamodb:us-west-2:account-id:table/Books"
-#       }
-#     ]
-#   })
-# }
-
 module "dynamodb_table" {
   source  = "terraform-aws-modules/dynamodb-table/aws"
   version = "3.3.0"

@@ -1,3 +1,13 @@
+locals {
+  listener_protocol = var.traffic.listener_protocol == "http" ? "HTTP" : var.traffic.listener_protocol == "https" ? "HTTPS" : "TCP"
+  target_protocol   = var.traffic.target_protocol == "http" ? "HTTP" : var.traffic.target_protocol == "https" ? "HTTPS" : "TCP"
+  target_protocol_version = var.traffic.target_protocol_version == "http" ? "HTTP1" : (
+    var.traffic.target_protocol_version == "http2" ? "HTTP2" : (
+      var.traffic.target_protocol_version == "grpc" ? "GRPC" : null
+    )
+  )
+}
+
 # Cognito for authentication: https://github.com/terraform-aws-modules/terraform-aws-alb/blob/master/examples/complete-alb/main.tf
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
@@ -15,42 +25,43 @@ module "alb" {
   #   bucket = module.s3_logs_alb.s3_bucket_id
   # }
 
-  http_tcp_listeners = var.traffic.listener_protocol == "HTTP" ? [
+  http_tcp_listeners = var.traffic.listener_protocol == "http" ? [
     {
       port               = var.traffic.listener_port
-      protocol           = var.traffic.listener_protocol
+      protocol           = local.listener_protocol
       target_group_index = 0
     },
   ] : []
 
-  https_listeners = var.traffic.listener_protocol == "HTTPS" ? [
+  https_listeners = var.traffic.listener_protocol == "https" ? [
     {
       port     = var.traffic.listener_port
-      protocol = var.traffic.listener_protocol
+      protocol = local.listener_protocol
       # certificate_arn    = "arn:${local.partition}:iam::123456789012:server-certificate/test_cert-123456789012"
       target_group_index = 0
     }
   ] : []
 
   // forward listener to target
+  // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
   target_groups = [
     {
       name             = var.common_name
-      backend_protocol = var.traffic.target_protocol
+      backend_protocol = local.target_protocol
       backend_port     = var.traffic.target_port
-      target_type      = var.deployment.use_fargate ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
+      target_type      = var.service.use_fargate ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
       health_check = {
         enabled             = true
         interval            = 15 // seconds before new request
         path                = var.traffic.health_check_path
-        port                = var.traffic.target_port
-        healthy_threshold   = 3 // consecutive health check failures before healthy
-        unhealthy_threshold = 3 // consecutive health check failures before unhealthy
-        timeout             = 5 // seconds for timeout of request
-        protocol            = var.traffic.target_protocol
+        port                = var.service.use_fargate ? var.traffic.target_port : null // traffic port by default
+        healthy_threshold   = 3                                                        // consecutive health check failures before healthy
+        unhealthy_threshold = 3                                                        // consecutive health check failures before unhealthy
+        timeout             = 5                                                        // seconds for timeout of request
+        protocol            = local.target_protocol
         matcher             = "200-299"
       }
-      # # protocol_version = "HTTP1"
+      # protocol_version = local.target_protocol_version
     }
   ]
 

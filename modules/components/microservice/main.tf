@@ -8,17 +8,15 @@ module "ecs" {
   common_tags = var.common_tags
   vpc         = var.vpc
 
-  deployment = var.deployment
-  traffic    = var.traffic
-  log        = var.log
+  service = var.ecs.service
+  traffic = var.ecs.traffic
+  log     = var.ecs.log
 
-  user_data         = var.user_data
-  instance          = var.instance
-  capacity_provider = var.capacity_provider
-  autoscaling_group = var.autoscaling_group
+  capacity_provider = var.ecs.capacity_provider
+  task_definition   = var.ecs.task_definition
 
-  task_definition            = var.task_definition
-  service_task_desired_count = var.service_task_desired_count
+  fargate = var.ecs.fargate
+  ec2     = var.ecs.ec2
 }
 
 # ------------
@@ -38,7 +36,7 @@ module "ecr" {
 # ------------------------
 module "bucket_env" {
   source        = "../../data/bucket"
-  bucket_name   = var.bucket_env.name
+  name          = var.bucket_env.name
   common_tags   = var.common_tags
   vpc_id        = var.vpc.id
   force_destroy = var.bucket_env.force_destroy

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"strconv"
@@ -29,7 +30,7 @@ var (
 )
 
 const (
-	serviceTaskDesiredCountInit  = 0 // before CI/CD pileline
+	ServiceTaskDesiredCountInit  = 0 // before CI/CD pileline
 	ServiceTaskDesiredCountFinal = 1 // one for each fargate capacity provider
 	TaskDefinitionImageTag       = "latest"
 
@@ -50,7 +51,7 @@ var (
 		Name:          "t3.small",
 		Cpu:           2048,
 		Memory:        2048,
-		MemoryAllowed: 1780, // TODO: double check under infra of cluster + ECSReservedMemory
+		MemoryAllowed: 1801, // TODO: double check under infra of cluster + ECSReservedMemory
 	}
 	T3Medium = EC2Instance{
 		Name:          "t3.medium",
@@ -99,35 +100,19 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 		"Service":     serviceName,
 		"Environment": environment_name,
 	}
-	common_tags_json, err := json.Marshal(common_tags)
+
+	// // vpc variables
+	// vpc := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc")
+	jsonFile, err := os.Open("../../vpc/terraform.tfstate")
 	if err != nil {
-		terratest_logger.Log(t, err)
+		t.Fatal(err)
 	}
-
-	// end variables
-	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles
-	// ECS_ENABLE_TASK_IAM_ROLE=true // Uses IAM roles for tasks for containers with the bridge and default network modes
-	// ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true // Uses IAM roles for tasks for containers with the host network mode
-
-	// awslogs log driver, Amazon ECS container instances require at least version 1.9.0 of the container agent
-	// sudo yum update -y ecs-init && sudo systemctl restart docker
-	// ECS_AVAILABLE_LOGGING_DRIVERS='["json-file","awslogs"]'
-	// ECS_ENABLE_AWSLOGS_EXECUTIONROLE_OVERRIDE=true # https://github.com/aws/amazon-ecs-agent/issues/1395#issuecomment-391930395
-
-	user_data := fmt.Sprintf(`#!/bin/bash
-	cat <<'EOF' >> /etc/ecs/ecs.config
-	ECS_CLUSTER=%s
-	ECS_LOGLEVEL=debug
-	ECS_CONTAINER_INSTANCE_TAGS=%s
-	ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true
-	ECS_ENABLE_SPOT_INSTANCE_DRAINING=true
-	ECS_RESERVED_MEMORY=%d
-	EOF
-	`, common_name, common_tags_json, ECSReservedMemory)
-
-	// vpc variables
-	vpcId := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc_id")
-	defaultSecurityGroupId := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "default_security_group_id")
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	var result map[string]any
+	json.Unmarshal([]byte(byteValue), &result)
+	vpcId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["vpc_id"].(string)
+	defaultSecurityGroupId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["default_security_group_id"].(string)
 
 	bucketEnvName := fmt.Sprintf("%s-%s", common_name, "env")
 
@@ -141,17 +126,15 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 				"tier":               "Public",
 			},
 
-			"log": map[string]any{
-				"retention_days": 1,
-				"prefix":         "aws/ecs",
-			},
-
-			"service_task_desired_count": serviceTaskDesiredCountInit,
-			"user_data":                  user_data,
-
-			"task_definition": map[string]any{
-				"env_bucket_name":    bucketEnvName,
-				"registry_image_tag": TaskDefinitionImageTag,
+			"ecs": map[string]any{
+				"log": map[string]any{
+					"retention_days": 1,
+					"prefix":         "aws/ecs",
+				},
+				"task_definition": map[string]any{
+					"env_bucket_name":    bucketEnvName,
+					"registry_image_tag": TaskDefinitionImageTag,
+				},
 			},
 
 			"bucket_env": map[string]any{
@@ -185,7 +168,7 @@ func TestMicroservice(t *testing.T, terraformOptions *terraform.Options, githubI
 
 	common_name, ok := terraformOptions.Vars["common_name"].(string)
 	if !ok {
-		terratest_logger.Log(t, "terraformOptions misses common_name as string")
+		t.Fatal("terraformOptions misses common_name as string")
 	}
 
 	terratest_structure.RunTestStage(t, "validate_ecr", func() {
@@ -245,7 +228,7 @@ func testEcr(t *testing.T, common_name, account_region string) {
 	output := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
 	ecrImagesAmount, err := strconv.Atoi(output)
 	if err != nil {
-		terratest_logger.Log(t, fmt.Sprintf("String to int conversion failed: %s", output))
+		t.Fatal(fmt.Sprintf("String to int conversion failed: %s", output))
 	}
 
 	assert.Equal(t, 1, ecrImagesAmount, fmt.Sprintf("No image published to repository: %v", ecrImagesAmount))
@@ -304,7 +287,7 @@ func testEcs(t *testing.T, family_name, account_region, common_name string, serv
 	runningTaskArns := strings.Fields(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nrunningTaskArns = %v\n\n", runningTaskArns)
 	if len(runningTaskArns) == 0 {
-		terratest_logger.Log(t, "No running tasks")
+		t.Fatal("No running tasks")
 		return
 	}
 
@@ -332,48 +315,16 @@ func testEcs(t *testing.T, family_name, account_region, common_name string, serv
 	runningTaskDefinitionArns := strings.Fields(terratest_shell.RunCommandAndGetOutput(t, command))
 	fmt.Printf("\n\nrunningTaskDefinitionArns = %v\n\n", runningTaskDefinitionArns)
 	if len(runningTaskDefinitionArns) == 0 {
-		terratest_logger.Log(t, "No running tasks definition")
+		t.Fatal("No running tasks definition")
 		return
 	}
 
 	for _, runningTaskDefinitionArn := range runningTaskDefinitionArns {
 		if latestTaskDefinitionArn != runningTaskDefinitionArn {
-			terratest_logger.Log(t, "The tasks ARN need to match otherwise the latest version is not the one running")
+			t.Fatal("The tasks ARN need to match otherwise the latest version is not the one running")
 		}
 	}
 }
-
-// func testCapacityProviders(t *testing.T, account_region, common_name string) {
-// 	cluster := terratest_aws.GetEcsCluster(t, account_region, common_name)
-// 	cluster.CapacityProviders
-// 	cluster.RegisteredContainerInstancesCount
-
-// 	service := terratest_aws.GetEcsService(t, account_region, common_name, common_name)
-// 	for _, lb := range(service.LoadBalancers) {
-// 		lb.
-// 	}
-
-// 	service_desired_count := int64(1)
-// 	assert.Equal(t, service_desired_count, awsSDK.Int64Value(service.DesiredCount), "amount of running services do not match the expected value")
-
-// 	// latest task definition
-// 	bashCode := fmt.Sprintf(`aws ecs list-task-definitions \
-// 		--region %s \
-// 		--family-prefix %s \
-// 		--sort DESC \
-// 		--query 'taskDefinitionArns[0]' \
-// 		--output text`,
-// 		account_region,
-// 		family_name,
-// 	)
-// 	command := terratest_shell.Command{
-// 		Command: "bash",
-// 		Args:    []string{"-c", bashCode},
-// 	}
-// 	latestTaskDefinitionArn := strings.TrimSpace(terratest_shell.RunCommandAndGetOutput(t, command))
-// 	fmt.Printf("\nlatestTaskDefinitionArn = %s\n", latestTaskDefinitionArn)
-
-// }
 
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	tlsConfig := tls.Config{}

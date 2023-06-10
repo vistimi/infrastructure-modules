@@ -24,7 +24,8 @@ module "ecs" {
     }
   }
 
-  default_capacity_provider_use_fargate = var.deployment.use_fargate ? true : false // TODO: remove because only for default
+  # capacity providers
+  default_capacity_provider_use_fargate = var.service.use_fargate ? true : false
   fargate_capacity_providers = {
     for v in values(var.capacity_provider) :
     v.fargate => {
@@ -33,7 +34,7 @@ module "ecs" {
         base   = v.base
       }
     }
-    if var.deployment.use_fargate
+    if var.service.use_fargate
   }
   autoscaling_capacity_providers = {
     for key, value in var.capacity_provider :
@@ -41,9 +42,9 @@ module "ecs" {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
-        maximum_scaling_step_size = var.capacity_provider[key].scaling.maximum_scaling_step_size
-        minimum_scaling_step_size = var.capacity_provider[key].scaling.minimum_scaling_step_size
-        target_capacity           = var.capacity_provider[key].scaling.target_capacity_cpu_percent # utilization for the capacity provider
+        maximum_scaling_step_size = var.capacity_provider[key].ec2.maximum_scaling_step_size
+        minimum_scaling_step_size = var.capacity_provider[key].ec2.minimum_scaling_step_size
+        target_capacity           = var.capacity_provider[key].ec2.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
@@ -53,17 +54,64 @@ module "ecs" {
       }
       managed_termination_protection = "DISABLED"
     }
-    if !var.deployment.use_fargate
+    if !var.service.use_fargate
   }
 
   services = {
     "${var.common_name}" = {
+      #------------
+      # Service
+      #------------
+      force_new_deployment               = true
+      launch_type                        = var.service.use_fargate ? "FARGATE" : "EC2"
+      desired_count                      = var.service.task_desired_count                 // amount of tasks desired
+      deployment_maximum_percent         = var.service.deployment_maximum_percent         // max % tasks running required
+      deployment_minimum_healthy_percent = var.service.deployment_minimum_healthy_percent // min % tasks running required
+      deployment_circuit_breaker         = var.service.deployment_circuit_breaker
+
+      # network awsvpc for fargate
+      subnets          = var.service.use_fargate ? local.subnets : null
+      assign_public_ip = var.service.use_fargate ? true : null // if private subnets, use NAT
+
+      load_balancer = {
+        service = {
+          target_group_arn = module.alb.target_group_arns[0] // one LB per target group
+          container_name   = var.common_name
+          container_port   = var.traffic.target_port
+        }
+      }
+
+      # security group
+      subnet_ids = local.subnets
+      security_group_rules = {
+        alb_ingress = {
+          type = "ingress"
+          // FIXME: add me again
+          // dynamic port mapping requires all the ports open
+          # from_port                = var.traffic.target_port
+          # to_port                  = var.traffic.target_port
+          # protocol                 = "tcp"
+          # description              = "Service port"
+          # source_security_group_id = module.alb_sg.security_group_id
+          from_port   = 0
+          to_port     = 0
+          protocol    = "-1"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+        egress_all = {
+          type        = "egress"
+          from_port   = 0
+          to_port     = 0
+          protocol    = "-1"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+      }
+
       #---------------------
       # Task definition
       #---------------------
       create_task_exec_iam_role = true
-      # task_exec_iam_role_arn    = aws_iam_role.ecs_execution.arn
-      task_exec_iam_role_tags = var.common_tags
+      task_exec_iam_role_tags   = var.common_tags
       task_exec_iam_statements = {
         custom = {
           actions = [
@@ -147,25 +195,11 @@ module "ecs" {
           #   values   = [local.account_id]
           # }
         },
-        # user-assume = {
-        #   actions = ["sts:AssumeRole"]
-        #   effect  = "Allow"
-        #   principals = {
-        #     type        = "AWS"
-        #     identifiers = [local.account_arn]
-        #   }
-        #   # condition = {
-        #   #   test     = "Bool"
-        #   #   variable = "aws:MultiFactorAuthPresent"
-        #   #   values   = ["true"]
-        #   # }
-        # }
       }
 
 
       create_tasks_iam_role = true
-      # tasks_iam_role_arn    = aws_iam_role.ecs_task.arn
-      task_iam_role_tags = var.common_tags
+      task_iam_role_tags    = var.common_tags
       tasks_iam_role_statements = {
         custom = {
           actions = [
@@ -269,19 +303,6 @@ module "ecs" {
           #   values   = [local.account_id]
           # }
         },
-        # user-assume = {
-        #   actions = ["sts:AssumeRole"]
-        #   effect  = "Allow"
-        #   principals = {
-        #     type        = "AWS"
-        #     identifiers = [local.account_arn]
-        #   }
-        #   # condition = {
-        #   #   test     = "Bool"
-        #   #   variable = "aws:MultiFactorAuthPresent"
-        #   #   values   = ["true"]
-        #   # }
-        # }
       }
       tasks_iam_role_policies = {
         AmazonEC2FullAccess  = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
@@ -291,12 +312,12 @@ module "ecs" {
       memory                   = var.task_definition.memory
       cpu                      = var.task_definition.cpu
       family                   = var.common_name
-      requires_compatibilities = var.deployment.use_fargate ? ["FARGATE"] : ["EC2"]
-      network_mode             = var.deployment.use_fargate ? "awsvpc" : "host" // "host", "bridge" is default and supports multiple container per instance
+      requires_compatibilities = var.service.use_fargate ? ["FARGATE"] : ["EC2"]
+      // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
+      // "host" one container, "bridge" is default and supports multiple containers and dynamic port mapping
+      network_mode = var.service.use_fargate ? "awsvpc" : "bridge" // "host" for single instance
 
-      # Container definition(s)
       container_definitions = {
-
         "${var.common_name}" = {
           name = var.common_name
           environment_files = [
@@ -306,79 +327,31 @@ module "ecs" {
             }
           ]
 
-          port_mappings      = var.task_definition.port_mapping
+          # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
+          // port is defined in laod balancer
+          port_mappings = [
+            {
+              containerPort = var.traffic.target_port
+              # appProtocol   = var.traffic.target_protocol
+              # containerPortRange = "32768-65535"
+              hostPort = var.service.use_fargate ? var.traffic.target_port : 0
+              name     = "container-port"
+              protocol = "tcp"
+            }
+          ]
           memory             = var.task_definition.memory
           memory_reservation = var.task_definition.memory_reservation
           cpu                = var.task_definition.cpu
-          log_configuration  = null
-          # var.deployment.use_fargate ? {
-          #   "logDriver" = "awslogs",
-          #   "options" = {
-          #     "awslogs-group"         = aws_cloudwatch_log_group.cluster.name
-          #     "awslogs-region"        = "${local.region}",
-          #     "awslogs-stream-prefix" = "/${var.log.prefix}"
-          #   }
-          # } : null
+          log_configuration  = null # other driver than json-file
 
           // fargate AMI
-          runtime_platform = var.deployment.use_fargate ? {
-            "operatingSystemFamily" = var.instance.fargate.os,
-            "cpuArchitecture"       = var.instance.fargate.architecture
+          runtime_platform = var.service.use_fargate ? {
+            "operatingSystemFamily" = var.fargate.os,
+            "cpuArchitecture"       = var.fargate.architecture
           } : null
 
           image     = "${local.account_id}.dkr.ecr.${local.region}.${local.dns_suffix}/${var.common_name}:${var.task_definition.registry_image_tag}"
           essential = true
-        }
-      }
-
-      #------------
-      # Service
-      #------------
-      desired_count = var.service_task_desired_count
-      launch_type   = var.deployment.use_fargate ? "FARGATE" : "EC2"
-      # capacity_provider_strategy = {
-      #   for key, value in var.capacity_provider :
-      #   key => {
-      #     capacity_provider = "${var.common_name}-${key}"
-      #     base              = value.base
-      #     weight            = value.weight_percent
-      #   }
-      #   if !var.deployment.use_fargate
-      # }
-
-      # network awsvpc for fargate
-      subnets          = local.subnets
-      assign_public_ip = true // if private subnets, use NAT
-      # security_groups  = [module.service_sg.security_group_id]
-
-      load_balancer = {
-        service = {
-          target_group_arn = module.alb.target_group_arns[0] // one LB per target group
-          container_name   = var.common_name
-          container_port   = var.traffic.target_port
-        }
-      }
-
-      subnet_ids = local.subnets
-      security_group_rules = {
-        alb_ingress = {
-          type = "ingress"
-          # from_port                = var.traffic.target_port
-          # to_port                  = var.traffic.target_port
-          # protocol                 = "tcp"
-          # description              = "Service port"
-          # source_security_group_id = module.alb_sg.security_group_id
-          from_port   = 0
-          to_port     = 0
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
-        }
-        egress_all = {
-          type        = "egress"
-          from_port   = 0
-          to_port     = 0
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
         }
       }
     }

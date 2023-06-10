@@ -17,6 +17,48 @@ variable "vpc" {
   })
 }
 
+#--------------
+# ELB & ECS
+#--------------
+
+# https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
+variable "traffic" {
+  type = object({
+    listener_port             = number
+    listener_protocol         = string
+    listener_protocol_version = string
+    target_port               = number
+    target_protocol           = string
+    target_protocol_version   = string
+    health_check_path         = optional(string, "/")
+  })
+}
+
+resource "null_resource" "listener" {
+  lifecycle {
+    precondition {
+      condition     = contains(["http", "https"], var.traffic.listener_protocol)
+      error_message = "Listener protocol must be one of [http, http2, grpc]"
+    }
+    precondition {
+      condition     = contains(["http", "http2", "grpc"], var.traffic.listener_protocol_version)
+      error_message = "Listener protocol version must be one of [http, http2, grpc]"
+    }
+    precondition {
+      condition     = contains(["http", "https"], var.traffic.target_protocol)
+      error_message = "Target protocol must be one of [http, http2, grpc]"
+    }
+    precondition {
+      condition     = contains(["http", "http2", "grpc"], var.traffic.target_protocol_version)
+      error_message = "Target protocol version must be one of [http, http2, grpc]"
+    }
+  }
+}
+
+#--------------
+# ECS
+#--------------
+
 variable "log" {
   type = object({
     retention_days = number
@@ -24,23 +66,10 @@ variable "log" {
   })
   default = {
     retention_days = 30
-    prefix         = "ecs"
+    prefix         = "aws/ecs"
   }
 }
 
-variable "traffic" {
-  type = object({
-    listener_port     = number
-    listener_protocol = string
-    target_port       = number
-    target_protocol   = string
-    health_check_path = optional(string, "/")
-  })
-}
-
-# ------------------------
-#     Task definition
-# ------------------------
 variable "task_definition" {
   type = object({
     memory             = number
@@ -48,58 +77,7 @@ variable "task_definition" {
     cpu                = number
     env_bucket_name    = string
     env_file_name      = string
-    port_mapping = list(object({
-      appProtocol        = optional(string)
-      containerPort      = optional(number)
-      containerPortRange = optional(string)
-      hostPort           = optional(number)
-      name               = optional(string)
-      protocol           = optional(string)
-    }))
     registry_image_tag = string
-  })
-}
-
-variable "service_task_desired_count" {
-  description = "Number of instances of the task definition"
-  type        = string
-}
-
-variable "deployment" {
-  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate with ECS"
-  type = object({
-    use_load_balancer = bool
-    use_fargate       = optional(bool)
-  })
-  default = {
-    use_load_balancer = true
-    use_fargate       = true
-  }
-}
-variable "user_data" {
-  description = "The user data to provide when launching the instance"
-  type        = string
-  default     = null
-}
-
-variable "instance" {
-  type = object({
-    user_data = optional(string)
-    ec2 = optional(object({
-      ami_ssm_architecture = string
-      instance_type        = string
-      key_name             = optional(string)
-      }), {
-      ami_ssm_architecture = "amazon-linux-2"
-      instance_type        = "t2.micro"
-    })
-    fargate = optional(object({
-      os           = string
-      architecture = string
-      }), {
-      os           = "LINUX"
-      architecture = "X86_64"
-    })
   })
 }
 
@@ -107,9 +85,9 @@ variable "capacity_provider" {
   description = "only one base for all capacity providers to define which are the necessary instances. The map key must be matching between capacity_providers/autoscaling. Either use fargate or ec2 based on the deployment configuration. "
   type = map(object({
     base           = optional(number)
-    weight_percent = number
+    weight_percent = optional(number, 50)
     fargate        = optional(string, "FARGATE")
-    scaling = optional(object({
+    ec2 = optional(object({
       target_capacity_cpu_percent = number
       maximum_scaling_step_size   = number
       minimum_scaling_step_size   = number
@@ -121,29 +99,85 @@ variable "capacity_provider" {
   }))
 }
 
-variable "autoscaling_group" {
-  description = "Only necessary for EC2 deployment. The map key must be matching between capacity_providers/autoscaling"
-  type = map(object({
-    min_size     = number
-    desired_size = number
-    max_size     = number
-    use_spot     = bool
-  }))
+# variable "deployment" {
+#   description = "if single instance EC2. If multiple instances, you need to choose between EC2/Fargate"
+#   type = object({
+#     use_load_balancer = bool
+#     use_fargate       = optional(bool)
+#   })
+#   default = {
+#     use_load_balancer = true
+#     use_fargate       = true
+#   }
+# }
 
+variable "service" {
+  type = object({
+    use_fargate                        = bool
+    task_desired_count                 = number
+    deployment_maximum_percent         = optional(number)
+    deployment_minimum_healthy_percent = optional(number)
+    deployment_circuit_breaker = optional(object({
+      enable   = bool
+      rollback = bool
+      }), {
+      enable   = true
+      rollback = true
+    })
+  })
+}
+
+variable "fargate" {
+  type = object({
+    os           = string
+    architecture = string
+  })
   default = {
-    spot = {
-      min_size     = 0
-      desired_size = 1
-      max_size     = 2
-      use_spot     = true
-    },
-    on-demand = {
-      min_size     = 0
-      desired_size = 1
-      max_size     = 2
-      use_spot     = false
-    }
+    os           = "LINUX"
+    architecture = "X86_64"
   }
+}
+
+
+#--------------
+# ASG
+#--------------
+variable "ec2" {
+  type = map(object({
+    user_data            = optional(string)
+    instance_type        = string
+    ami_ssm_architecture = string
+    use_spot             = bool
+    key_name             = optional(string)
+    asg = optional(
+      object({
+        min_size     = number
+        desired_size = number
+        max_size     = number
+        instance_refresh = optional(object({
+          strategy = string
+          preferences = optional(object({
+            checkpoint_delay       = optional(number)
+            checkpoint_percentages = optional(list(number))
+            instance_warmup        = optional(number)
+            min_healthy_percentage = optional(number)
+            skip_matching          = optional(bool)
+            auto_rollback          = optional(bool)
+          }))
+          triggers = optional(list(string))
+        }))
+      }),
+      {
+        min_size     = 1
+        desired_size = 1
+        max_size     = 1
+        instance_refresh = {
+          strategy               = "Rolling"
+          min_healthy_percentage = 50
+        }
+      }
+    )
+  }))
 }
 
 variable "ami_ssm_name" {
