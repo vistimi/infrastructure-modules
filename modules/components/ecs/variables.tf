@@ -99,18 +99,6 @@ variable "capacity_provider" {
   }))
 }
 
-# variable "deployment" {
-#   description = "if single instance EC2. If multiple instances, you need to choose between EC2/Fargate"
-#   type = object({
-#     use_load_balancer = bool
-#     use_fargate       = optional(bool)
-#   })
-#   default = {
-#     use_load_balancer = true
-#     use_fargate       = true
-#   }
-# }
-
 variable "service" {
   type = object({
     use_fargate                        = bool

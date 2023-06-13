@@ -104,19 +104,18 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	return optionsProject, commonName
 }
 
-func runTest(t *testing.T, options *terraform.Options, commonName string) {
+func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	// FIXME: activate me
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratest_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratest_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratest_structure.RunTestStage(t, "deploy_scraper_backend", func() {
 		// create
@@ -143,11 +142,6 @@ func runTest(t *testing.T, options *terraform.Options, commonName string) {
 
 	microservice.TestMicroservice(t, options, GithubProject)
 
-}
-
-func RunTestLB(t *testing.T, options *terraform.Options, commonName string) {
-	runTest(t, options, commonName)
-
 	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
 	jsonFile, err := os.Open("terraform.tfstate")
 	if err != nil {
@@ -158,6 +152,7 @@ func RunTestLB(t *testing.T, options *terraform.Options, commonName string) {
 	var result map[string]any
 	json.Unmarshal([]byte(byteValue), &result)
 	dnsUrl := result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"].(map[string]any)["lb_dns_name"].(string)
+	dnsUrl = microservice.CheckUrlPrefix(dnsUrl)
 	fmt.Printf("\n\nDNS = %s\n\n", dnsUrl)
 	endpoints := []microservice.EndpointTest{
 		{
@@ -179,10 +174,5 @@ func RunTestLB(t *testing.T, options *terraform.Options, commonName string) {
 	terratest_structure.RunTestStage(t, "validate_rest_endpoints", func() {
 		microservice.TestRestEndpoints(t, endpoints)
 	})
-}
 
-func RunTestSingle(t *testing.T, options *terraform.Options, commonName string) {
-	runTest(t, options, commonName)
-
-	// find here ip
 }

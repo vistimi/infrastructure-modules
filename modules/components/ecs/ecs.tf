@@ -334,7 +334,7 @@ module "ecs" {
               containerPort = var.traffic.target_port
               # appProtocol   = var.traffic.target_protocol
               # containerPortRange = "32768-65535"
-              hostPort = var.service.use_fargate ? var.traffic.target_port : 0
+              hostPort = var.service.use_fargate ? var.traffic.target_port : 0 // "host" network can use target port 
               name     = "container-port"
               protocol = "tcp"
             }

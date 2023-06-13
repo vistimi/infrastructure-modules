@@ -1,13 +1,17 @@
 package scraper_frontend_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
 	"golang.org/x/exp/maps"
 
 	"github.com/KookaS/infrastructure-modules/modules/components/microservice"
+
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -16,10 +20,12 @@ const (
 	projectName = "scraper"
 	serviceName = "frontend"
 
-	listenerPort     = 80
-	listenerProtocol = "HTTP"
-	targetPort       = 3000
-	targetProtocol   = "HTTP"
+	listenerPort            = 80
+	listenerProtocol        = "http"
+	listenerProtocolVersion = "http"
+	targetPort              = 3000
+	targetProtocol          = "http"
+	targetProtocolVersion   = "http"
 
 	backend_dns = "dns_adress_test"
 )
@@ -41,28 +47,23 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
 	optionsProject := &terraform.Options{
 		TerraformDir: "",
-		Vars: map[string]any{
-			"traffic": map[string]any{
-				"listener_port":     listenerPort,
-				"listener_protocol": listenerProtocol,
-				"target_port":       targetPort,
-				"target_protocol":   targetProtocol,
-				"health_check_path": GithubProject.HealthCheckPath,
-			},
-		},
+		Vars:         map[string]any{},
 	}
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["task_definition"].(map[string]any), map[string]any{
-		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
-		"port_mapping": []map[string]any{
-			{
-				"name":          "container-port",
-				"hostPort":      targetPort,
-				"protocol":      "tcp",
-				"containerPort": targetPort,
-			},
+	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
+		"traffic": map[string]any{
+			"listener_port":             listenerPort,
+			"listener_protocol":         listenerProtocol,
+			"listener_protocol_version": listenerProtocolVersion,
+			"target_port":               targetPort,
+			"target_protocol":           targetProtocol,
+			"target_protocol_version":   targetProtocolVersion,
+			"health_check_path":         GithubProject.HealthCheckPath,
 		},
+	})
+	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
 	})
 
 	return optionsProject, commonName
@@ -71,15 +72,16 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratest_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// FIXME: activate me
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratest_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
 	terratest_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
 		// create
@@ -108,8 +110,18 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 
 	microservice.TestMicroservice(t, options, GithubProject)
 
-	dnsUrl := terraform.Output(t, options, "alb_dns_name")
-	fmt.Printf("\n\nDNS = %s\n\n", terraform.Output(t, options, "alb_dns_name"))
+	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
+	jsonFile, err := os.Open("terraform.tfstate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	var result map[string]any
+	json.Unmarshal([]byte(byteValue), &result)
+	dnsUrl := result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"].(map[string]any)["lb_dns_name"].(string)
+	dnsUrl = microservice.CheckUrlPrefix(dnsUrl)
+	fmt.Printf("\n\nDNS = %s\n\n", dnsUrl)
 	endpoints := []microservice.EndpointTest{
 		{
 			Url:                 microservice.CheckUrlPrefix(dnsUrl + GithubProject.HealthCheckPath),

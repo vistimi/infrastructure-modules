@@ -329,20 +329,20 @@ func testEcs(t *testing.T, family_name, account_region, common_name string, serv
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	tlsConfig := tls.Config{}
 	for _, endpoint := range endpoints {
-		if endpoint.ExpectedBody == nil {
-			options := terratest_http_helper.HttpGetOptions{Url: endpoint.Url, TlsConfig: &tlsConfig, Timeout: 10}
-			gotStatus, _ := terratest_http_helper.HttpGetWithOptions(t, options)
-			for i := 0; i < endpoint.MaxRetries; i++ {
-				if gotStatus == endpoint.ExpectedStatus {
-					return
-				}
-				terratest_logger.Log(t, fmt.Sprintf("Response status do not match: expect %v, got %v", endpoint.ExpectedStatus, gotStatus))
-				time.Sleep(time.Second * endpoint.SleepBetweenRetries)
-			}
-			t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Url, endpoint.MaxRetries)
-		} else {
-			terratest_http_helper.HttpGetWithRetry(t, endpoint.Url, &tlsConfig, endpoint.ExpectedStatus, *endpoint.ExpectedBody, endpoint.MaxRetries, endpoint.SleepBetweenRetries)
+		options := terratest_http_helper.HttpGetOptions{Url: endpoint.Url, TlsConfig: &tlsConfig, Timeout: 10}
+		gotStatus, gotBody := terratest_http_helper.HttpGetWithOptions(t, options)
+		expectedBody := ""
+		if endpoint.ExpectedBody != nil {
+			expectedBody = *endpoint.ExpectedBody
 		}
+		for i := 0; i < endpoint.MaxRetries; i++ {
+			if gotStatus == endpoint.ExpectedStatus && gotBody == expectedBody {
+				return
+			}
+			terratest_logger.Log(t, fmt.Sprintf("Response status do not match: expect %v, got %v. Sleeping %s...", endpoint.ExpectedStatus, gotStatus, endpoint.SleepBetweenRetries))
+			time.Sleep(endpoint.SleepBetweenRetries)
+		}
+		t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Url, endpoint.MaxRetries)
 	}
 }
 

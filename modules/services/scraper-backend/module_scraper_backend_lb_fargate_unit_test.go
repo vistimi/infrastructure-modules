@@ -37,10 +37,9 @@ func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
 			"architecture": "X86_64",
 		},
 		"service": map[string]any{
-			"use_load_balancer":                  true,
 			"use_fargate":                        true,
 			"task_desired_count":                 microservice.ServiceTaskDesiredCountInit,
-			"deployment_minimum_healthy_percent": 100,
+			"deployment_minimum_healthy_percent": 66,
 		},
 	})
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
@@ -49,5 +48,5 @@ func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
 		// "memory_reservation": 1024,
 	})
 
-	RunTestLB(t, optionsProject, commonName)
+	RunTest(t, optionsProject, commonName)
 }

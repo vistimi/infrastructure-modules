@@ -1,4 +1,4 @@
-package scraper_backend_test
+package scraper_frontend_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	// terratest_shell "github.com/gruntwork-io/terratest/modules/shell"
 )
 
-func Test_Unit_TerraformScraperBackend_LB_EC2(t *testing.T) {
+func Test_Unit_TerraformScraperFrontend_LB_EC2(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 

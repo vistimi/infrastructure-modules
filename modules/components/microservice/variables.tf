@@ -20,7 +20,6 @@ variable "vpc" {
 variable "ecs" {
   type = object({
     service = object({
-      use_load_balancer                  = bool
       use_fargate                        = bool
       task_desired_count                 = number
       deployment_maximum_percent         = optional(number)

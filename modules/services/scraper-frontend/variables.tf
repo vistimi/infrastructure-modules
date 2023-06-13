@@ -17,103 +17,80 @@ variable "vpc" {
   })
 }
 
-variable "deployment" {
-  description = "if single instance, EC2 simple deployment. If multiple instances, you need to choose between EC2/Fargate"
+variable "ecs" {
   type = object({
-    use_load_balancer = bool
-    use_fargate       = optional(bool)
-  })
-}
-
-variable "log" {
-  type = object({
-    retention_days = number
-    prefix         = optional(string)
-  })
-  default = {
-    retention_days = 30
-    prefix         = "ecs"
-  }
-}
-
-variable "traffic" {
-  type = object({
-    listener_port     = number
-    listener_protocol = string
-    target_port       = number
-    target_protocol   = string
-    health_check_path = optional(string, "/")
-  })
-}
-
-variable "user_data" {
-  description = "The user data to provide when launching the instance"
-  type        = string
-  default     = null
-}
-
-variable "instance" {
-  type = object({
-    user_data = optional(string)
-    ec2 = optional(object({
-      ami_ssm_architecture = string
-      instance_type        = string
-      key_name             = optional(string)
+    service = object({
+      use_fargate                        = bool
+      task_desired_count                 = number
+      deployment_maximum_percent         = optional(number)
+      deployment_minimum_healthy_percent = optional(number)
+      deployment_circuit_breaker = optional(object({
+        enable   = bool
+        rollback = bool
+      }))
+    })
+    log = object({
+      retention_days = number
+      prefix         = optional(string)
+    })
+    traffic = object({
+      listener_port             = number
+      listener_protocol         = string
+      listener_protocol_version = string
+      target_port               = number
+      target_protocol           = string
+      target_protocol_version   = string
+      health_check_path         = optional(string, "/")
+    })
+    capacity_provider = map(object({
+      base           = optional(number)
+      weight_percent = number
+      fargate        = optional(string)
+      scaling = optional(object({
+        target_capacity_cpu_percent = number
+        maximum_scaling_step_size   = number
+        minimum_scaling_step_size   = number
+      }))
     }))
+    task_definition = object({
+      memory             = number
+      memory_reservation = optional(number)
+      cpu                = number
+      env_bucket_name    = string
+      env_file_name      = string
+      registry_image_tag = string
+    })
     fargate = optional(object({
       os           = string
       architecture = string
     }))
+    ec2 = optional(map(object({
+      user_data            = optional(string)
+      instance_type        = string
+      ami_ssm_architecture = string
+      use_spot             = bool
+      key_name             = optional(string)
+      asg = optional(
+        object({
+          min_size     = number
+          desired_size = number
+          max_size     = number
+          instance_refresh = optional(object({
+            strategy = string
+            preferences = optional(object({
+              checkpoint_delay       = optional(number)
+              checkpoint_percentages = optional(list(number))
+              instance_warmup        = optional(number)
+              min_healthy_percentage = optional(number)
+              skip_matching          = optional(bool)
+              auto_rollback          = optional(bool)
+            }))
+            triggers = optional(list(string))
+          }))
+        })
+      )
+    })))
   })
-}
-
-variable "capacity_provider" {
-  description = "only one base for all capacity providers. The map key must be matching between capacity_providers/autoscaling"
-  type = map(object({
-    base           = optional(number)
-    weight_percent = number
-    fargate        = optional(string)
-    scaling = optional(object({
-      target_capacity_cpu_percent = number
-      maximum_scaling_step_size   = number
-      minimum_scaling_step_size   = number
-    }))
-  }))
-}
-
-variable "autoscaling_group" {
-  description = "The map key must be matching between capacity_providers/autoscaling"
-  type = map(object({
-    min_size     = number
-    desired_size = number
-    max_size     = number
-    use_spot     = bool
-  }))
-  default = {}
-}
-
-variable "task_definition" {
-  type = object({
-    memory             = number
-    memory_reservation = optional(number)
-    cpu                = number
-    env_bucket_name    = string
-    env_file_name      = string
-    port_mapping = list(object({
-      appProtocol        = optional(string)
-      containerPort      = optional(number)
-      containerPortRange = optional(string)
-      hostPort           = optional(number)
-      name               = optional(string)
-      protocol           = optional(string)
-    }))
-    registry_image_tag = string
-  })
-}
-
-variable "service_task_desired_count" {
-  description = "Number of instances of the task definition"
-  type        = string
 }
 
 variable "bucket_env" {
