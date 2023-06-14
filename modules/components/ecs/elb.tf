@@ -61,7 +61,7 @@ module "alb" {
         protocol            = local.target_protocol
         matcher             = "200-299"
       }
-      # protocol_version = local.target_protocol_version
+      protocol_version = local.target_protocol_version
     }
   ]
 
@@ -89,8 +89,6 @@ module "alb_sg" {
       cidr_blocks = "0.0.0.0/0"
     },
   ]
-  # ingress_cidr_blocks = ["0.0.0.0/0"]
-  # ingress_rules       = ["all-all"]
   egress_rules = ["all-all"]
   # egress_cidr_blocks = module.vpc.subnets_cidr_blocks
 

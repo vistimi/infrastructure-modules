@@ -88,15 +88,15 @@ module "ecs" {
           type = "ingress"
           // FIXME: add me again
           // dynamic port mapping requires all the ports open
-          # from_port                = var.traffic.target_port
-          # to_port                  = var.traffic.target_port
-          # protocol                 = "tcp"
-          # description              = "Service port"
-          # source_security_group_id = module.alb_sg.security_group_id
-          from_port   = 0
-          to_port     = 0
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
+          from_port                = var.traffic.target_port
+          to_port                  = var.traffic.target_port
+          protocol                 = "tcp"
+          description              = "Service port"
+          source_security_group_id = module.alb_sg.security_group_id
+          # from_port   = 0
+          # to_port     = 0
+          # protocol    = "-1"
+          # cidr_blocks = ["0.0.0.0/0"]
         }
         egress_all = {
           type        = "egress"
@@ -126,8 +126,6 @@ module "ecs" {
             "ecs:StartTelemetrySession",
             "ecs:UpdateContainerInstancesState",
             "ecs:Submit*",
-            "logs:CreateLogStream",
-            "logs:PutLogEvents",
           ]
           effect    = "Allow"
           resources = ["*"],
@@ -152,6 +150,14 @@ module "ecs" {
           effect    = "Allow"
           resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
         },
+        log-group = {
+          actions = [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+          ]
+          effect    = "Allow"
+          resources = ["arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
+        },
       }
 
 
@@ -161,11 +167,16 @@ module "ecs" {
         custom = {
           actions = [
             "ec2:Describe*",
-            "logs:CreateLogStream",
-            "logs:PutLogEvents",
           ]
           effect    = "Allow"
           resources = ["*"],
+        },
+        log-stream = {
+          actions = [
+            "logs:PutLogEvents",
+          ]
+          effect    = "Allow"
+          resources = ["arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}:log-stream:*"],
         },
       }
 
@@ -188,7 +199,6 @@ module "ecs" {
           ]
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
-          // port is defined in laod balancer
           port_mappings = [
             {
               containerPort = var.traffic.target_port
