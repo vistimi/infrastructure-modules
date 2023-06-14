@@ -6,8 +6,6 @@ import (
 
 	"github.com/KookaS/infrastructure-modules/modules/components/microservice"
 	"golang.org/x/exp/maps"
-	// terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
-	// terratest_shell "github.com/gruntwork-io/terratest/modules/shell"
 )
 
 func Test_Unit_TerraformScraperBackend_LB_EC2(t *testing.T) {

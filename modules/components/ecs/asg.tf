@@ -53,18 +53,13 @@ module "asg" {
   key_name = each.value.key_name # to SSH into instance
 
   # iam configuration
-  # iam_instance_profile_arn = aws_iam_instance_profile.ssm.arn // FIXME: try using ssm role
   create_iam_instance_profile = true
-  # iam_instance_profile_arn    = aws_iam_instance_profile.ecs_agent.arn
-  iam_role_name        = "${var.common_name}-asg"
-  iam_role_path        = "/ec2/"
-  iam_role_description = "ASG role for ${var.common_name}"
+  iam_role_name               = "${var.common_name}-asg"
+  iam_role_path               = "/ec2/"
+  iam_role_description        = "ASG role for ${var.common_name}"
   iam_role_policies = {
     AmazonEC2ContainerServiceforEC2Role = "arn:${local.partition}:iam::${local.partition}:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
     AmazonSSMManagedInstanceCore        = "arn:${local.partition}:iam::${local.partition}:policy/AmazonSSMManagedInstanceCore"
-    Custom                              = aws_iam_policy.ecs_agent.arn,                  # FIXME: remove
-    AmazonEC2FullAccess                 = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"  # FIXME: remove
-    AmazonECS_FullAccess                = "arn:aws:iam::aws:policy/AmazonECS_FullAccess" # FIXME: remove
   }
   iam_role_tags = var.common_tags
 
@@ -308,128 +303,6 @@ resource "aws_autoscaling_attachment" "ecs" {
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
   lb_target_group_arn    = module.alb.target_group_arns[0] # works only with one tg
 }
-
-# data "aws_iam_policy_document" "ecs_agent" {
-#   statement {
-#     actions = ["sts:AssumeRole"]
-
-#     principals {
-#       type        = "Service"
-#       identifiers = ["ec2.${local.dns_suffix}"]
-#     }
-#   }
-# }
-
-# data "aws_iam_policy" "aws_ec2_container_service_for_ec2_role" {
-#   name = "AmazonEC2ContainerServiceforEC2Role"
-# }
-
-# data "aws_iam_policy" "aws_ssm_management_instance_core" {
-#   name = "AmazonSSMManagedInstanceCore"
-# }
-
-# data "aws_iam_policy" "aws_ssm_management_instance_core" {
-#   name = "AmazonSSMManagedInstanceCore"
-# }
-
-# resource "aws_iam_role" "ecs_agent" {
-#   name               = "${var.common_name}-ecs-agent"
-#   assume_role_policy = data.aws_iam_policy_document.ecs_agent.json
-#   managed_policy_arns = [
-#     data.aws_iam_policy.aws_ec2_full_access_policy.arn,
-#     data.aws_iam_policy.aws_ec2_container_service_for_ec2_role.arn,
-#     data.aws_iam_policy.aws_ssm_management_instance_core.arn,
-#     aws_iam_policy.ecr.arn,
-#     aws_iam_policy.bucket_env.arn,
-#     aws_iam_policy.ecs_task_logs.arn,
-#   ]
-# }
-
-# data "aws_iam_policy_document" "ecs_agent" {
-#   statement {
-#     effect = "Allow"
-
-#     principals {
-#       type        = "Service"
-#       identifiers = ["ec2.amazonaws.com"]
-#     }
-
-#     actions = ["sts:AssumeRole"]
-#   }
-# }
-
-# FIXME: remove
-resource "aws_iam_policy" "ecs_agent" {
-  name = "${var.common_name}-ecs-agent"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          # // AmazonEC2ContainerServiceforEC2Role for ec2
-          # "ec2:DescribeTags",
-          # "ecs:CreateCluster",
-          # "ecs:DeregisterContainerInstance",
-          # "ecs:DiscoverPollEndpoint",
-          # "ecs:Poll",
-          # "ecs:RegisterContainerInstance",
-          # "ecs:StartTelemetrySession",
-          # "ecs:UpdateContainerInstancesState",
-          # "ecs:Submit*",
-          # "ecr:GetAuthorizationToken",
-          # "ecr:BatchCheckLayerAvailability",
-          # "ecr:GetDownloadUrlForLayer",
-          # "ecr:BatchGetImage",
-          # "logs:CreateLogStream",
-          # "logs:PutLogEvents",
-          # # determine who can access Amazon EC2 Auto Scaling
-          # "autoscaling:InstanceTypes",
-          # "autoscaling:LaunchConfigurationName",
-          # "autoscaling:LaunchTemplateVersionSpecified",
-          # "autoscaling:LoadBalancerNames",
-          # "autoscaling:MaxSize",
-          # "autoscaling:MinSize",
-          # "autoscaling:ResourceTag/*: *",
-          # "autoscaling:TargetGroupARNs",
-          # "autoscaling:VPCZoneIdentifiers",
-          # # create launch configuration requests
-          # "autoscaling:ImageId",
-          # "autoscaling:InstanceType",
-          # "autoscaling:MetadataHttpEndpoint",
-          # "autoscaling:MetadataHttpPutResponseHopLimit",
-          # "autoscaling:MetadataHttpTokens",
-          # "autoscaling:SpotPrice",
-          # # permissions based on the tags
-          # "aws:RequestTag/*: *",
-          # "aws:ResourceTag/*: *",
-          # "aws:TagKeys: [*]",
-          "autoscaling:*",
-          "ecs:*",
-          "ec2:*",
-          "ecr:*",
-          "s3:*"
-
-          # "ecs:DeregisterContainerInstance",
-          # "ecs:DiscoverPollEndpoint",
-          # "ecs:Poll",
-          # "ecs:RegisterContainerInstance",
-          # "ecs:StartTelemetrySession",
-          # "ecs:Submit*",
-          # "ecr:GetAuthorizationToken",
-          # "ecr:BatchCheckLayerAvailability",
-          # "ecr:GetDownloadUrlForLayer",
-          # "ecr:BatchGetImage",
-          # "logs:CreateLogStream",
-          # "logs:PutLogEvents"
-        ]
-        Effect   = "Allow"
-        Resource = "*",
-      },
-    ]
-  })
-}
-
 
 # group notification
 # resource "aws_autoscaling_notification" "webserver_asg_notifications" {

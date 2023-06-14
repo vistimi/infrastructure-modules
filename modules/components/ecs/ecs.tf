@@ -116,49 +116,21 @@ module "ecs" {
         custom = {
           actions = [
             # // AmazonECSTaskExecutionRolePolicy for fargate 
-            # "ecr:GetAuthorizationToken",
-            # "ecr:BatchCheckLayerAvailability",
-            # "ecr:GetDownloadUrlForLayer",
-            # "ecr:BatchGetImage",
-            # "logs:CreateLogStream",
-            # "logs:PutLogEvents",
             # // AmazonEC2ContainerServiceforEC2Role for ec2
-            # "ec2:DescribeTags",
-            # "ecs:CreateCluster",
-            # "ecs:DeregisterContainerInstance",
-            # "ecs:DiscoverPollEndpoint",
-            # "ecs:Poll",
-            # "ecs:RegisterContainerInstance",
-            # "ecs:StartTelemetrySession",
-            # "ecs:UpdateContainerInstancesState",
-            # "ecs:Submit*",
-            # "ecr:GetAuthorizationToken",
-            # "ecr:BatchCheckLayerAvailability",
-            # "ecr:GetDownloadUrlForLayer",
-            # "ecr:BatchGetImage",
-            # "logs:CreateLogStream",
-            # "logs:PutLogEvents",
-            # // AmazonECSTaskExecutionRolePolicy
-            # "ecr:GetAuthorizationToken",
-            # "ecr:BatchCheckLayerAvailability",
-            # "ecr:GetDownloadUrlForLayer",
-            # "ecr:BatchGetImage",
-            # "logs:CreateLogStream",
-            # "logs:PutLogEvents",
-
-            "ec2:*",
-            "ecs:*",
-            "logs:*",
-            "s3:*",
-            "ecr:*",
+            "ec2:DescribeTags",
+            "ecs:CreateCluster",
+            "ecs:DeregisterContainerInstance",
+            "ecs:DiscoverPollEndpoint",
+            "ecs:Poll",
+            "ecs:RegisterContainerInstance",
+            "ecs:StartTelemetrySession",
+            "ecs:UpdateContainerInstancesState",
+            "ecs:Submit*",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
           ]
           effect    = "Allow"
           resources = ["*"],
-          # condition = {
-          #   test     = "StringEquals"
-          #   variable = "aws:SourceAccount"
-          #   values   = [local.account_id]
-          # }
         },
         ecr = {
           actions = [
@@ -169,31 +141,16 @@ module "ecs" {
           ]
           effect    = "Allow"
           resources = ["arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"],
-          # condition = {
-          #   test     = "StringEquals"
-          #   variable = "aws:SourceAccount"
-          #   values   = [local.account_id]
-          # }
         },
         bucket-env = {
           actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
           effect    = "Allow"
           resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}"],
-          # condition = {
-          #   test     = "StringEquals"
-          #   variable = "aws:SourceAccount"
-          #   values   = [local.account_id]
-          # }
         },
         bucket-env-files = {
           actions   = ["s3:GetObject"]
           effect    = "Allow"
           resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
-          # condition = {
-          #   test     = "StringEquals"
-          #   variable = "aws:SourceAccount"
-          #   values   = [local.account_id]
-          # }
         },
       }
 
@@ -203,110 +160,13 @@ module "ecs" {
       tasks_iam_role_statements = {
         custom = {
           actions = [
-
-            # // AmazonEC2FullAccess
-            #       "ec2:*",
-            #       "elasticloadbalancing:*",
-            #       "cloudwatch:*",
-            #       "autoscaling:*",
-            #       {
-            #   "Effect" : "Allow",
-            #   "Action" : "iam:CreateServiceLinkedRole",
-            #   "Resource" : "*",
-            #   "Condition" : {
-            #     "StringEquals" : {
-            #       "iam:AWSServiceName" : [
-            #         "autoscaling.amazonaws.com",
-            #         "ec2scheduled.amazonaws.com",
-            #         "elasticloadbalancing.amazonaws.com",
-            #         "spot.amazonaws.com",
-            #         "spotfleet.amazonaws.com",
-            #         "transitgateway.amazonaws.com"
-            #       ]
-            #     }
-            #   }
-            # }
-
-            // AmazonECS_FullAccess
-            # "application-autoscaling:DeleteScalingPolicy",
-            # "application-autoscaling:DeregisterScalableTarget",
-            # "application-autoscaling:DescribeScalableTargets",
-            # "application-autoscaling:DescribeScalingActivities",
-            # "application-autoscaling:DescribeScalingPolicies",
-            # "application-autoscaling:PutScalingPolicy",
-            # "application-autoscaling:RegisterScalableTarget",
-            # "autoscaling:CreateAutoScalingGroup",
-            # "autoscaling:CreateLaunchConfiguration",
-            # "autoscaling:DeleteAutoScalingGroup",
-            # "autoscaling:DeleteLaunchConfiguration",
-            # "autoscaling:Describe*",
-            # "autoscaling:UpdateAutoScalingGroup",
-            # "cloudwatch:DeleteAlarms",
-            # "cloudwatch:DescribeAlarms",
-            # "cloudwatch:GetMetricStatistics",
-            # "cloudwatch:PutMetricAlarm",
-            # "ec2:AssociateRouteTable",
-            # "ec2:AttachInternetGateway",
-            # "ec2:AuthorizeSecurityGroupIngress",
-            # "ec2:CancelSpotFleetRequests",
-            # "ec2:CreateInternetGateway",
-            # "ec2:CreateLaunchTemplate",
-            # "ec2:CreateRoute",
-            # "ec2:CreateRouteTable",
-            # "ec2:CreateSecurityGroup",
-            # "ec2:CreateSubnet",
-            # "ec2:CreateVpc",
-            # "ec2:DeleteLaunchTemplate",
-            # "ec2:DeleteSubnet",
-            # "ec2:DeleteVpc",
-            # "ec2:Describe*",
-            # "ec2:DetachInternetGateway",
-            # "ec2:DisassociateRouteTable",
-            # "ec2:ModifySubnetAttribute",
-            # "ec2:ModifyVpcAttribute",
-            # "ec2:RequestSpotFleet",
-            # "ec2:RunInstances",
-            # "ecs:*",
-            # "servicediscovery:CreatePrivateDnsNamespace",
-            # "servicediscovery:CreateService",
-            # "servicediscovery:DeleteService",
-            # "servicediscovery:GetNamespace",
-            # "servicediscovery:GetOperation",
-            # "servicediscovery:GetService",
-            # "servicediscovery:ListNamespaces",
-            # "servicediscovery:ListServices",
-            # "servicediscovery:UpdateService",
-            # "sns:ListTopics"
-            #  ssm:GetParameter",
-            # "ssm:GetParameters",
-            # "ssm:GetParametersByPath"
-
-            "s3:*",
-            "iam:*",
-            "elasticloadbalancing:*",
-            "cloudwatch:*",
-            "autoscaling:*",
-            "application-autoscaling:*",
-            "ec2:*",
-            "ecs:*",
-            "events:*",
-            "logs:*",
-            "servicediscovery:*",
-            "sns:*",
-            "ssm:*",
+            "ec2:Describe*",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
           ]
           effect    = "Allow"
           resources = ["*"],
-          # condition = {
-          #   test     = "StringEquals"
-          #   variable = "aws:SourceAccount"
-          #   values   = [local.account_id]
-          # }
         },
-      }
-      tasks_iam_role_policies = {
-        AmazonEC2FullAccess  = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        AmazonECS_FullAccess = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
       }
 
       memory                   = var.task_definition.memory

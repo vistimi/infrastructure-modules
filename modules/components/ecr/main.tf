@@ -47,7 +47,10 @@ module "ecr" {
         Condition = {
           "ForAnyValue:StringEquals" : {
             "aws:SourceVpce" : ["${var.vpc_id}"]
-          }
+          },
+          # "StringEquals" : {
+          #   "aws:SourceAccount" : [local.account_id],
+          # },
         }
       },
       # {
