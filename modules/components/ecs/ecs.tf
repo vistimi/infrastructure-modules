@@ -85,18 +85,12 @@ module "ecs" {
       subnet_ids = local.subnets
       security_group_rules = {
         alb_ingress = {
-          type = "ingress"
-          // FIXME: add me again
-          // dynamic port mapping requires all the ports open
+          type                     = "ingress"
           from_port                = var.traffic.target_port
           to_port                  = var.traffic.target_port
           protocol                 = "tcp"
           description              = "Service port"
           source_security_group_id = module.alb_sg.security_group_id
-          # from_port   = 0
-          # to_port     = 0
-          # protocol    = "-1"
-          # cidr_blocks = ["0.0.0.0/0"]
         }
         egress_all = {
           type        = "egress"

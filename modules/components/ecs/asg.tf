@@ -266,15 +266,14 @@ module "autoscaling_sg" {
   name        = each.value.name
 
 
-  // only accept incoming traffic from load balancer 
-  ingress_cidr_blocks = ["0.0.0.0/0"]
+  // only accept incoming traffic from load balancer
   computed_ingress_with_source_security_group_id = [
     {
       // dynamic port mapping requires all the ports open
-      rule = "all-all"
-      # target port or the following
-      # from_port   = 32768
-      # to_port     = 65535
+      from_port                = var.service.use_fargate ? var.traffic.target_port : 32768
+      to_port                  = var.service.use_fargate ? var.traffic.target_port : 65535
+      protocol                 = "tcp"
+      description              = "Load Balancer ports"
       source_security_group_id = module.alb_sg.security_group_id
     }
   ]
