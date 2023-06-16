@@ -3,7 +3,7 @@ package scraper_frontend_test
 import (
 	"testing"
 
-	"github.com/KookaS/infrastructure-modules/modules/components/microservice"
+	"github.com/KookaS/infrastructure-modules/test/microservice"
 	"golang.org/x/exp/maps"
 )
 

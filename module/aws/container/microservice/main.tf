@@ -2,7 +2,7 @@
 #     ECS
 # ------------
 module "ecs" {
-  source = "../../components/ecs"
+  source = "../../../../module/aws/container/ecs"
 
   common_name = var.common_name
   common_tags = var.common_tags
@@ -23,7 +23,7 @@ module "ecs" {
 #     ECR
 # ------------
 module "ecr" {
-  source           = "../../components/ecr"
+  source           = "../../../../module/aws/container/ecr"
   name             = var.common_name
   vpc_id           = var.vpc.id
   force_destroy    = var.ecr.force_destroy
@@ -36,7 +36,7 @@ module "ecr" {
 #     Bucket env
 # ------------------------
 module "bucket_env" {
-  source        = "../../data/bucket"
+  source        = "../../../../module/aws/data/bucket"
   name          = var.bucket_env.name
   vpc_id        = var.vpc.id
   force_destroy = var.bucket_env.force_destroy

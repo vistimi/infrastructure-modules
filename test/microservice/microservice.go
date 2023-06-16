@@ -25,7 +25,7 @@ import (
 
 var (
 	AccountName   = os.Getenv("AWS_PROFILE")
-	AccountId     = os.Getenv("AWS_ID")
+	AccountId     = os.Getenv("AWS_ACCOUNT_ID")
 	AccountRegion = os.Getenv("AWS_REGION")
 )
 

@@ -1,4 +1,4 @@
-# https://registry.terraform.io/modules/terraform-aws-modules/alb/aws/8.6.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
+# https://registry.terraform.io/module/terraform-aws-modules/alb/aws/8.6.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "elb" {
   value = {
     http_tcp_listener_arns    = module.alb.http_tcp_listener_arns
@@ -19,7 +19,7 @@ output "elb" {
   }
 }
 
-# https://registry.terraform.io/modules/terraform-aws-modules/autoscaling/aws/6.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
+# https://registry.terraform.io/module/terraform-aws-modules/autoscaling/aws/6.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "asg" {
   value = {
     for key, asg in module.asg : key => {
@@ -71,7 +71,7 @@ output "cluster" {
   }
 }
 
-# https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/service/outputs.tf
+# https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/module/service/outputs.tf
 output "service" {
   value = {
     # service

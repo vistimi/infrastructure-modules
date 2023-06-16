@@ -9,10 +9,10 @@ variable "tags" {
   default     = {}
 }
 
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
-}
+# variable "vpc_id" {
+#   description = "The IDs of the VPC which contains the subnets"
+#   type        = string
+# }
 
 variable "force_destroy" {
   description = "If true, will delete the resources that still contain elements"

@@ -3,5 +3,5 @@ include {
 }
 
 dependencies {
-  paths = ["../../vpc"]
+  paths = ["${get_path_to_repo_root()}module/aws/vpc"]
 }

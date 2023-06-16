@@ -1,7 +1,7 @@
 {
 	"name": "Alpine",
 	"build": {
-		"dockerfile": "../Dockerfile.common",
+		"dockerfile": "../Dockerfile",
 		"args": {
 			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"
 		},
@@ -11,7 +11,7 @@
 		"--env-file",
 		".devcontainer/devcontainer.env"
 	],
-	"postStartCommand": "aws configure set aws_access_key_id $AWS_ACCESS_KEY --profile $AWS_PROFILE && aws configure set --profile $AWS_PROFILE aws_secret_access_key $AWS_SECRET_KEY --profile $AWS_PROFILE && aws configure set region $AWS_REGION --profile $AWS_PROFILE && aws configure set output 'text' --profile $AWS_PROFILE && aws configure list && tflint --init",
+	"postStartCommand": "make aws-configure && tflint --init",
 	"customizations": {
 		"vscode": {
 			"extensions": [

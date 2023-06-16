@@ -1,5 +1,5 @@
 module "microservice" {
-  source = "../../components/microservice"
+  source = "../../../../module/aws/container/microservice"
 
   common_name = var.common_name
   common_tags = var.common_tags
@@ -10,12 +10,8 @@ module "microservice" {
   bucket_env = var.bucket_env
 }
 
-#--------------
-# Dynamodb
-#--------------
-
 module "dynamodb_table" {
-  source = "../../data/dynamodb"
+  source = "../../../../module/aws/data/dynamodb"
 
   for_each = {
     for index, dt in var.dynamodb_tables :
@@ -35,12 +31,8 @@ module "dynamodb_table" {
   tags = var.common_tags
 }
 
-#--------------
-# Pictures
-#--------------
-
 module "bucket_picture" {
-  source        = "../../data/bucket"
+  source        = "../../../../module/aws/data/bucket"
   name          = var.bucket_picture.name
   vpc_id        = var.vpc.id
   force_destroy = var.bucket_picture.force_destroy
