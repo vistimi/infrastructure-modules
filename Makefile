@@ -20,7 +20,7 @@ PATH_ABS_AWS=${PATH_ABS_ROOT}/${PATH_REL_AWS}
 PATH_REL_AWS_MICROSERVICE=${PATH_REL_AWS}/microservice
 PATH_ABS_AWS_MICROSERVICE=${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}
 PATH_ABS_AWS_VPC=${PATH_ABS_ROOT}/${PATH_REL_AWS}/vpc
-PATH_ABS_AWS_ECR=${PATH_ABS_ROOT}/${PATH_REL_AWS}/components/ecr
+PATH_ABS_AWS_ECR=${PATH_ABS_ROOT}/${PATH_REL_AWS}/container/ecr
 PATH_REL_TEST_MICROSERVICE=test/microservice
 
 .SILENT:	# silent all commands below
@@ -38,9 +38,9 @@ test-clean-cache:
 	go clean -testcache;
 test-prepare:
 	make prepare; \
-	make test-prepare-modules-services-scraper-backend; \
-	make test-prepare-modules-services-scraper-frontend;
-test-prepare-modules-services-scraper-backend:
+	make test-prepare-module-microservice-scraper-backend; \
+	make test-prepare-module-microservice-scraper-frontend;
+test-prepare-module-microservice-scraper-backend:
 	$(eval GH_ORG=KookaS)
 	$(eval GH_REPO=scraper-backend)
 	$(eval GH_BRANCH=master)
@@ -48,7 +48,7 @@ test-prepare-modules-services-scraper-backend:
 	make github-load-file MODULE_PATH=${MODULE_PATH} GITHUB_TOKEN=${GITHUB_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.yml; \
 	make github-load-file MODULE_PATH=${MODULE_PATH} GITHUB_TOKEN=${GITHUB_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.go; \
 	sed -i 's/package .*/package scraper_backend_test/' ${MODULE_PATH}/config_override.go;
-test-prepare-modules-services-scraper-frontend:
+test-prepare-module-microservice-scraper-frontend:
 	$(eval GH_ORG=KookaS)
 	$(eval GH_REPO=scraper-frontend)
 	$(eval GH_BRANCH=master)
@@ -57,49 +57,65 @@ test-prepare-modules-services-scraper-frontend:
 
 prepare: ## Setup the test environment
 	make prepare-account-aws; \
-	make set-modules-vpc; \
-	make prepare-modules-services-scraper-backend; \
-	make prepare-modules-services-scraper-frontend;
+	make set-module-vpc; \
+	make prepare-module-microservice-scraper-backend; \
+	make prepare-module-microservice-scraper-frontend;
+.ONESHELL: prepare-account-aws
 prepare-account-aws:
-	echo 'locals {' 							> 	${PATH_ABS_AWS}/aws_account.hcl; \
-	echo 'aws_account_region="${AWS_REGION}"' 	>> 	${PATH_ABS_AWS}/aws_account.hcl; \
-	echo 'aws_account_name="${AWS_PROFILE}"' 	>> 	${PATH_ABS_AWS}/aws_account.hcl; \
-	echo 'aws_account_id="${AWS_ACCOUNT_ID}"' 	>> 	${PATH_ABS_AWS}/aws_account.hcl; \
-	echo '}'									>> 	${PATH_ABS_AWS}/aws_account.hcl;
-# prepare-modules-infrastructure-modules:
-# 	make github-set-environment GH_REPO_OWNER=KookaS GH_REPO_NAME=infrastructure-modules GH_ENV=KookaS
+	cat <<-EOF > ${PATH_ABS_AWS}/aws_account_override.hcl 
+	locals {
+		aws_account_region="${AWS_REGION}"
+		aws_account_name="${AWS_PROFILE}"
+		aws_account_id="${AWS_ACCOUNT_ID}"
+	}
+	EOF
+# prepare-module-infrastructure-module:
+# 	make github-set-environment GH_REPO_OWNER=KookaS GH_REPO_NAME=infrastructure-module GH_ENV=KookaS
 # TODO: add other language and github app
-prepare-modules-services-scraper-backend:
+prepare-module-microservice-scraper-backend:
 	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-backend; \
 	terragrunt init;
-prepare-modules-services-scraper-frontend:
+prepare-module-microservice-scraper-frontend:
 	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-frontend; \
 	terragrunt init;
-set-modules-vpc:
-	# remove the state file in the vpc folder to create a new one \
-	if [ ! -e ${PATH_ABS_AWS_VPC}/terraform.tfstate ]; then \
-		echo 'aws_region="${AWS_REGION}"' 													> 	${PATH_ABS_AWS_VPC}/terraform_override.tfvars; \
-		echo 'vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"' 	>> 	${PATH_ABS_AWS_VPC}/terraform_override.tfvars; \
-		echo 'common_tags={Region: "${AWS_REGION}"}' 										>> 	${PATH_ABS_AWS_VPC}/terraform_override.tfvars; \
-		echo 'vpc_cidr_ipv4="1.0.0.0/16"' 													>> 	${PATH_ABS_AWS_VPC}/terraform_override.tfvars; \
-		echo 'enable_nat=false' 															>> 	${PATH_ABS_AWS_VPC}/terraform_override.tfvars; \
-		cd ${PATH_ABS_AWS_VPC}; \
-		terragrunt init; \
-		terragrunt apply -auto-approve; \
+.ONESHELL: set-module-vpc
+set-module-vpc:
+	if [ ! -e ${PATH_ABS_AWS_VPC}/terraform.tfstate ]; then
+
+		cat <<-EOF > ${PATH_ABS_AWS_VPC}/terraform_override.tfvars 
+		aws_region="${AWS_REGION}"
+		vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"
+		common_tags={Region: "${AWS_REGION}"}
+		vpc_cidr_ipv4="1.0.0.0/16"
+		enable_nat=false
+		EOF
+
+		cd ${PATH_ABS_AWS_VPC}
+		terragrunt init
+		terragrunt apply -auto-approve
 	fi
+.ONESHELL: set-module-ecr
 set-module-ecr:
-	make aws-configure; \
-	make prepare-account-aws; \
-	echo 'name="$(shell echo ${GH_ORG}-${GH_REPO}-${GH_BRANCH} | tr A-Z a-z)"' 	> 	${PATH_ABS_AWS_ECR}/terraform_override.tfvars; \
-	echo 'tags={Account: "${AWS_PROFILE}", Region: "${AWS_REGION}"}' 			>> 	${PATH_ABS_AWS_ECR}/terraform_override.tfvars; \
-	echo 'force_destroy=${FORCE_DESTROY}' 										>> 	${PATH_ABS_AWS_ECR}/terraform_override.tfvars; \
-	echo 'image_keep_count=${IMAGE_KEEP_COUNT}' 								>> 	${PATH_ABS_AWS_ECR}/terraform_override.tfvars; \
-	cd ${PATH_ABS_AWS_ECR}; \
-	terragrunt init; \
-	terragrunt apply -auto-approve; \
+	make aws-configure
+	make prepare-account-aws
+
+	cat <<-EOF > ${PATH_ABS_AWS_ECR}/terraform_override.tfvars
+	name="$(shell echo ${ORG}-${REPO}-${BRANCH} | tr A-Z a-z)"
+	tags={Account: "${AWS_PROFILE}", Region: "${AWS_REGION}"}
+	force_destroy=${FORCE_DESTROY}
+	image_keep_count=${IMAGE_KEEP_COUNT}
+	EOF
+	
+	cd ${PATH_ABS_AWS_ECR}
+	terragrunt init
+	terragrunt apply -auto-approve
 
 aws-configure:
-	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE} && aws configure set --profile ${AWS_PROFILE} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE} && aws configure set region ${AWS_REGION} --profile ${AWS_PROFILE} && aws configure set output 'text' --profile ${AWS_PROFILE} && aws configure list
+	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE} \
+		&& aws configure set --profile ${AWS_PROFILE} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE} \
+		&& aws configure set region ${AWS_REGION} --profile ${AWS_PROFILE} \
+		&& aws configure set output 'text' --profile ${AWS_PROFILE} \
+		&& aws configure list
 
 github-load-file:
 	curl -L -o ${MODULE_PATH}/$(shell basename ${GH_PATH} | cut -d. -f1)_override.$(shell basename ${GH_PATH} | cut -d. -f2) \
@@ -198,7 +214,7 @@ clean: ## Clean the test environment
 	echo "Delete state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
 	echo "Delete state backup files..."; for folderPath in $(shell find . -type f -name "terraform.tfstate.backup"); do echo $$folderPath; rm -Rf $$folderPath; done; \
 	echo "Delete override files..."; for filePath in $(shell find . -type f -name "*_override.*"); do echo $$filePath; rm $$filePath; done; \
-	echo "Delete lock files..."; for folderPath in $(shell find . -type f -name "terraform.lock.hcl"); do echo $$folderPath; rm -Rf $$folderPath; done;
+	echo "Delete lock files..."; for folderPath in $(shell find . -type f -name ".terraform.lock.hcl"); do echo $$folderPath; rm -Rf $$folderPath; done;
 
 	echo "Delete temp folder..."; for folderPath in $(shell find . -type d -name ".terraform"); do echo $$folderPath; rm -Rf $$folderPath; done;
 clean-cloudwatch:
@@ -251,13 +267,11 @@ nuke-global:
 # it needs the tfstate files which are generated with apply
 graph:
 	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}//vpc/graph.png
-graph-modules-vpc: ## Generate the graph for the VPC
+graph-module-vpc: ## Generate the graph for the VPC
 	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/vpc
-graph-modules-data-mongodb: ## Generate the graph for the MongoDB
-	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/data/mongodb
-graph-modules-services-scraper-backend: ## Generate the graph for the scraper backend
+graph-module-microservice-scraper-backend: ## Generate the graph for the scraper backend
 	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/services/scraper-backend
-graph-modules-services-scraper-frontend: ## Generate the graph for the scraper frontend
+graph-module-microservice-scraper-frontend: ## Generate the graph for the scraper frontend
 	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/services/scraper-frontend
 
 rover-vpc:

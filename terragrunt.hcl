@@ -2,7 +2,7 @@
 # TERRAGRUNT CONFIGURATION BLOCKS
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  aws_account_vars   = read_terragrunt_config(find_in_parent_folders("aws_account.hcl"))
+  aws_account_vars   = read_terragrunt_config(find_in_parent_folders("aws_account_override.hcl"))
   aws_account_id     = local.aws_account_vars.locals.aws_account_id
   aws_account_region = local.aws_account_vars.locals.aws_account_region
 }

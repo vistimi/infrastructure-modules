@@ -6,9 +6,6 @@
 *tfvars
 *override.*
 
-# terragrunt
-account.hcl
-
 # ssh
 *.pem
 

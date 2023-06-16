@@ -147,6 +147,3 @@ RUN aws --version
 
 # encryption
 # RUN sudo apk add --no-cache libsodium-dev
-
-# WORKDIR /home/$USERNAME
-# COPY --chown=$USERNAME:$USER_GID . .
