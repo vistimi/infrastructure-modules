@@ -4,6 +4,7 @@ data "aws_partition" "current" {}
 locals {
   account_id = data.aws_caller_identity.current.account_id
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
+  partition  = data.aws_partition.current.partition  // aws
 }
 
 data "aws_iam_policy_document" "bucket_policy" {
@@ -11,7 +12,7 @@ data "aws_iam_policy_document" "bucket_policy" {
     actions = ["s3:GetBucketLocation", "s3:ListBucket"]
 
     resources = [
-      "arn:aws:s3:::${var.name}",
+      "arn:${local.partition}:s3:::${var.name}",
     ]
 
     principals {
@@ -38,7 +39,7 @@ data "aws_iam_policy_document" "bucket_policy" {
     actions = ["s3:GetObject"]
 
     resources = [
-      "arn:aws:s3:::${var.name}/*",
+      "arn:${local.partition}:s3:::${var.name}/*",
     ]
 
     principals {
@@ -85,5 +86,37 @@ module "s3_bucket" {
   # control_object_ownership = true
   # object_ownership         = "ObjectWriter"
 
-  tags = merge(var.common_tags, { Name = var.name })
+  tags = merge(var.tags, { Name = var.name })
+}
+
+#-------------------
+#   Attachments
+#-------------------
+resource "aws_iam_policy" "role_attachment" {
+  name = "${var.name}-role-attachment"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.name}",
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:s3:::${var.name}/*",
+      },
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "role_attachment" {
+  count = length(var.role_names)
+
+  role       = var.role_names[count.index]
+  policy_arn = aws_iam_policy.role_attachment.arn
 }

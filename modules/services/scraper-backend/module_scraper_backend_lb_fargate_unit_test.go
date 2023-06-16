@@ -35,6 +35,10 @@ func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
 		"fargate": map[string]any{
 			"os":           "LINUX",
 			"architecture": "X86_64",
+			"capacity_provider": map[string]any{
+				keySpot:     "FARGATE",
+				keyOnDemand: "FARGATE_SPOT",
+			},
 		},
 		"service": map[string]any{
 			"use_fargate":                        true,

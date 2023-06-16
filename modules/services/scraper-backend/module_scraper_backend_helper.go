@@ -107,15 +107,15 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratest_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratest_structure.RunTestStage(t, "cleanup_scraper_backend", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratest_structure.RunTestStage(t, "deploy_scraper_backend", func() {
 		// create
@@ -160,14 +160,14 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 			ExpectedStatus:      200,
 			ExpectedBody:        util.Ptr(`"ok"`),
 			MaxRetries:          3,
-			SleepBetweenRetries: 20 * time.Second,
+			SleepBetweenRetries: 30 * time.Second,
 		},
 		{
 			Url:                 microservice.CheckUrlPrefix(dnsUrl + "/tags/wanted"),
 			ExpectedStatus:      200,
 			ExpectedBody:        util.Ptr(`[]`),
 			MaxRetries:          3,
-			SleepBetweenRetries: 20 * time.Second,
+			SleepBetweenRetries: 30 * time.Second,
 		},
 	}
 

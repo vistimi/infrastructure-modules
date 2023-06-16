@@ -4,7 +4,7 @@ variable "name" {
   type        = string
 }
 
-variable "common_tags" {
+variable "tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
@@ -25,4 +25,10 @@ variable "versioning" {
   description = "Enable versioning"
   type        = bool
   default     = false
+}
+
+variable "role_names" {
+  description = "List of role names that will have access to this bucket"
+  type        = list(string)
+  default     = []
 }

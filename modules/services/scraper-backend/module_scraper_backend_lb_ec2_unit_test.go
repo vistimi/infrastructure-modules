@@ -28,20 +28,10 @@ func Test_Unit_TerraformScraperBackend_LB_EC2(t *testing.T) {
 			keySpot: {
 				"base":           nil, // no preferred instance amount
 				"weight_percent": 50,  // 50% chance
-				"scaling": map[string]any{
-					"target_capacity_cpu_percent": 70,
-					"maximum_scaling_step_size":   1,
-					"minimum_scaling_step_size":   1,
-				},
 			},
 			keyOnDemand: {
 				"base":           nil, // no preferred instance amount
 				"weight_percent": 50,  // 50% chance
-				"scaling": map[string]any{
-					"target_capacity_cpu_percent": 70,
-					"maximum_scaling_step_size":   1,
-					"minimum_scaling_step_size":   1,
-				},
 			},
 		},
 		"ec2": map[string]map[string]any{
@@ -66,6 +56,11 @@ func Test_Unit_TerraformScraperBackend_LB_EC2(t *testing.T) {
 						"triggers": []string{"tag"},
 					},
 				},
+				"capacity_provider": map[string]any{
+					"target_capacity_cpu_percent": 70,
+					"maximum_scaling_step_size":   1,
+					"minimum_scaling_step_size":   1,
+				},
 			},
 			keyOnDemand: {
 				"user_data":            userDataOnDemand,
@@ -87,6 +82,11 @@ func Test_Unit_TerraformScraperBackend_LB_EC2(t *testing.T) {
 						},
 						"triggers": []string{"tag"},
 					},
+				},
+				"capacity_provider": map[string]any{
+					"target_capacity_cpu_percent": 70,
+					"maximum_scaling_step_size":   1,
+					"minimum_scaling_step_size":   1,
 				},
 			},
 		},

@@ -1,3 +1,14 @@
+data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+data "aws_region" "current" {}
+
+locals {
+  account_id = data.aws_caller_identity.current.account_id
+  dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
+  partition  = data.aws_partition.current.partition  // aws
+  region     = data.aws_region.current.name
+}
+
 module "dynamodb_table" {
   source  = "terraform-aws-modules/dynamodb-table/aws"
   version = "3.3.0"
@@ -38,40 +49,43 @@ module "dynamodb_table" {
     max_capacity       = var.predictable_capacity.write.max_capacity
   } : {} : {}
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
-# {
-#     "Version": "2012-10-17",
-#     "Statement": [
-#         {
-#             "Sid": "ListAndDescribe",
-#             "Effect": "Allow",
-#             "Action": [
-#                 "dynamodb:List*",
-#                 "dynamodb:DescribeReservedCapacity*",
-#                 "dynamodb:DescribeLimits",
-#                 "dynamodb:DescribeTimeToLive"
-#             ],
-#             "Resource": "*"
-#         },
-#         {
-#             "Sid": "SpecificTable",
-#             "Effect": "Allow",
-#             "Action": [
-#                 "dynamodb:BatchGet*",
-#                 "dynamodb:DescribeStream",
-#                 "dynamodb:DescribeTable",
-#                 "dynamodb:Get*",
-#                 "dynamodb:Query",
-#                 "dynamodb:Scan",
-#                 "dynamodb:BatchWrite*",
-#                 "dynamodb:CreateTable",
-#                 "dynamodb:Delete*",
-#                 "dynamodb:Update*",
-#                 "dynamodb:PutItem"
-#             ],
-#             "Resource": "arn:aws:dynamodb:*:*:table/MyTable"
-#         }
-#     ]
-# }
+#-------------------
+#   Attachments
+#-------------------
+resource "aws_iam_policy" "role_attachment" {
+  name = "${var.table_name}-role-attachment"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:BatchGet*",
+          "dynamodb:DescribeStream",
+          "dynamodb:DescribeTable",
+          "dynamodb:Get*",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:BatchWrite*",
+          "dynamodb:Delete*",
+          "dynamodb:Update*",
+          "dynamodb:PutItem",
+        ]
+        Effect   = "Allow"
+        Resource = "arn:${local.partition}:dynamodb:${local.region}:${local.account_id}:table/${var.table_name}",
+      },
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "role_attachment" {
+  count = length(var.role_names)
+
+  role       = var.role_names[count.index]
+  policy_arn = aws_iam_policy.role_attachment.arn
+}

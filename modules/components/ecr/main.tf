@@ -13,7 +13,7 @@ module "ecr" {
   source  = "terraform-aws-modules/ecr/aws"
   version = "1.6.0"
 
-  repository_name   = var.common_name
+  repository_name   = var.name
   create_repository = true
 
   # Registry Policy
@@ -42,30 +42,17 @@ module "ecr" {
           "ecr:BatchGetImage",
         ],
         Resource = [
-          "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"
+          "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.name}"
         ],
         Condition = {
           "ForAnyValue:StringEquals" : {
             "aws:SourceVpce" : ["${var.vpc_id}"]
           },
-          # "StringEquals" : {
-          #   "aws:SourceAccount" : [local.account_id],
-          # },
+          "StringEquals" : {
+            "aws:SourceAccount" : [local.account_id],
+          },
         }
       },
-      # {
-      #   Action = ["sts:AssumeRole"]
-      #   Effect = "Allow"
-      #   Principal = {
-      #     type        = "AWS"
-      #     identifiers = [local.account_arn]
-      #   }
-      #   # condition {
-      #   #   test     = "Bool"
-      #   #   variable = "aws:MultiFactorAuthPresent"
-      #   #   values   = ["true"]
-      #   # }
-      # }
     ]
   })
 
@@ -90,5 +77,5 @@ module "ecr" {
   repository_force_delete         = var.force_destroy
   repository_image_tag_mutability = "MUTABLE"
 
-  tags = var.common_tags
+  tags = var.tags
 }

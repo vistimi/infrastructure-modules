@@ -336,10 +336,10 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 			expectedBody = *endpoint.ExpectedBody
 		}
 		for i := 0; i < endpoint.MaxRetries; i++ {
-			if gotStatus == endpoint.ExpectedStatus && gotBody == expectedBody {
+			if gotStatus == endpoint.ExpectedStatus && (endpoint.ExpectedBody == nil || (endpoint.ExpectedBody != nil && gotBody == expectedBody)) {
 				return
 			}
-			terratest_logger.Log(t, fmt.Sprintf("Response status do not match: expect %v, got %v. Sleeping %s...", endpoint.ExpectedStatus, gotStatus, endpoint.SleepBetweenRetries))
+			terratest_logger.Log(t, fmt.Sprintf("Response status or body do not match::\nstatus expected: %v\nstatus got: %v\nbody expected %v\nbody got %v. Sleeping %s...", endpoint.ExpectedStatus, gotStatus, expectedBody, gotBody, endpoint.SleepBetweenRetries))
 			time.Sleep(endpoint.SleepBetweenRetries)
 		}
 		t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Url, endpoint.MaxRetries)

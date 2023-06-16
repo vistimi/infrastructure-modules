@@ -64,6 +64,16 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	})
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
+		"tmpfs": map[string]any{
+			"ContainerPath": "/run/npm",
+			"Size":          1024,
+		},
+		"environment": []map[string]any{
+			{
+				"name":  "TMPFS_NPM",
+				"value": "/run/npm",
+			},
+		},
 	})
 
 	return optionsProject, commonName
@@ -72,16 +82,15 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	// FIXME: activate me
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratest_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratest_structure.RunTestStage(t, "cleanup_scraper_frontend", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratest_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
 		// create
@@ -128,7 +137,7 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 			ExpectedStatus:      200,
 			ExpectedBody:        nil,
 			MaxRetries:          3,
-			SleepBetweenRetries: 20 * time.Second,
+			SleepBetweenRetries: 30 * time.Second,
 		},
 	}
 

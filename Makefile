@@ -174,6 +174,7 @@ clean: ## Clean the test environment
 	# make clean-iam; \
 	# make clean-ec2; \
 	make clean-elb; \
+	make clean-ecs; \
 
 	echo "Delete state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
 	echo "Delete state backup files..."; for folderPath in $(shell find . -type f -name "terraform.tfstate.backup"); do echo $$folderPath; rm -Rf $$folderPath; done; \
@@ -195,6 +196,8 @@ clean-ec2:
 	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
 clean-elb:
 	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
+clean-ecs:
+	for clusterArn in $(shell aws ecs describe-clusters --query 'clusters[].clusterArn'); do echo $$clusterArn; aws ecs delete-cluster --cluster $$clusterArn; done;
 clean-vpc:
 	# if [ ! -e ${VPC_PATH}/terraform.tfstate ]; then \
 	# 	make nuke-region-vpc; \

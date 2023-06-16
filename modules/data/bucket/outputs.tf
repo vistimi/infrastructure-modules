@@ -10,5 +10,15 @@ output "bucket" {
     region                        = module.s3_bucket.s3_bucket_region
     website_domain                = module.s3_bucket.s3_bucket_website_domain
     website_endpoint              = module.s3_bucket.s3_bucket_website_endpoint
+    policy_role_attachment = {
+      id          = aws_iam_policy.role_attachment.id
+      arn         = aws_iam_policy.role_attachment.arn
+      description = aws_iam_policy.role_attachment.description
+      name        = aws_iam_policy.role_attachment.name
+      path        = aws_iam_policy.role_attachment.path
+      policy      = aws_iam_policy.role_attachment.policy
+      policy_id   = aws_iam_policy.role_attachment.policy_id
+      tags_all    = aws_iam_policy.role_attachment.tags_all
+    }
   }
 }

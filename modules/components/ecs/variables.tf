@@ -70,6 +70,7 @@ variable "log" {
   }
 }
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
 variable "task_definition" {
   type = object({
     memory             = number
@@ -78,6 +79,15 @@ variable "task_definition" {
     env_bucket_name    = string
     env_file_name      = string
     registry_image_tag = string
+    tmpfs = optional(object({
+      ContainerPath : optional(string),
+      MountOptions : optional(list(string)),
+      Size : number,
+    }), null)
+    environment = optional(list(object({
+      name : string
+      value : string
+    })), [])
   })
 }
 
@@ -86,16 +96,6 @@ variable "capacity_provider" {
   type = map(object({
     base           = optional(number)
     weight_percent = optional(number, 50)
-    fargate        = optional(string, "FARGATE")
-    ec2 = optional(object({
-      target_capacity_cpu_percent = number
-      maximum_scaling_step_size   = number
-      minimum_scaling_step_size   = number
-      }), {
-      target_capacity_cpu_percent = 70
-      maximum_scaling_step_size   = 1
-      minimum_scaling_step_size   = 1
-    })
   }))
 }
 
@@ -117,15 +117,16 @@ variable "service" {
 
 variable "fargate" {
   type = object({
-    os           = string
-    architecture = string
+    os                = string
+    architecture      = string
+    capacity_provider = map(string)
   })
   default = {
-    os           = "LINUX"
-    architecture = "X86_64"
+    os                = "LINUX"
+    architecture      = "X86_64"
+    capacity_provider = {}
   }
 }
-
 
 #--------------
 # ASG
@@ -137,34 +138,33 @@ variable "ec2" {
     ami_ssm_architecture = string
     use_spot             = bool
     key_name             = optional(string)
-    asg = optional(
-      object({
-        min_size     = number
-        desired_size = number
-        max_size     = number
-        instance_refresh = optional(object({
-          strategy = string
-          preferences = optional(object({
-            checkpoint_delay       = optional(number)
-            checkpoint_percentages = optional(list(number))
-            instance_warmup        = optional(number)
-            min_healthy_percentage = optional(number)
-            skip_matching          = optional(bool)
-            auto_rollback          = optional(bool)
-          }))
-          triggers = optional(list(string))
+    asg = object({
+      min_size     = number
+      desired_size = number
+      max_size     = number
+      instance_refresh = optional(object({
+        strategy = string
+        preferences = optional(object({
+          checkpoint_delay       = optional(number)
+          checkpoint_percentages = optional(list(number))
+          instance_warmup        = optional(number)
+          min_healthy_percentage = optional(number)
+          skip_matching          = optional(bool)
+          auto_rollback          = optional(bool)
         }))
-      }),
-      {
-        min_size     = 1
-        desired_size = 1
-        max_size     = 1
-        instance_refresh = {
-          strategy               = "Rolling"
-          min_healthy_percentage = 50
+        triggers = optional(list(string))
+        }), {
+        strategy = "Rolling"
+        preferences = {
+          min_healthy_percentage = 66
         }
-      }
-    )
+      })
+    })
+    capacity_provider = object({
+      target_capacity_cpu_percent = number
+      maximum_scaling_step_size   = number
+      minimum_scaling_step_size   = number
+    })
   }))
 }
 

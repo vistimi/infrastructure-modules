@@ -1,10 +1,10 @@
-variable "common_name" {
-  description = "The common part of the name used for all resources"
+variable "name" {
+  description = "The name of the repository"
   type        = string
 }
 
-variable "common_tags" {
-  description = "Custom tags to set on the Instances in the ASG"
+variable "tags" {
+  description = "Custom tags"
   type        = map(string)
   default     = {}
 }

@@ -24,17 +24,19 @@ func Test_Unit_TerraformScraperFrontend_LB_Fargate(t *testing.T) {
 			keySpot: {
 				"base":           nil, // no preferred instance amount
 				"weight_percent": 50,  // 50% chance
-				"fargate":        "FARGATE",
 			},
 			keyOnDemand: {
 				"base":           nil, // no preferred instance amount
 				"weight_percent": 50,  // 50% chance
-				"fargate":        "FARGATE_SPOT",
 			},
 		},
 		"fargate": map[string]any{
 			"os":           "LINUX",
 			"architecture": "X86_64",
+			"capacity_provider": map[string]any{
+				keySpot:     "FARGATE",
+				keyOnDemand: "FARGATE_SPOT",
+			},
 		},
 		"service": map[string]any{
 			"use_fargate":                        true,

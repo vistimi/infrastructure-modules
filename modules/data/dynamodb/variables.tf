@@ -1,5 +1,5 @@
-variable "common_tags" {
-  description = "Custom tags to set on the Instances in the ASG"
+variable "tags" {
+  description = "Custom tags"
   type        = map(string)
   default     = {}
 }
@@ -70,4 +70,10 @@ variable "predictable_capacity" {
   default = {
     autoscaling = false
   }
+}
+
+variable "role_names" {
+  description = "List of role names that will have access to this table"
+  type        = list(string)
+  default     = []
 }

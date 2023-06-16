@@ -1,3 +1,14 @@
+locals {
+  // needs ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true in userdata
+  // aggregate for only one task definition
+  # single_instances = [
+  #   for key, value in var.ec2 :
+  #   value.asg.desired_size == 1 && value.asg.max_size == 1
+  # ]
+  # single_instance = alltrue(local.single_instances) && length(local.single_instances) == 1
+  single_instance = false
+}
+
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/${var.log.prefix}/${var.common_name}"
   retention_in_days = var.log.retention_days
@@ -27,11 +38,11 @@ module "ecs" {
   # capacity providers
   default_capacity_provider_use_fargate = var.service.use_fargate ? true : false
   fargate_capacity_providers = {
-    for v in values(var.capacity_provider) :
-    v.fargate => {
+    for key, cp in var.capacity_provider :
+    var.fargate.capacity_provider[key] => {
       default_capacity_provider_strategy = {
-        weight = v.weight_percent
-        base   = v.base
+        weight = cp.weight_percent
+        base   = cp.base
       }
     }
     if var.service.use_fargate
@@ -42,9 +53,9 @@ module "ecs" {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
-        maximum_scaling_step_size = var.capacity_provider[key].ec2.maximum_scaling_step_size
-        minimum_scaling_step_size = var.capacity_provider[key].ec2.minimum_scaling_step_size
-        target_capacity           = var.capacity_provider[key].ec2.target_capacity_cpu_percent # utilization for the capacity provider
+        maximum_scaling_step_size = var.ec2.capacity_provider[key].maximum_scaling_step_size
+        minimum_scaling_step_size = var.ec2.capacity_provider[key].minimum_scaling_step_size
+        target_capacity           = var.ec2.capacity_provider[key].target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
@@ -174,14 +185,15 @@ module "ecs" {
         },
       }
 
+      # Task definition
       memory                   = var.task_definition.memory
       cpu                      = var.task_definition.cpu
       family                   = var.common_name
       requires_compatibilities = var.service.use_fargate ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
-      // "host" one container, "bridge" is default and supports multiple containers and dynamic port mapping
-      network_mode = var.service.use_fargate ? "awsvpc" : "bridge" // "host" for single instance
+      network_mode = var.service.use_fargate ? "awsvpc" : local.single_instance ? "host" : "bridge" // "host" for single instance
 
+      # Task definition container(s)
       container_definitions = {
         "${var.common_name}" = {
           name = var.common_name
@@ -191,6 +203,7 @@ module "ecs" {
               "type"  = "s3"
             }
           ]
+          environment = var.task_definition.environment,
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [
@@ -198,11 +211,13 @@ module "ecs" {
               containerPort = var.traffic.target_port
               # appProtocol   = var.traffic.target_protocol
               # containerPortRange = "32768-65535"
-              hostPort = var.service.use_fargate ? var.traffic.target_port : 0 // "host" network can use target port 
+              hostPort = var.service.use_fargate || local.single_instance ? var.traffic.target_port : 0 // "host" network can use target port 
               name     = "container-port"
               protocol = "tcp"
             }
           ]
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
+          tmpfs              = var.task_definition.tmpfs
           memory             = var.task_definition.memory
           memory_reservation = var.task_definition.memory_reservation
           cpu                = var.task_definition.cpu
