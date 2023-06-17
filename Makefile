@@ -4,10 +4,6 @@
 # use bash not sh
 SHELL:= /bin/bash
 
-.PHONY: build help
-help:
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
 GIT_SHA=$(shell git rev-parse HEAD) # latest commit hash
 GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty") # If working copy has changes, append `-dirty` to hash
 GIT_REV=$(GIT_SHA)$(GIT_DIFF)
@@ -25,6 +21,25 @@ PATH_REL_TEST_MICROSERVICE=test/microservice
 
 .SILENT:	# silent all commands below
 MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
+
+pre-build:
+	# use arguments as key/value
+	for ARGUMENT in "$@"
+	do
+	KEY=$(echo $ARGUMENT | cut -f1 -d=)
+
+	KEY_LENGTH=${#KEY}
+	VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+
+	export "$KEY"="$VALUE"
+	done
+
+	# fail if unset variable
+	set -u
+
+.PHONY: build help
+help:
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 fmt: ## Format all files
 	terraform fmt -recursive
@@ -100,7 +115,7 @@ set-module-ecr:
 	make prepare-account-aws
 
 	cat <<-EOF > ${PATH_ABS_AWS_ECR}/terraform_override.tfvars
-	name="$(shell echo ${ORG}-${REPO}-${BRANCH} | tr A-Z a-z)"
+	name="$(shell echo ${REPOSITORY_NAME} | tr A-Z a-z)"
 	tags={Account: "${AWS_PROFILE}", Region: "${AWS_REGION}"}
 	force_destroy=${FORCE_DESTROY}
 	image_keep_count=${IMAGE_KEEP_COUNT}
@@ -109,6 +124,19 @@ set-module-ecr:
 	cd ${PATH_ABS_AWS_ECR}
 	terragrunt init
 	terragrunt apply -auto-approve
+.ONESHELL: set-module-ecr-image
+set-module-ecr-image:
+	if [ -z $(shell aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --query 'repositories[0].repositoryName') ]; then
+		echo -e '\033[43mCreating repository in ECR\033[0m'
+		make set-module-ecr REPOSITORY_NAME=${REPOSITORY_NAME} FORCE_DESTROY=true IMAGE_KEEP_COUNT=1
+	fi
+	export ECR_URI=$(aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --output text --query "repositories[].[repositoryUri]")
+	docker build -t ${ECR_URI}/${IMAGE_TAG} -f ${DOCKER_FOLDER_PATH} .
+	docker images ${ECR_URI}/${IMAGE_TAG}
+	docker tag $(shell docker images -q ${ECR_URI}/${IMAGE_TAG}) ${ECR_URI}:${IMAGE_TAG}
+	docker push ${ECR_URI}:${IMAGE_TAG}
+	docker tag ${ECR_URI}:${IMAGE_TAG} ${ECR_URI}:latest
+	docker push ${ECR_URI}:latest
 
 aws-configure:
 	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE} \
