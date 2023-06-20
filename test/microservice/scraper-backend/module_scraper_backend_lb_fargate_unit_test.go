@@ -13,7 +13,7 @@ import (
 // iam application-autoscaling
 
 // FIXME: no fargate spot, only on-demand is working
-func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
+func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 
@@ -42,14 +42,13 @@ func Test_Unit_TerraformScraperBackend_LB_Fargate(t *testing.T) {
 		},
 		"service": map[string]any{
 			"use_fargate":                        true,
-			"task_desired_count":                 microservice.ServiceTaskDesiredCountInit,
+			"task_desired_count":                 microservice.ServiceTaskDesiredCount,
 			"deployment_minimum_healthy_percent": 66,
 		},
 	})
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"cpu":    512,
 		"memory": 1024,
-		// "memory_reservation": 1024,
 	})
 
 	RunTest(t, optionsProject, commonName)

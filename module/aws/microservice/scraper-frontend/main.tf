@@ -5,7 +5,6 @@ module "microservice" {
   common_tags = var.common_tags
   vpc         = var.vpc
 
-  ecs        = var.ecs
-  ecr        = var.ecr
+  ecs = var.ecs
   bucket_env = var.bucket_env
 }

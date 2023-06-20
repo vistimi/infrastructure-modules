@@ -10,7 +10,7 @@ import (
 	// terratest_shell "github.com/gruntwork-io/terratest/module/shell"
 )
 
-func Test_Unit_TerraformScraperFrontend_LB_EC2(t *testing.T) {
+func Test_Unit_ScraperFrontend_LB_EC2(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 
@@ -95,7 +95,7 @@ func Test_Unit_TerraformScraperFrontend_LB_EC2(t *testing.T) {
 
 		"service": map[string]any{
 			"use_fargate":                        false,
-			"task_desired_count":                 microservice.ServiceTaskDesiredCountInit,
+			"task_desired_count":                 microservice.ServiceTaskDesiredCount,
 			"deployment_minimum_healthy_percent": 66, // % tasks running required
 			"deployment_circuit_breaker": map[string]any{
 				"enable":   true,  // service deployment fail if no steady state

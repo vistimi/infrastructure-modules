@@ -7,10 +7,10 @@ output "ecs" {
   }
 }
 
-output "ecr" {
-  value = module.ecr
-}
+# output "ecr" {
+#   value = module.ecr
+# }
 
 output "bucket_env" {
-  value = module.bucket_env
+  value = module.bucket_env.bucket
 }

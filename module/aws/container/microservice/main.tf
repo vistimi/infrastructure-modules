@@ -19,18 +19,18 @@ module "ecs" {
   ec2     = var.ecs.ec2
 }
 
-# ------------
-#     ECR
-# ------------
-module "ecr" {
-  source           = "../../../../module/aws/container/ecr"
-  name             = var.common_name
-  vpc_id           = var.vpc.id
-  force_destroy    = var.ecr.force_destroy
-  image_keep_count = var.ecr.image_keep_count
+# # ------------
+# #     ECR
+# # ------------
+# module "ecr" {
+#   source           = "../../../../module/aws/container/ecr"
+#   name             = var.common_name
+#   vpc_id           = var.vpc.id
+#   force_destroy    = var.ecr.force_destroy
+#   image_keep_count = var.ecr.image_keep_count
 
-  tags = var.common_tags
-}
+#   tags = var.common_tags
+# }
 
 # ------------------------
 #     Bucket env
@@ -43,4 +43,11 @@ module "bucket_env" {
   versioning    = var.bucket_env.versioning
 
   tags = var.common_tags
+}
+
+resource "aws_s3_object" "env" {
+  key                    = var.bucket_env.file_key
+  bucket                 = module.bucket_env.bucket.id
+  source                 = var.bucket_env.file_path
+  server_side_encryption = "aws:kms"
 }

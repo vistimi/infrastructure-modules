@@ -6,7 +6,6 @@ module "microservice" {
   vpc         = var.vpc
 
   ecs        = var.ecs
-  ecr        = var.ecr
   bucket_env = var.bucket_env
 }
 

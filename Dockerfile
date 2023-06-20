@@ -12,3 +12,6 @@ ARG USER_GID=$USER_UID
 WORKDIR /home/$USERNAME
 
 COPY --chown=$USERNAME:$USER_GID . .
+
+RUN echo Date::; date; echo ;echo Files in home::; ls -l
+RUN echo Changes in the past 2h::; find ./ -not -path '*/.*' -type f -mmin -120 -mmin +1

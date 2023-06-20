@@ -11,6 +11,9 @@
 		"--env-file",
 		".devcontainer/devcontainer.env"
 	],
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+	],
 	"postStartCommand": "make aws-configure && tflint --init",
 	"customizations": {
 		"vscode": {
@@ -22,7 +25,8 @@
 				"premparihar.gotestexplorer",
 				"hashicorp.terraform",
 				"bierner.markdown-emoji",
-				"ms-vscode.makefile-tools"
+				"ms-vscode.makefile-tools",
+				"ms-azuretools.vscode-docker"
 			]
 		}
 	}

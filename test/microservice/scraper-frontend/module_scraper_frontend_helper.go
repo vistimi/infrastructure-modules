@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/KookaS/infrastructure-modules/test/microservice"
 
+	terratest_shell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -27,26 +29,33 @@ const (
 	targetProtocol          = "http"
 	targetProtocolVersion   = "http"
 
-	backend_dns = "dns_adress_test"
+	microservicePath = "../../../module/aws/microservice/scraper-frontend"
 )
 
 var (
 	GithubProject = microservice.GithubProjectInformation{
-		Organization:     "KookaS",
-		Repository:       "scraper-frontend",
-		Branch:           "master",
-		WorkflowFilename: "cicd.yml",
-		WorkflowName:     "CI/CD",
-		HealthCheckPath:  "/healthz",
+		Organization:    "KookaS",
+		Repository:      "scraper-frontend",
+		Branch:          "master",
+		HealthCheckPath: "/healthz",
+		ImageTag:        "latest",
 	}
 )
 
 func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
+	// setup terraform override variables
+	bashCode := fmt.Sprintf(`cd %s; terragrunt init;`, microservicePath)
+	command := terratest_shell.Command{
+		Command: "bash",
+		Args:    []string{"-c", bashCode},
+	}
+	terratest_shell.RunCommandAndGetOutput(t, command)
+
 	optionsMicroservice, commonName := microservice.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
-		TerraformDir: "modules/microservices/scraper-frontend",
+		TerraformDir: microservicePath,
 		Vars:         map[string]any{},
 	}
 
@@ -62,8 +71,11 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 			"health_check_path":         GithubProject.HealthCheckPath,
 		},
 	})
+	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"env_file_name": fmt.Sprintf("%s.env", GithubProject.Branch),
+		"env_file_name":        envKey,
+		"repository_name":      strings.ToLower(fmt.Sprintf("%s-%s-%s", GithubProject.Organization, GithubProject.Repository, GithubProject.Branch)),
+		"repository_image_tag": GithubProject.ImageTag,
 		"tmpfs": map[string]any{
 			"ContainerPath": "/run/npm",
 			"Size":          1024,
@@ -74,6 +86,10 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 				"value": "/run/npm",
 			},
 		},
+	})
+	maps.Copy(optionsProject.Vars["bucket_env"].(map[string]any), map[string]any{
+		"file_key":  envKey,
+		"file_path": "override.env",
 	})
 
 	return optionsProject, commonName
@@ -93,34 +109,13 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	}()
 
 	terratest_structure.RunTestStage(t, "deploy_scraper_frontend", func() {
-		// create
 		terraform.InitAndApply(t, options)
-
-		// run pipeline
-		bashCode := fmt.Sprintf(`
-			gh workflow run %s --repo %s/%s --ref %s \
-			-f aws-account-name=%s \
-			-f common-name=%s \
-			-f task-desired-count=%d \
-			-f backend-dns=%s \
-			|| exit 1
-		`,
-			GithubProject.WorkflowFilename,
-			GithubProject.Organization,
-			GithubProject.Repository,
-			GithubProject.Branch,
-			microservice.AccountName,
-			commonName,
-			microservice.ServiceTaskDesiredCountFinal,
-			backend_dns,
-		)
-		microservice.RunGithubWorkflow(t, GithubProject, bashCode)
 	})
 
 	microservice.TestMicroservice(t, options, GithubProject)
 
 	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
-	jsonFile, err := os.Open("terraform.tfstate")
+	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
 	if err != nil {
 		t.Fatal(err)
 	}

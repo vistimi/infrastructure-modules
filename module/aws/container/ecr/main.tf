@@ -26,13 +26,6 @@ module "ecr" {
   #       Principal = {
   #         Service : [
   #           "ec2.${local.dns_suffix}",
-  #           // FIXME: remove below
-  #           "ecs.${local.dns_suffix}",
-  #           "ecs-tasks.${local.dns_suffix}",
-  #           "ecs.application-autoscaling.${local.dns_suffix}",
-  #           "ec2.application-autoscaling.${local.dns_suffix}",
-  #           "application-autoscaling.${local.dns_suffix}",
-  #           "autoscaling.${local.dns_suffix}",
   #         ]
   #       },
   #       Action = [
@@ -63,10 +56,9 @@ module "ecr" {
         rulePriority = 1,
         description  = "Keep last ${var.image_keep_count} images",
         selection = {
-          tagStatus     = "tagged",
-          tagPrefixList = ["v"],
-          countType     = "imageCountMoreThan",
-          countNumber   = var.image_keep_count
+          tagStatus   = "any",
+          countType   = "imageCountMoreThan",
+          countNumber = var.image_keep_count
         },
         action = {
           type = "expire"

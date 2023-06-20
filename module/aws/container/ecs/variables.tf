@@ -78,7 +78,8 @@ variable "task_definition" {
     cpu                = number
     env_bucket_name    = string
     env_file_name      = string
-    registry_image_tag = string
+    repository_name      = string
+    repository_image_tag = string
     tmpfs = optional(object({
       ContainerPath : optional(string),
       MountOptions : optional(list(string)),

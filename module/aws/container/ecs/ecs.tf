@@ -53,9 +53,9 @@ module "ecs" {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
-        maximum_scaling_step_size = var.ec2.capacity_provider[key].maximum_scaling_step_size
-        minimum_scaling_step_size = var.ec2.capacity_provider[key].minimum_scaling_step_size
-        target_capacity           = var.ec2.capacity_provider[key].target_capacity_cpu_percent # utilization for the capacity provider
+        maximum_scaling_step_size = var.ec2[key].capacity_provider.maximum_scaling_step_size
+        minimum_scaling_step_size = var.ec2[key].capacity_provider.minimum_scaling_step_size
+        target_capacity           = var.ec2[key].capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
@@ -143,7 +143,7 @@ module "ecs" {
             "ecr:BatchGetImage",
           ]
           effect    = "Allow"
-          resources = ["arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.common_name}"],
+          resources = ["arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.task_definition.repository_name}"],
         },
         bucket-env = {
           actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
@@ -229,7 +229,7 @@ module "ecs" {
             "cpuArchitecture"       = var.fargate.architecture
           } : null
 
-          image     = "${local.account_id}.dkr.ecr.${local.region}.${local.dns_suffix}/${var.common_name}:${var.task_definition.registry_image_tag}"
+          image     = "${local.account_id}.dkr.ecr.${local.region}.${local.dns_suffix}/${var.task_definition.repository_name}:${var.task_definition.repository_image_tag}"
           essential = true
         }
       }

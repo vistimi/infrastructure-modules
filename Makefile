@@ -20,22 +20,9 @@ PATH_ABS_AWS_ECR=${PATH_ABS_ROOT}/${PATH_REL_AWS}/container/ecr
 PATH_REL_TEST_MICROSERVICE=test/microservice
 
 .SILENT:	# silent all commands below
+# https://www.gnu.org/software/make/manual/html_node/Options-Summary.html
 MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
-
-pre-build:
-	# use arguments as key/value
-	for ARGUMENT in "$@"
-	do
-	KEY=$(echo $ARGUMENT | cut -f1 -d=)
-
-	KEY_LENGTH=${#KEY}
-	VALUE="${ARGUMENT:$KEY_LENGTH+1}"
-
-	export "$KEY"="$VALUE"
-	done
-
-	# fail if unset variable
-	set -u
+MAKEFLAGS += --warn-undefined-variables
 
 .PHONY: build help
 help:
@@ -87,12 +74,30 @@ prepare-account-aws:
 # prepare-module-infrastructure-module:
 # 	make github-set-environment GH_REPO_OWNER=KookaS GH_REPO_NAME=infrastructure-module GH_ENV=KookaS
 # TODO: add other language and github app
+.ONESHELL: prepare-module-microservice-scraper-backend
 prepare-module-microservice-scraper-backend:
-	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-backend; \
-	terragrunt init;
+# COMMON_NAME during test
+	cat <<-EOF > ${PATH_ABS_AWS_MICROSERVICE}/scraper-backend/override.env 
+	CLOUD_HOST=aws
+	FLICKR_PRIVATE_KEY=123
+	FLICKR_PUBLIC_KEY=123
+	UNSPLASH_PRIVATE_KEY=123
+	UNSPLASH_PUBLIC_KEY=123
+	PEXELS_PUBLIC_KEY=123
+	AWS_REGION=${AWS_REGION}
+	AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+	AWS_SECRET_KEY=${AWS_SECRET_KEY}
+	EOF
+	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-backend
+	terragrunt init
+.ONESHELL: prepare-module-microservice-scraper-frontend
 prepare-module-microservice-scraper-frontend:
-	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-frontend; \
-	terragrunt init;
+	cat <<-EOF > ${PATH_ABS_AWS_MICROSERVICE}/scraper-frontend/override.env 
+	NEXT_PUBLIC_API_URL=http://not-required-for-testing.com
+	PORT=3000
+	EOF
+	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/scraper-frontend
+	terragrunt init
 .ONESHELL: set-module-vpc
 set-module-vpc:
 	if [ ! -e ${PATH_ABS_AWS_VPC}/terraform.tfstate ]; then
@@ -111,7 +116,6 @@ set-module-vpc:
 	fi
 .ONESHELL: set-module-ecr
 set-module-ecr:
-	make aws-configure
 	make prepare-account-aws
 
 	cat <<-EOF > ${PATH_ABS_AWS_ECR}/terraform_override.tfvars
@@ -125,18 +129,6 @@ set-module-ecr:
 	terragrunt init
 	terragrunt apply -auto-approve
 .ONESHELL: set-module-ecr-image
-set-module-ecr-image:
-	if [ -z $(shell aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --query 'repositories[0].repositoryName') ]; then
-		echo -e '\033[43mCreating repository in ECR\033[0m'
-		make set-module-ecr REPOSITORY_NAME=${REPOSITORY_NAME} FORCE_DESTROY=true IMAGE_KEEP_COUNT=1
-	fi
-	export ECR_URI=$(aws ecr describe-repositories --repository-names ${REPOSITORY_NAME} --output text --query "repositories[].[repositoryUri]")
-	docker build -t ${ECR_URI}/${IMAGE_TAG} -f ${DOCKER_FOLDER_PATH} .
-	docker images ${ECR_URI}/${IMAGE_TAG}
-	docker tag $(shell docker images -q ${ECR_URI}/${IMAGE_TAG}) ${ECR_URI}:${IMAGE_TAG}
-	docker push ${ECR_URI}:${IMAGE_TAG}
-	docker tag ${ECR_URI}:${IMAGE_TAG} ${ECR_URI}:latest
-	docker push ${ECR_URI}:latest
 
 aws-configure:
 	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE} \
@@ -144,6 +136,12 @@ aws-configure:
 		&& aws configure set region ${AWS_REGION} --profile ${AWS_PROFILE} \
 		&& aws configure set output 'text' --profile ${AWS_PROFILE} \
 		&& aws configure list
+ecr-configure:
+	if [[ ${AWS_CLI_ECR} == ecr ]]; then
+		aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+	elif [[ ${AWS_CLI_ECR} == ecr-public ]]; then
+		aws ecr-public get-login-password --region ${AWS_REGION} | sudo docker login --username AWS ---password-stdin public.ecr.aws
+	fi
 
 github-load-file:
 	curl -L -o ${MODULE_PATH}/$(shell basename ${GH_PATH} | cut -d. -f1)_override.$(shell basename ${GH_PATH} | cut -d. -f2) \
@@ -225,20 +223,19 @@ github-set-environment-secret:
 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/secrets/${GH_SECRET_NAME} \
 		-d '{"encrypted_value":${GH_SECRET_VALUE_ENCR},"key_id":"${GH_KEY_ID}"}';
 
-
+.ONESHELL: clean
 clean: ## Clean the test environment
-	make nuke-region-exclude-vpc;
-	make clean-vpc;
-	make nuke-global;
+	make nuke-region-exclude-vpc
+	make clean-vpc
+	make nuke-global
 
-	# make clean-cloudwatch; \
-	make clean-task-definition; \
-	# make clean-registries; \
-	# make clean-iam; \
-	# make clean-ec2; \
-	make clean-elb; \
-	make clean-ecs; \
+	make clean-task-definition
+	make clean-elb
+	make clean-ecs
 
+	make clean-local
+
+clean-local: ## Clean the local files and folders
 	echo "Delete state files..."; for filePath in $(shell find . -type f -name "*.tfstate"); do echo $$filePath; rm $$filePath; done; \
 	echo "Delete state backup files..."; for folderPath in $(shell find . -type f -name "terraform.tfstate.backup"); do echo $$folderPath; rm -Rf $$folderPath; done; \
 	echo "Delete override files..."; for filePath in $(shell find . -type f -name "*_override.*"); do echo $$filePath; rm $$filePath; done; \

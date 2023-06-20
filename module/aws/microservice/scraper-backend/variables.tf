@@ -40,19 +40,20 @@ variable "ecs" {
       target_port               = number
       target_protocol           = string
       target_protocol_version   = string
-      health_check_path         = optional(string, "/")
+      health_check_path         = optional(string)
     })
     capacity_provider = map(object({
       base           = optional(number)
       weight_percent = number
     }))
     task_definition = object({
-      memory             = number
-      memory_reservation = optional(number)
-      cpu                = number
-      env_bucket_name    = string
-      env_file_name      = string
-      registry_image_tag = string
+      memory               = number
+      memory_reservation   = optional(number)
+      cpu                  = number
+      env_bucket_name      = string
+      env_file_name        = string
+      repository_name      = string
+      repository_image_tag = string
       tmpfs = optional(object({
         ContainerPath : optional(string),
         MountOptions : optional(list(string)),
@@ -105,20 +106,9 @@ variable "bucket_env" {
     name          = string
     force_destroy = bool
     versioning    = bool
+    file_path     = string
+    file_key      = string
   })
-}
-
-variable "ecr" {
-  description = "The registry config"
-  type = object({
-    image_keep_count = number
-    force_destroy    = bool
-  })
-
-  default = {
-    image_keep_count = 1
-    force_destroy    = true
-  }
 }
 
 #--------------
