@@ -174,7 +174,7 @@ jobs:
             echo DOCKERFILE_ARGS=""
             while read arg; do
               echo arg:: $arg
-              echo DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
+              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
               echo new: $DOCKERFILE_ARGS
             done <<< $(jq -rc '.args[]' <<< "$dockerfile")
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
