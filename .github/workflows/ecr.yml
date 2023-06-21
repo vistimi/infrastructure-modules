@@ -57,7 +57,7 @@ jobs:
               -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[
-                { "path":"Dockerfile.bin","args": [ ] },         
+                { "path":"Dockerfile.bin","args": [] },         
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
