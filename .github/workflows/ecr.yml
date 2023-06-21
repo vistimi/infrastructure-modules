@@ -32,7 +32,6 @@ env:
   AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
   AWS_CLI_SERVICE: ecr
   ECR_REGISTRY_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
-  DOCKERFILES: "Dockerfile" # list of dockerfiles in one string
   IMAGE_TAG: ${{ github.sha }}
   ORG: ${{ github.repository_owner }}
   BRANCH: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
@@ -67,6 +66,13 @@ jobs:
           echo "REPO: $REPO"
           IMAGE_KEEP_COUNT=$(if [[ $BRANCH == master ]]; then echo "5"; else echo "1"; fi)
           echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
+          DOCKERFILES=$(
+            jq --null-input \
+              '[
+                { "path":"Dockerfile.bin","args": [] },
+                { "path":"Dockerfile","args": [] }
+              ]'
+          )
 
           # functions
           func_ecr_create () {
@@ -103,7 +109,7 @@ jobs:
 
             # Push new image
             echo -e '\033[43mPushing image to ECR\033[0m'
-            docker build --progress=plain --no-cache -t $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAME/$IMAGE_TAG -f $DOCKERFILE .
+            docker build --progress=plain --no-cache -t $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAME/$IMAGE_TAG -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
             DOCKER_SRC=$(docker images -q $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAME/$IMAGE_TAG)
             echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" ${DOCKER_SRC} | numfmt --to=si)
             docker tag ${DOCKER_SRC} $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAME:$IMAGE_TAG
@@ -132,13 +138,17 @@ jobs:
           }
 
           # loop over dockerfiles
-          for DOCKERFILE in $DOCKERFILES; do
-            # extract possible extension
-            DOCKERFILE_EXTENSION=$([[ "$DOCKERFILE" = *.* ]] && echo "-${DOCKERFILE##*.}" || echo '')
-            ECR_REPOSITORY_NAME="$(echo $ORG-$REPO-$BRANCH$DOCKERFILE_EXTENSION | tr A-Z a-z)"
-            echo "DOCKERFILE: $DOCKERFILE"
+          jq -rc '.[]' <<< "$DOCKERFILES" | while read dockerfile; do
+            DOCKERFILE_PATH=$(jq -r '.path' <<< "$dockerfile")
+            dockerfile_extension=$([[ "$DOCKERFILE_PATH" = *.* ]] && echo "-${DOCKERFILE_PATH##*.}" || echo '')
+            ECR_REPOSITORY_NAME="$(echo $ORG-$REPO-$BRANCH$dockerfile_extension | tr A-Z a-z)"
+            echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
             echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
+
+            DOCKERFILE_ARGS=""
+            jq -rc '.args[]' <<< "$dockerfile" | while read arg; do
+              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=\"$arg\" "
+            done
+
             func_ecr
           done
-
-          
