@@ -57,7 +57,7 @@ jobs:
               -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[
-                { "path":"Dockerfile.bin" },         
+                { "path":"Dockerfile.bin","args": [ ] },
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
@@ -174,10 +174,11 @@ jobs:
 
             echo DOCKERFILE_ARGS=""
             while read arg; do
-              echo arg:: $arg
-              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
-              echo new: $DOCKERFILE_ARGS
-            done <<< $(jq -rc '.args[]' <<< "$dockerfile")
+              if [[ -n "$arg" ]]; then
+                echo arg:: $arg
+                DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
+              fi
+            done <<< "$(jq -rc '.args[]' <<< "$dockerfile")"
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
             func_ecr
