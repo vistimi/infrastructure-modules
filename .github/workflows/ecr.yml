@@ -42,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: KookaS
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Set env
         run: |
           echo "event_name=${{ github.event_name }}"
@@ -57,13 +59,11 @@ jobs:
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
-          jq -rc '.[]' <<< "$DOCKERFILES"
+          echo "DOCKERFILES: $DOCKERFILES"
 
           echo "REPO=$REPO"                             >> $GITHUB_ENV
           echo "IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT"     >> $GITHUB_ENV
           echo "DOCKERFILES=$DOCKERFILES"               >> $GITHUB_ENV
-      - name: Checkout
-        uses: actions/checkout@v3
       - name: Setup AWS CLI
         run: |
           aws --version
