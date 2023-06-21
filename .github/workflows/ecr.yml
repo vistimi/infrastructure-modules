@@ -57,10 +57,11 @@ jobs:
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
+          jq -rc '.[]' <<< "$DOCKERFILES"
 
-          echo "REPO=$REPO"                 >> $GITHUB_ENV
-          echo "IMAGE_KEEP_COUNT=$REPO"     >> $IMAGE_KEEP_COUNT
-          echo "DOCKERFILES=$DOCKERFILES"   >> $GITHUB_ENV
+          echo "REPO=$REPO"                             >> $GITHUB_ENV
+          echo "IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT"     >> $GITHUB_ENV
+          echo "DOCKERFILES=$DOCKERFILES"               >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup AWS CLI
