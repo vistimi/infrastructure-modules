@@ -57,11 +57,12 @@ test-prepare-module-microservice-scraper-frontend:
 	$(eval MODULE_PATH=${PATH_REL_TEST_MICROSERVICE}/${GH_REPO})
 	make github-load-file MODULE_PATH=${MODULE_PATH} GITHUB_TOKEN=${GITHUB_TOKEN} GH_ORG=${GH_ORG} GH_REPO=${GH_REPO} GH_BRANCH=${GH_BRANCH} GH_PATH=config/config.yml;
 
+.ONESHELL: prepare
 prepare: ## Setup the test environment
-	make prepare-account-aws; \
-	make set-module-vpc; \
-	make prepare-module-microservice-scraper-backend; \
-	make prepare-module-microservice-scraper-frontend;
+	make prepare-account-aws
+	make set-module-vpc
+	make prepare-module-microservice-scraper-backend
+	make prepare-module-microservice-scraper-frontend
 .ONESHELL: prepare-account-aws
 prepare-account-aws:
 	cat <<-EOF > ${PATH_ABS_AWS}/aws_account_override.hcl 
@@ -114,22 +115,6 @@ set-module-vpc:
 		terragrunt init
 		terragrunt apply -auto-approve
 	fi
-.ONESHELL: set-module-ecr
-set-module-ecr:
-	make prepare-account-aws
-
-	cat <<-EOF > ${PATH_ABS_AWS_ECR}/terraform_override.tfvars
-	name="$(shell echo ${REPOSITORY_NAME} | tr A-Z a-z)"
-	tags={Account: "${AWS_PROFILE}", Region: "${AWS_REGION}"}
-	force_destroy=${FORCE_DESTROY}
-	image_keep_count=${IMAGE_KEEP_COUNT}
-	EOF
-	
-	cd ${PATH_ABS_AWS_ECR}
-	terragrunt init
-	terragrunt apply -auto-approve
-.ONESHELL: set-module-ecr-image
-
 aws-configure:
 	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE} \
 		&& aws configure set --profile ${AWS_PROFILE} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE} \

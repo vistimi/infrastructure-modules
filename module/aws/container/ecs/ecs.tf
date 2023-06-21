@@ -9,6 +9,26 @@ locals {
   single_instance = false
 }
 
+# # terraform 1.5.0
+# check "traffic" {
+#   assert {
+#     condition     = contains(["http", "https"], var.traffic.listener_protocol)
+#     error_message = "Listener protocol must be one of [http, http2, grpc]"
+#   }
+#   assert {
+#     condition     = contains(["http", "http2", "grpc"], var.traffic.listener_protocol_version)
+#     error_message = "Listener protocol version must be one of [http, http2, grpc]"
+#   }
+#   assert {
+#     condition     = contains(["http", "https"], var.traffic.target_protocol)
+#     error_message = "Target protocol must be one of [http, http2, grpc]"
+#   }
+#   assert {
+#     condition     = contains(["http", "http2", "grpc"], var.traffic.target_protocol_version)
+#     error_message = "Target protocol version must be one of [http, http2, grpc]"
+#   }
+# }
+
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/${var.log.prefix}/${var.common_name}"
   retention_in_days = var.log.retention_days
