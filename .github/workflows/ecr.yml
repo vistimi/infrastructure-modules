@@ -55,8 +55,9 @@ jobs:
           DOCKERFILES=$(
             jq --null-input \
               -c \
-              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
-              '[                
+              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
+              '[
+                { "path":"Dockerfile.bin","args": [ ] },
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
@@ -64,7 +65,7 @@ jobs:
 
           echo REPO=$REPO                           >> $GITHUB_ENV
           echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT   >> $GITHUB_ENV
-          echo DOCKERFILES=$DOCKERFILES           >> $GITHUB_ENV
+          echo DOCKERFILES=$DOCKERFILES             >> $GITHUB_ENV
       - name: Setup AWS CLI
         run: |
           aws --version
@@ -171,11 +172,13 @@ jobs:
             echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
             echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
 
-            DOCKERFILE_ARGS=""
-            jq -rc '.args[]' <<< "$dockerfile" | while read arg; do
-              echo arg:: $arg 
-              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg"
-            done
+            echo DOCKERFILE_ARGS=""
+            while read arg; do
+              if [[ -n "$arg" ]]; then
+                echo arg:: $arg
+                DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
+              fi
+            done <<< "$(jq -rc '.args[]' <<< "$dockerfile")"
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
             func_ecr
