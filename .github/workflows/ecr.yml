@@ -61,9 +61,9 @@ jobs:
           )
           echo "DOCKERFILES: $DOCKERFILES"
 
-          echo "REPO=$REPO"                             >> $GITHUB_ENV
-          echo "IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT"     >> $GITHUB_ENV
-          echo "DOCKERFILES=$DOCKERFILES"               >> $GITHUB_ENV
+          echo REPO=$REPO                           >> $GITHUB_ENV
+          echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT   >> $GITHUB_ENV
+          echo DOCKERFILES="$DOCKERFILES"           >> $GITHUB_ENV
       - name: Setup AWS CLI
         run: |
           aws --version
