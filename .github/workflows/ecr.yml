@@ -64,7 +64,7 @@ jobs:
 
           echo REPO=$REPO                           >> $GITHUB_ENV
           echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT   >> $GITHUB_ENV
-          echo DOCKERFILES=$DOCKERFILES           >> $GITHUB_ENV
+          echo DOCKERFILES=$DOCKERFILES             >> $GITHUB_ENV
       - name: Setup AWS CLI
         run: |
           aws --version
@@ -171,13 +171,13 @@ jobs:
             echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
             echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
 
-            DOCKERFILE_ARGS=""
+            echo DOCKERFILE_ARGS="" >> $GITHUB_ENV
             jq -rc '.args[]' <<< "$dockerfile" | while read arg; do
               echo arg:: $arg 
-              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
-              echo new DOCKERFILE_ARGS: $DOCKERFILE_ARGS
+              echo DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg " >> $GITHUB_ENV
+              echo new: $DOCKERFILE_ARGS
             done
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
-            func_ecr
+            # func_ecr
           done
