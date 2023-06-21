@@ -42,6 +42,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: KookaS
     steps:
+      - name: Set env
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "inputs.event=${{ inputs.event }}"
+          REPO=$(basename ${{ github.repository }})
+          echo "REPO: $REPO"
+          IMAGE_KEEP_COUNT=$(if [[ $BRANCH == master ]]; then echo "5"; else echo "1"; fi)
+          echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
+          DOCKERFILES=$(
+            jq --null-input \
+              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
+              '[                
+                { "path":"Dockerfile","args": [ $repo_bin ] }
+              ]'
+          )
+
+          echo "REPO=$REPO"                 >> $GITHUB_ENV
+          echo "IMAGE_KEEP_COUNT=$REPO"     >> $IMAGE_KEEP_COUNT
+          echo "DOCKERFILES=$DOCKERFILES"   >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v3
       - name: Setup AWS CLI
@@ -59,21 +78,6 @@ jobs:
           fi
       - name: Run workflow for each Dockerfile
         run: |
-          # variables
-          echo "event_name=${{ github.event_name }}"
-          echo "inputs.event=${{ inputs.event }}"
-          REPO=$(basename ${{ github.repository }})
-          echo "REPO: $REPO"
-          IMAGE_KEEP_COUNT=$(if [[ $BRANCH == master ]]; then echo "5"; else echo "1"; fi)
-          echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
-          DOCKERFILES=$(
-            jq --null-input \
-              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
-              '[                
-                { "path":"Dockerfile","args": [ $repo_bin ] }
-              ]'
-          )
-
           # functions
           func_ecr_create () {
             echo -e '\033[43mCreating repository in ECR\033[0m'
@@ -168,7 +172,7 @@ jobs:
             DOCKERFILE_ARGS=""
             jq -rc '.args[]' <<< "$dockerfile" | while read arg; do
               echo arg:: $arg 
-              DOCKERFILE_ARGS='$DOCKERFILE_ARGS --build-arg="$arg"'
+              DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg"
             done
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
