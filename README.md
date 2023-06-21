@@ -21,9 +21,8 @@ AWS_ACCOUNT_ID=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
 ENVIRONMENT_NAME=local
-GITHUB_TOKEN=***GH_TERRA_TOKEN***
 ```
-GITHUB_TOKEN is required for the github cli. Otherwise terratest will print the token in the logs, for login or curl requests, which is not a safe behaviour.
+<!-- GITHUB_TOKEN is required for the github cli. Otherwise terratest will print the token in the logs, for login or curl requests, which is not a safe behaviour.
 
 In [Github](https://github.com/settings/personal-access-tokens/new):
 :warning: The `GITHUB_TOKEN` is a default name
@@ -52,12 +51,12 @@ Repository permissions
   Metadata: Read-only
 ```
 
-In [AWS]():
+In [AWS](): -->
 
 # Github
 
-Repo secrets:
-- GH_TERRA_TOKEN
+<!-- Repo secrets:
+- GH_TERRA_TOKEN -->
 
 Environment secrets:
 - AWS_ACCESS_KEY

@@ -57,8 +57,9 @@ jobs:
               -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[
-                { "path":"Dockerfile.bin","args": [ ] },
-                { "path":"Dockerfile","args": [ $repo_bin ] }
+                { "path":"Dockerfile.bin" },
+                { "path":"Dockerfile","args": [ $repo_bin ] },
+                { "path":"Dockerfile.bin","args": [ "VARIANT=mcr.microsoft.com/devcontainers/base:alpine-3.16" ], "extension": "devcontainer" },
               ]'
           )
           echo "DOCKERFILES: $DOCKERFILES"
@@ -167,11 +168,19 @@ jobs:
           # loop over dockerfiles
           jq -rc '.[]' <<< "$DOCKERFILES" | while read dockerfile; do
             DOCKERFILE_PATH=$(jq -r '.path' <<< "$dockerfile")
-            dockerfile_extension=$([[ "$DOCKERFILE_PATH" = *.* ]] && echo "-${DOCKERFILE_PATH##*.}" || echo '')
-            ECR_REPOSITORY_NAME="$(echo $ORG-$REPO-$BRANCH$dockerfile_extension | tr A-Z a-z)"
             echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
+
+            # ecr extension name
+            extension=$(jq -r '.extension' <<< "$dockerfile")
+            if [[ -n "$extension" ]]; then
+              dockerfile_extension="-$extension"
+            else
+              dockerfile_extension=$([[ "$DOCKERFILE_PATH" = *.* ]] && echo "-${DOCKERFILE_PATH##*.}" || echo '')
+            fi
+            ECR_REPOSITORY_NAME="$(echo $ORG-$REPO-$BRANCH$dockerfile_extension | tr A-Z a-z)"
             echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
 
+            # docker build args
             echo DOCKERFILE_ARGS=""
             while read arg; do
               if [[ -n "$arg" ]]; then
@@ -181,5 +190,6 @@ jobs:
             done <<< "$(jq -rc '.args[]' <<< "$dockerfile")"
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
-            func_ecr
+            # run function
+            # func_ecr
           done

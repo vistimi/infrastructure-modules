@@ -1,8 +1,8 @@
 s3:
   include:
     names_regex:
-      - .*-local-.*
-      - .*-test-.*
+      - local
+      - test
   exclude:
     names_regex:
       - public
@@ -11,8 +11,8 @@ s3:
 DynamoDB:
   include:
     names_regex:
-      - .*-local-.*
-      - .*-test-.*
+      - local
+      - test
   exclude:
     names_regex:
       - public
@@ -21,8 +21,8 @@ DynamoDB:
 ECRRepository:
   include:
     names_regex:
-      - .*-local-.*
-      - .*-test-.*
+      - local
+      - test
   exclude:
     names_regex:
       - public
