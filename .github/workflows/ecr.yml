@@ -154,13 +154,14 @@ jobs:
             # log save
             exec 3>&1 4>&2
             trap 'exec 2>&4 1>&3' 0 1 2 3
-            exec 1>$LOG_FILE 2>&1
+            exec 1>"$LOG_FILE" 2>&1
 
             # create/push/delete
             if [[ "${{ github.event_name }}" == "create" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "create") ]]; then
-              func_ecr_create
+              echo create
+              # func_ecr_create
             elif [[ "${{ github.event_name }}" == "push" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "push") ]]; then
-              func_ecr_push
+              # func_ecr_push
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
               aws ecr delete-repository --repository-name $ECR_REPOSITORY_NAME --force
@@ -196,11 +197,11 @@ jobs:
                 echo arg:: $arg
                 DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg"
               fi
-            done <<< "$(jq -rc '.args[]' <<< "$dockerfile")"
+            done <<< "$(jq -rc '.args[]?' <<< "$dockerfile")"
             echo DOCKERFILE_ARGS:: $DOCKERFILE_ARGS
 
             # run function
-            $(func_ecr)
+            res=$(func_ecr)
 
             # log print
             echo -e '\033[46mLOGS\033[0m'; cat $LOG_FILE
