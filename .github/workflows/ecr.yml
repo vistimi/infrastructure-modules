@@ -57,9 +57,7 @@ jobs:
               -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[
-                { "path":"Dockerfile.bin" },
-                { "path":"Dockerfile","args": [ $repo_bin ] },
-                { "path":"Dockerfile.bin","args": [ "VARIANT=mcr.microsoft.com/devcontainers/base:alpine-3.16" ], "extension": "devcontainer" },
+                { "path":"Dockerfile.bin","args": [ "VARIANT=mcr.microsoft.com/devcontainers/base:alpine-3.16" ], "extension": "devcontainer" }
               ]'
           )
           echo "DOCKERFILES: $DOCKERFILES"
@@ -167,29 +165,32 @@ jobs:
 
           # loop over dockerfiles
           jq -rc '.[]' <<< "$DOCKERFILES" | while read dockerfile; do
+            echo $dockerfile
+
             DOCKERFILE_PATH=$(jq -r '.path' <<< "$dockerfile")
-            echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
+            echo "DOCKERFILE_PATH:: $DOCKERFILE_PATH"
 
             # ecr extension name
             extension=$(jq -r '.extension' <<< "$dockerfile")
-            if [[ -n "$extension" ]]; then
+            if [[ -n "$extension" && $extension != null ]]; then
               dockerfile_extension="-$extension"
             else
               dockerfile_extension=$([[ "$DOCKERFILE_PATH" = *.* ]] && echo "-${DOCKERFILE_PATH##*.}" || echo '')
             fi
+            echo dockerfile_extension:: $dockerfile_extension
             ECR_REPOSITORY_NAME="$(echo $ORG-$REPO-$BRANCH$dockerfile_extension | tr A-Z a-z)"
-            echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
+            echo ECR_REPOSITORY_NAME:: $ECR_REPOSITORY_NAME
 
             # docker build args
-            echo DOCKERFILE_ARGS=""
+            DOCKERFILE_ARGS=""
             while read arg; do
               if [[ -n "$arg" ]]; then
                 echo arg:: $arg
-                DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
+                DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg"
               fi
             done <<< "$(jq -rc '.args[]' <<< "$dockerfile")"
-            echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
+            echo DOCKERFILE_ARGS:: $DOCKERFILE_ARGS
 
             # run function
-            # func_ecr
+            func_ecr
           done
