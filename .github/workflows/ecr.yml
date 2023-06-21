@@ -55,7 +55,7 @@ jobs:
           DOCKERFILES=$(
             jq --null-input \
               -c \
-              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
+              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[                
                 { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
@@ -179,5 +179,5 @@ jobs:
             done <<< $(jq -rc '.args[]' <<< "$dockerfile")
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
-            # func_ecr
+            func_ecr
           done
