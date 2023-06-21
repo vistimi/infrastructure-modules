@@ -70,7 +70,7 @@ jobs:
             jq --null-input \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
               '[                
-                { "path":"Dockerfile","args": [ repo_bin ] }
+                { "path":"Dockerfile","args": [ $repo_bin ] }
               ]'
           )
 
