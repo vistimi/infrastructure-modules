@@ -151,18 +151,11 @@ jobs:
             aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME --image-ids imageTag=latest --output json
           }
           func_ecr () {
-            # log save
-            exec 3>&1 4>&2
-            trap 'exec 2>&4 1>&3' 0 1 2 3
-            exec 1>$LOG_FILE 2>&1
-
             # create/push/delete
             if [[ "${{ github.event_name }}" == "create" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "create") ]]; then
-              echo create; exit 42
-              # func_ecr_create
+              func_ecr_create
             elif [[ "${{ github.event_name }}" == "push" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "push") ]]; then
-              echo create; exit 42
-              # func_ecr_push
+              func_ecr_push
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
               aws ecr delete-repository --repository-name $ECR_REPOSITORY_NAME --force
@@ -203,10 +196,4 @@ jobs:
 
             # run function
             echo $(func_ecr)
-
-            # log print
-            echo -e '\033[46mLOGS\033[0m'; cat $LOG_FILE
-            if [ -n "$(grep -i error $LOG_FILE)" ]; then
-              echo -e '\033[41mERRORS\033[0m'; grep -ni error $LOG_FILE | sed 's/$/\n/'; exit 10
-            fi
           done
