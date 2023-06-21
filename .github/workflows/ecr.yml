@@ -171,12 +171,12 @@ jobs:
             echo "DOCKERFILE_PATH: $DOCKERFILE_PATH"
             echo "ECR_REPOSITORY_NAME: $ECR_REPOSITORY_NAME"
 
-            echo DOCKERFILE_ARGS="" >> $GITHUB_ENV
-            jq -rc '.args[]' <<< "$dockerfile" | while read arg; do
-              echo arg:: $arg 
-              echo DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg " >> $GITHUB_ENV
+            echo DOCKERFILE_ARGS=""
+            while read arg; do
+              echo arg:: $arg
+              echo DOCKERFILE_ARGS="$DOCKERFILE_ARGS --build-arg=$arg "
               echo new: $DOCKERFILE_ARGS
-            done
+            done <<< $(jq -rc '.args[]' <<< "$dockerfile")
             echo DOCKERFILE_ARGS: $DOCKERFILE_ARGS
 
             # func_ecr
