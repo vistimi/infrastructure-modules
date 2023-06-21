@@ -54,6 +54,7 @@ jobs:
           echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
           DOCKERFILES=$(
             jq --null-input \
+              -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
               '[                
                 { "path":"Dockerfile","args": [ $repo_bin ] }
@@ -63,7 +64,7 @@ jobs:
 
           echo REPO=$REPO                           >> $GITHUB_ENV
           echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT   >> $GITHUB_ENV
-          echo DOCKERFILES="$DOCKERFILES"           >> $GITHUB_ENV
+          echo DOCKERFILES=$DOCKERFILES           >> $GITHUB_ENV
       - name: Setup AWS CLI
         run: |
           aws --version
