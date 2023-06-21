@@ -68,8 +68,9 @@ jobs:
           echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
           DOCKERFILES=$(
             jq --null-input \
+              --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" \
               '[                
-                { "path":"Dockerfile","args": [ "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-willfail | tr A-Z a-z)" ] }
+                { "path":"Dockerfile","args": [ repo_bin ] }
               ]'
           )
 
