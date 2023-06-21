@@ -42,11 +42,16 @@ if [[ $ECR_CREATE == true ]]; then
     --query 'repository.repositoryUri'
 fi
 
+# TODO: add suppport for ARM64, gpu...
+# https://www.padok.fr/en/blog/docker-arm-architectures
 # Build, tag, and push image to Amazon ECR
 export ECR_URI=$(aws ecr describe-repositories --repository-names $COMMON_NAME --output text --query "repositories[].[repositoryUri]")
 docker build -t $ECR_URI/$IMAGE_TAG -f $DOCKER_FOLDER_PATH .
+docker images $ECR_URI/$IMAGE_TAG
 docker tag $(docker images -q $ECR_URI/$IMAGE_TAG) $ECR_URI:$IMAGE_TAG
 docker push $ECR_URI:$IMAGE_TAG
+docker tag $ECR_URI:$IMAGE_TAG $ECR_URI:latest
+docker push $ECR_URI:latest
 
 # Wait for image to be available
 aws ecr wait image-scan-complete --repository-name $COMMON_NAME --image-id imageTag=$IMAGE_TAG

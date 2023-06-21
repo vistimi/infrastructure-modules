@@ -1,15 +1,20 @@
 {
 	"name": "Alpine",
 	"build": {
-		"dockerfile": "../Dockerfile.common",
-		"args": {"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"},
+		"dockerfile": "../Dockerfile.bin",
+		"args": {
+			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"
+		},
 		"target": "runner"
 	},
 	"runArgs": [
 		"--env-file",
 		".devcontainer/devcontainer.env"
 	],
-	"postStartCommand": "aws configure set aws_access_key_id $AWS_ACCESS_KEY --profile $AWS_PROFILE && aws configure set --profile $AWS_PROFILE aws_secret_access_key $AWS_SECRET_KEY --profile $AWS_PROFILE && aws configure set region $AWS_REGION --profile $AWS_PROFILE && aws configure set output 'text' --profile $AWS_PROFILE && aws configure list && tflint --init",
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+	],
+	"postStartCommand": "make aws-configure && tflint --init",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -20,7 +25,8 @@
 				"premparihar.gotestexplorer",
 				"hashicorp.terraform",
 				"bierner.markdown-emoji",
-				"github.vscode-github-actions"
+				"ms-vscode.makefile-tools",
+				"ms-azuretools.vscode-docker"
 			]
 		}
 	}

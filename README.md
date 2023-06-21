@@ -17,7 +17,7 @@ sudo docker run --rm -it --name $NAME --env-file .devcontainer/devcontainer.env 
 ```
 AWS_REGION=***
 AWS_PROFILE=***
-AWS_ID=***
+AWS_ACCOUNT_ID=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
 ENVIRONMENT_NAME=local

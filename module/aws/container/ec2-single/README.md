@@ -1,0 +1,4 @@
+- userdata to pull docker image, and s3 secret env file
+- ping manually the instance
+- rest server fastapi with healthcheck and shutdown path, and training check and inference check and train check, ws
+- bucket for checkpoint and weights

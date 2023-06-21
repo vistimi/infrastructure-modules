@@ -40,6 +40,7 @@ aws ecs update-service \
   --task-definition $LATEST_TASK_ARN \
   --desired-count $DESIRED_COUNT \
   --output json
+# TODO: update asg desired amount
 
 echo Wait for service $COMMON_NAME to be stable
 sleep 30s
