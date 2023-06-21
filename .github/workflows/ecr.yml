@@ -69,7 +69,7 @@ jobs:
           DOCKERFILES=$(
             jq --null-input \
               '[                
-                { "path":"Dockerfile","args": [ "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" ] }
+                { "path":"Dockerfile","args": [ "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-testtttt | tr A-Z a-z)" ] }
               ]'
           )
 
@@ -84,14 +84,34 @@ jobs:
             json_string=$(
               jq --null-input \
                 --argjson count "${IMAGE_KEEP_COUNT}" \
-                '{rules: [ { rulePriority: 1, description: "Keep only \($count) images", selection: { tagStatus: "any", countType: "imageCountMoreThan", countNumber: $count }, action: { type: "expire" } } ] }'
+                '{
+                  rules: [ 
+                    { 
+                      rulePriority: 1, 
+                      description: "Keep only \($count) images", 
+                      selection: { tagStatus: "any", 
+                      countType: "imageCountMoreThan", countNumber: $count }, 
+                      action: { type: "expire" } 
+                    } 
+                  ] 
+                }'
             )
             echo $json_string > ecr-lifecycle-policy.json
             aws $AWS_CLI_SERVICE put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
             json_string=$(
               jq --null-input \
                 --arg accountId "${AWS_ACCOUNT_ID}" \
-                '{Version: "2012-10-17", Statement: [ { Effect: "Allow", Principal: { Service: "ec2.amazonaws.com" }, Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], Condition: { "StringEquals": { "aws:SourceAccount": $accountId } } } ] }'
+                '{
+                  Version: "2012-10-17", 
+                  Statement: [ 
+                    { 
+                      Effect: "Allow", 
+                      Principal: { Service: "ec2.amazonaws.com" }, 
+                      Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], 
+                      Condition: { "StringEquals": { "aws:SourceAccount": $accountId } }
+                    } 
+                  ] 
+                }'
             )
             echo $json_string > ecr-repository-policy.json
             aws $AWS_CLI_SERVICE set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
