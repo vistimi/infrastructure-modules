@@ -154,7 +154,7 @@ jobs:
             # log save
             exec 3>&1 4>&2
             trap 'exec 2>&4 1>&3' 0 1 2 3
-            exec 1>"$LOG_FILE" 2>&1
+            exec 1>$LOG_FILE 2>&1
 
             # create/push/delete
             if [[ "${{ github.event_name }}" == "create" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event }}" == "create") ]]; then
@@ -202,7 +202,7 @@ jobs:
             echo DOCKERFILE_ARGS:: $DOCKERFILE_ARGS
 
             # run function
-            res=$(func_ecr)
+            echo $(func_ecr)
 
             # log print
             echo -e '\033[46mLOGS\033[0m'; cat $LOG_FILE
