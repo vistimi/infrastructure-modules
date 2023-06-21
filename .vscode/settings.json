@@ -1,5 +1,5 @@
 {
-  "go.testTimeout": "30m",
+  "go.testTimeout": "60m",
   "editor.tabSize": 4,
   "files.associations": {
     "*.hcl": "terraform",

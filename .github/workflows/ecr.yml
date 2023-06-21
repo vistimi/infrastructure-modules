@@ -57,6 +57,8 @@ jobs:
               -c \
               --arg repo_bin "AWS_ECR_REPOSITORY=$(echo $ORG-$REPO-$BRANCH-bin | tr A-Z a-z)" \
               '[
+                { "path":"Dockerfile.bin" },
+                { "path":"Dockerfile","args": [ $repo_bin ] },
                 { "path":"Dockerfile.bin","args": [ "VARIANT=mcr.microsoft.com/devcontainers/base:alpine-3.16" ], "extension": "devcontainer" }
               ]'
           )
