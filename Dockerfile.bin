@@ -135,7 +135,8 @@ COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terragrunt
 RUN terragrunt --version
 
 # tflint
-COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:v0.43.0 /usr/local/bin/tflint /usr/local/bin/tflint
+ARG TFLINT_VERSION=0.43.0
+COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:v${TFLINT_VERSION} /usr/local/bin/tflint /usr/local/bin/tflint
 RUN tflint --version
 
 # github cli
