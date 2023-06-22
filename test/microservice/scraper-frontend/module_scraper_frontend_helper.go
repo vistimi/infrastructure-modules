@@ -36,7 +36,7 @@ var (
 	GithubProject = microservice.GithubProjectInformation{
 		Organization:    "KookaS",
 		Repository:      "scraper-frontend",
-		Branch:          "master",
+		Branch:          "master", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
 		ImageTag:        "latest",
 	}

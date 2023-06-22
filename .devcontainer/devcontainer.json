@@ -26,7 +26,8 @@
 				"hashicorp.terraform",
 				"bierner.markdown-emoji",
 				"ms-vscode.makefile-tools",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				"IronGeek.vscode-env"
 			]
 		}
 	}
