@@ -65,9 +65,12 @@ variable "ecs" {
       })))
     })
     fargate = optional(object({
-      os                = string
-      architecture      = string
-      capacity_provider = map(string)
+      os           = string
+      architecture = string
+      capacity_provider = map(object({
+        base           = optional(number)
+        weight_percent = optional(number)
+      }))
     }))
     ec2 = optional(map(object({
       user_data            = optional(string)
@@ -93,6 +96,8 @@ variable "ecs" {
         }))
       })
       capacity_provider = object({
+        base                        = optional(number)
+        weight_percent              = optional(number)
         target_capacity_cpu_percent = number
         maximum_scaling_step_size   = number
         minimum_scaling_step_size   = number
@@ -110,11 +115,3 @@ variable "bucket_env" {
     file_key      = string
   })
 }
-
-# variable "ecr" {
-#   description = "The registry config"
-#   type = object({
-#     image_keep_count = number
-#     force_destroy    = bool
-#   })
-# }

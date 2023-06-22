@@ -12,8 +12,7 @@ module "ecs" {
   traffic = var.ecs.traffic
   log     = var.ecs.log
 
-  capacity_provider = var.ecs.capacity_provider
-  task_definition   = var.ecs.task_definition
+  task_definition = var.ecs.task_definition
 
   fargate = var.ecs.fargate
   ec2     = var.ecs.ec2

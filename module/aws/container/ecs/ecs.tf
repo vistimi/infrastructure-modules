@@ -58,8 +58,8 @@ module "ecs" {
   # capacity providers
   default_capacity_provider_use_fargate = var.service.use_fargate ? true : false
   fargate_capacity_providers = {
-    for key, cp in var.capacity_provider :
-    var.fargate.capacity_provider[key] => {
+    for key, cp in var.fargate.capacity_provider :
+    key => {
       default_capacity_provider_strategy = {
         weight = cp.weight_percent
         base   = cp.base
@@ -68,19 +68,19 @@ module "ecs" {
     if var.service.use_fargate
   }
   autoscaling_capacity_providers = {
-    for key, value in var.capacity_provider :
+    for key, value in var.ec2 :
     key => {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
-        maximum_scaling_step_size = var.ec2[key].capacity_provider.maximum_scaling_step_size
-        minimum_scaling_step_size = var.ec2[key].capacity_provider.minimum_scaling_step_size
-        target_capacity           = var.ec2[key].capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
+        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size
+        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size
+        target_capacity           = value.capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
-          base   = value.base
-          weight = value.weight_percent
+          base   = value.capacity_provider.base
+          weight = value.capacity_provider.weight_percent
         }
       }
       managed_termination_protection = "DISABLED"

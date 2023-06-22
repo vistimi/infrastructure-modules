@@ -73,11 +73,11 @@ variable "log" {
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
 variable "task_definition" {
   type = object({
-    memory             = number
-    memory_reservation = optional(number)
-    cpu                = number
-    env_bucket_name    = string
-    env_file_name      = string
+    memory               = number
+    memory_reservation   = optional(number)
+    cpu                  = number
+    env_bucket_name      = string
+    env_file_name        = string
     repository_name      = string
     repository_image_tag = string
     tmpfs = optional(object({
@@ -90,14 +90,6 @@ variable "task_definition" {
       value : string
     })), [])
   })
-}
-
-variable "capacity_provider" {
-  description = "only one base for all capacity providers to define which are the necessary instances. The map key must be matching between capacity_providers/autoscaling. Either use fargate or ec2 based on the deployment configuration. "
-  type = map(object({
-    base           = optional(number)
-    weight_percent = optional(number, 50)
-  }))
 }
 
 variable "service" {
@@ -118,10 +110,14 @@ variable "service" {
 
 variable "fargate" {
   type = object({
-    os                = string
-    architecture      = string
-    capacity_provider = map(string)
+    os           = string
+    architecture = string
+    capacity_provider = map(object({
+      base           = optional(number)
+      weight_percent = optional(number)
+    }))
   })
+  nullable = false
   default = {
     os                = "LINUX"
     architecture      = "X86_64"
@@ -162,11 +158,15 @@ variable "ec2" {
       })
     })
     capacity_provider = object({
+      base                        = optional(number)
+      weight_percent              = optional(number)
       target_capacity_cpu_percent = number
       maximum_scaling_step_size   = number
       minimum_scaling_step_size   = number
     })
   }))
+  nullable = false
+  default  = {}
 }
 
 variable "ami_ssm_name" {

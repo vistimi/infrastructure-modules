@@ -20,24 +20,21 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
-		"capacity_provider": map[string]map[string]any{
-			keySpot: {
-				"base":           nil, // no preferred instance amount
-				"weight_percent": 50,  // 50% chance
-				"fargate":        "FARGATE",
-			},
-			keyOnDemand: {
-				"base":           nil, // no preferred instance amount
-				"weight_percent": 50,  // 50% chance
-				"fargate":        "FARGATE_SPOT",
-			},
-		},
+		"capacity_provider": map[string]map[string]any{},
 		"fargate": map[string]any{
 			"os":           "LINUX",
 			"architecture": "X86_64",
-			"capacity_provider": map[string]any{
-				keySpot:     "FARGATE",
-				keyOnDemand: "FARGATE_SPOT",
+			"capacity_provider": map[string]map[string]any{
+				keySpot: {
+					"base":           nil, // no preferred instance amount
+					"weight_percent": 50,  // 50% chance
+					"fargate":        "FARGATE",
+				},
+				keyOnDemand: {
+					"base":           nil, // no preferred instance amount
+					"weight_percent": 50,  // 50% chance
+					"fargate":        "FARGATE_SPOT",
+				},
 			},
 		},
 		"service": map[string]any{

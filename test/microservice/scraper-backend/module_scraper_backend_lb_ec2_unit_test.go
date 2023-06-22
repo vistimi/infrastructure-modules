@@ -24,16 +24,6 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
-		"capacity_provider": map[string]map[string]any{
-			keySpot: {
-				"base":           nil, // no preferred instance amount
-				"weight_percent": 50,  // 50% chance
-			},
-			keyOnDemand: {
-				"base":           nil, // no preferred instance amount
-				"weight_percent": 50,  // 50% chance
-			},
-		},
 		"ec2": map[string]map[string]any{
 			keySpot: {
 				"user_data":            userDataSpot,
@@ -57,6 +47,8 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 					},
 				},
 				"capacity_provider": map[string]any{
+					"base":                        nil, // no preferred instance amount
+					"weight_percent":              50,  // 50% chance
 					"target_capacity_cpu_percent": 70,
 					"maximum_scaling_step_size":   1,
 					"minimum_scaling_step_size":   1,
@@ -84,6 +76,8 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 					},
 				},
 				"capacity_provider": map[string]any{
+					"base":                        nil, // no preferred instance amount
+					"weight_percent":              50,  // 50% chance
 					"target_capacity_cpu_percent": 70,
 					"maximum_scaling_step_size":   1,
 					"minimum_scaling_step_size":   1,
