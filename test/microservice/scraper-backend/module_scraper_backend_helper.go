@@ -95,6 +95,12 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	optionsProject := &terraform.Options{
 		TerraformDir: microservicePath,
 		Vars: map[string]any{
+			"vpc": map[string]any{
+				"name":       commonName,
+				"cidr_ipv4":  "1.0.0.0/16",
+				"enable_nat": false,
+				"tier":       "Public",
+			},
 			"dynamodb_tables": dynamodb_tables,
 			"bucket_picture": map[string]any{
 				"name":          bucket_picture_name,

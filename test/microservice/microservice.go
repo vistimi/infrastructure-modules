@@ -2,9 +2,7 @@ package microservice
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -80,8 +78,8 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	// global variables
 	id := RandomID(8)
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
-	common_name := strings.ToLower(fmt.Sprintf("%s-%s-%s", projectName, serviceName, environment_name)) // update var
-	common_tags := map[string]string{
+	commonName := strings.ToLower(fmt.Sprintf("%s-%s-%s", projectName, serviceName, environment_name))
+	commonTags := map[string]string{
 		"Account":     AccountName,
 		"Region":      AccountRegion,
 		"Project":     projectName,
@@ -89,30 +87,25 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 		"Environment": environment_name,
 	}
 
-	// // vpc variables
-	// vpc := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc")
-	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", vpcPath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var result map[string]any
-	json.Unmarshal([]byte(byteValue), &result)
-	vpcId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["vpc_id"].(string)
-	defaultSecurityGroupId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["default_security_group_id"].(string)
+	// // // vpc variables
+	// // vpc := terraform.Output(t, &terraform.Options{TerraformDir: "../../vpc"}, "vpc")
+	// jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", vpcPath))
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// defer jsonFile.Close()
+	// byteValue, _ := ioutil.ReadAll(jsonFile)
+	// var result map[string]any
+	// json.Unmarshal([]byte(byteValue), &result)
+	// vpcId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["vpc_id"].(string)
+	// defaultSecurityGroupId := result["outputs"].(map[string]any)["vpc"].(map[string]any)["value"].(map[string]any)["default_security_group_id"].(string)
 
-	bucketEnvName := fmt.Sprintf("%s-%s", common_name, "env")
+	bucketEnvName := fmt.Sprintf("%s-%s", commonName, "env")
 
 	options := &terraform.Options{
 		Vars: map[string]any{
-			"common_name": common_name,
-			"common_tags": common_tags,
-			"vpc": map[string]any{
-				"id":                 vpcId,
-				"security_group_ids": []string{defaultSecurityGroupId},
-				"tier":               "Public",
-			},
+			"common_name": commonName,
+			"common_tags": commonTags,
 
 			"ecs": map[string]any{
 				"log": map[string]any{
@@ -131,7 +124,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 			},
 		},
 	}
-	return options, common_name
+	return options, commonName
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")

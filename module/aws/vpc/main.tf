@@ -3,7 +3,7 @@ locals {
   # # increment from `0.0.0.0/16` to `0.0.16.0/16`
   subnets = {
     for i, tier in local.vpc_tier_names :
-    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.vpc_cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
+    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
   }
 }
 
@@ -14,8 +14,8 @@ data "aws_availability_zones" "available" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = var.vpc_name
-  cidr = var.vpc_cidr_ipv4
+  name = var.name
+  cidr = var.cidr_ipv4
 
   # only one NAT
   enable_nat_gateway     = var.enable_nat
@@ -31,5 +31,5 @@ module "vpc" {
   private_subnet_tags = { Tier = "Private" }
   public_subnet_tags  = { Tier = "Public" }
 
-  tags = var.common_tags
+  tags = var.tags
 }

@@ -7,9 +7,9 @@ output "ecs" {
   }
 }
 
-# output "ecr" {
-#   value = module.ecr
-# }
+output "vpc" {
+  value = module.vpc.vpc
+}
 
 output "bucket_env" {
   value = module.bucket_env.bucket

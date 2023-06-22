@@ -33,7 +33,7 @@ module "dynamodb_table" {
 module "bucket_picture" {
   source        = "../../../../module/aws/data/bucket"
   name          = var.bucket_picture.name
-  vpc_id        = var.vpc.id
+  vpc_id        = module.microservice.vpc.vpc_id
   force_destroy = var.bucket_picture.force_destroy
   versioning    = var.bucket_picture.versioning
   role_names    = [module.microservice.ecs.service.task_iam_role_name]

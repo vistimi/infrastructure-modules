@@ -56,7 +56,14 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
 	optionsProject := &terraform.Options{
 		TerraformDir: microservicePath,
-		Vars:         map[string]any{},
+		Vars: map[string]any{
+			"vpc": map[string]any{
+				"name":       commonName,
+				"cidr_ipv4":  "2.0.0.0/16",
+				"enable_nat": false,
+				"tier":       "Public",
+			},
+		},
 	}
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
@@ -119,6 +126,7 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	defer jsonFile.Close()
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	var result map[string]any

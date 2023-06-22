@@ -11,9 +11,10 @@ variable "common_tags" {
 
 variable "vpc" {
   type = object({
-    id                 = string
-    security_group_ids = list(string)
-    tier               = string
+    name       = string
+    cidr_ipv4  = string
+    enable_nat = bool
+    tier       = string
   })
 }
 

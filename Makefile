@@ -15,7 +15,7 @@ PATH_REL_TEST_MICROSERVICE=test/microservice
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
 export AWS_REGION AWS_PROFILE AWS_ACCOUNT_ID AWS_ACCESS_KEY AWS_SECRET_KEY ENVIRONMENT_NAME
-export OUTPUT_FOLDER GH_ORG GH_REPO GH_BRANCH
+export GH_ORG GH_REPO GH_BRANCH
 
 .PHONY: build help
 help:
@@ -62,6 +62,8 @@ test: ## Setup the test environment, run the tests and clean the environment
 test-clean-cache:
 	go clean -testcache;
 
+SCRAPER_BACKEND_BRANCH_NAME ?= master
+SCRAPER_FRONTEND_BRANCH_NAME ?= master
 prepare: ## Setup the test environment
 	make prepare-account-aws
 	make set-module-vpc
@@ -75,30 +77,15 @@ prepare-account-aws:
 		aws_account_id="${AWS_ACCOUNT_ID}"
 	}
 	EOF
-.ONESHELL: prepare-module-microservice-scraper-frontend
-set-module-vpc:
-	if [ ! -e ${PATH_ABS_AWS_VPC}/terraform.tfstate ]; then
-
-		cat <<-EOF > ${PATH_ABS_AWS_VPC}/terraform_override.tfvars 
-		aws_region="${AWS_REGION}"
-		vpc_name="$(shell echo $(AWS_PROFILE) | tr A-Z a-z)-${AWS_REGION}-test-vpc"
-		common_tags={Region: "${AWS_REGION}"}
-		vpc_cidr_ipv4="1.0.0.0/16"
-		enable_nat=false
-		EOF
-
-		cd ${PATH_ABS_AWS_VPC}
-		terragrunt init
-		terragrunt apply -auto-approve
-	fi
 .ONESHELL: prepare-scraper-backend
 prepare-scraper-backend:
 	$(eval GH_ORG=KookaS)
 	$(eval GH_REPO=scraper-backend)
 	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${GH_REPO})
 	$(eval MAKEFILE=$(shell find ${OUTPUT_FOLDER} -type f -name "*Makefile*"))
-	make gh-load-folder GH_PATH=config
+	make gh-load-folder GH_PATH=config OUTPUT_FOLDER=${OUTPUT_FOLDER}
 	make -f ${MAKEFILE} prepare \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
 		COMMON_NAME="" \
 		CLOUD_HOST=aws \
 		FLICKR_PRIVATE_KEY=123 \
@@ -115,8 +102,9 @@ prepare-scraper-frontend:
 	$(eval GH_REPO=scraper-frontend)
 	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${GH_REPO})
 	$(eval MAKEFILE=test/microservice/${GH_REPO}/Makefile_${OVERRIDE_EXTENSION})
-	make gh-load-folder GH_PATH=config
+	make gh-load-folder GH_PATH=config OUTPUT_FOLDER=${OUTPUT_FOLDER}
 	make -f ${MAKEFILE} prepare \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
 		NEXT_PUBLIC_API_URL="not-needed" \
 		PORT=3000
 
