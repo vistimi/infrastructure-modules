@@ -20,7 +20,6 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"capacity_provider": map[string]map[string]any{},
 		"fargate": map[string]any{
 			"os":           "LINUX",
 			"architecture": "X86_64",

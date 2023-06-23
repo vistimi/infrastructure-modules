@@ -43,10 +43,6 @@ variable "ecs" {
       target_protocol_version   = string
       health_check_path         = optional(string)
     })
-    capacity_provider = map(object({
-      base           = optional(number)
-      weight_percent = number
-    }))
     task_definition = object({
       memory               = number
       memory_reservation   = optional(number)

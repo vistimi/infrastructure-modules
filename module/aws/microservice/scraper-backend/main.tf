@@ -4,9 +4,8 @@ module "microservice" {
   common_name = var.common_name
   common_tags = var.common_tags
   vpc         = var.microservice.vpc
-
-  ecs        = var.microservice.ecs
-  bucket_env = var.microservice.bucket_env
+  ecs         = var.microservice.ecs
+  bucket_env  = var.microservice.bucket_env
 }
 
 module "dynamodb_table" {
