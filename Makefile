@@ -15,7 +15,6 @@ PATH_REL_TEST_MICROSERVICE=test/microservice
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
 export AWS_REGION AWS_PROFILE AWS_ACCOUNT_ID AWS_ACCESS_KEY AWS_SECRET_KEY ENVIRONMENT_NAME
-export GH_ORG GH_REPO GH_BRANCH
 
 .PHONY: build help
 help:
@@ -39,20 +38,27 @@ gh-auth-check:
 	gh auth status
 .ONESHELL: gh-load-folder
 gh-load-folder:
+	echo GET Github folder:: ${REPOSITORY_PATH}
 	$(eval res=$(shell curl -L \
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: Bearer ${GITHUB_TOKEN}" \
 		-H "X-GitHub-Api-Version: 2022-11-28" \
-		https://api.github.com/repos/${GH_ORG}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_BRANCH} | jq -c '.[] | .path'))
+		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_PATH}?ref=${BRANCH_NAME} | jq -c '.[] | .path'))
 	for file in ${res}; do \
-		make gh-load-file OUTPUT_FOLDER=${OUTPUT_FOLDER} GH_PATH="$$file"; \
+		echo GET Github file:: "$$file"
+		make gh-load-file \
+			OUTPUT_FOLDER=${OUTPUT_FOLDER} \
+			REPOSITORY_PATH="$$file" \
+			ORGANIZATION_NAME=${ORGANIZATION_NAME} \
+			REPOSITORY_NAME=${REPOSITORY_NAME} \
+			BRANCH_NAME=${BRANCH_NAME}; \
     done
-gh-load-file:
-	curl -L -o ${OUTPUT_FOLDER}/$(shell basename ${GH_PATH} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${GH_PATH}" = *.* ]] && echo .$(shell basename ${GH_PATH} | cut -d. -f2) || echo '') \
+gh-load-file:	
+	curl -L -o ${OUTPUT_FOLDER}/$(shell basename ${REPOSITORY_PATH} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${REPOSITORY_PATH}" = *.* ]] && echo .$(shell basename ${REPOSITORY_PATH} | cut -d. -f2) || echo '') \
 			-H "Accept: application/vnd.github.v3.raw" \
 			-H "Authorization: Bearer ${GITHUB_TOKEN}" \
 			-H "X-GitHub-Api-Version: 2022-11-28" \
-			https://api.github.com/repos/${GH_ORG}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_BRANCH}
+			https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_PATH}?ref=${BRANCH_NAME}
 
 test: ## Setup the test environment, run the tests and clean the environment
 	make test-prepare; \
@@ -66,9 +72,8 @@ SCRAPER_BACKEND_BRANCH_NAME ?= master
 SCRAPER_FRONTEND_BRANCH_NAME ?= master
 prepare: ## Setup the test environment
 	make prepare-account-aws
-	make set-module-vpc
-	make prepare-scraper-backend GH_BRANCH=${SCRAPER_BACKEND_BRANCH_NAME}
-	make prepare-scraper-frontend GH_BRANCH=${SCRAPER_FRONTEND_BRANCH_NAME}
+	make prepare-scraper-backend BRANCH_NAME=${SCRAPER_BACKEND_BRANCH_NAME}
+	make prepare-scraper-frontend BRANCH_NAME=${SCRAPER_FRONTEND_BRANCH_NAME}
 prepare-account-aws:
 	cat <<-EOF > ${PATH_ABS_AWS}/aws_account_override.hcl 
 	locals {
@@ -77,94 +82,124 @@ prepare-account-aws:
 		aws_account_id="${AWS_ACCOUNT_ID}"
 	}
 	EOF
+
 .ONESHELL: prepare-scraper-backend
+BRANCH_NAME ?= master
 prepare-scraper-backend:
-	$(eval GH_ORG=KookaS)
-	$(eval GH_REPO=scraper-backend)
-	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${GH_REPO})
+	$(eval GIT_NAME=github.com)
+	$(eval ORGANIZATION_NAME=KookaS)
+	$(eval PROJECT_NAME=scraper)
+	$(eval SERVICE_NAME=backend)
+	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${REPOSITORY_NAME})
+	$(eval COMMON_NAME="")
+	$(eval CLOUD_HOST=aws)
+	make gh-load-folder \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
+		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
+		REPOSITORY_NAME=${REPOSITORY_NAME} \
+		BRANCH_NAME=${BRANCH_NAME} \
+		REPOSITORY_PATH=config
+	make prepare-scraper-backend-env \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
+		COMMON_NAME=${COMMON_NAME} \
+		CLOUD_HOST=${CLOUD_HOST}
+
+	cd ${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+	terragrunt init
+make prepare-scraper-backend-env:
 	$(eval MAKEFILE=$(shell find ${OUTPUT_FOLDER} -type f -name "*Makefile*"))
-	make gh-load-folder GH_PATH=config OUTPUT_FOLDER=${OUTPUT_FOLDER}
 	make -f ${MAKEFILE} prepare \
 		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
-		COMMON_NAME="" \
-		CLOUD_HOST=aws \
+		COMMON_NAME=${COMMON_NAME} \
+		CLOUD_HOST=${CLOUD_HOST} \
 		FLICKR_PRIVATE_KEY=123 \
 		FLICKR_PUBLIC_KEY=123 \
 		UNSPLASH_PRIVATE_KEY=123 \
 		UNSPLASH_PUBLIC_KEY=123 \
 		PEXELS_PUBLIC_KEY=123
 
-	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/${GH_REPO}
-	terragrunt init
 .ONESHELL: prepare-scraper-frontend
+BRANCH_NAME ?= master
 prepare-scraper-frontend:
-	$(eval GH_ORG=KookaS)
-	$(eval GH_REPO=scraper-frontend)
-	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${GH_REPO})
-	$(eval MAKEFILE=test/microservice/${GH_REPO}/Makefile_${OVERRIDE_EXTENSION})
-	make gh-load-folder GH_PATH=config OUTPUT_FOLDER=${OUTPUT_FOLDER}
+	$(eval GIT_NAME=github.com)
+	$(eval ORGANIZATION_NAME=KookaS)
+	$(eval PROJECT_NAME=scraper)
+	$(eval SERVICE_NAME=frontend)
+	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${REPOSITORY_NAME})
+	make gh-load-folder \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
+		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
+		REPOSITORY_NAME=${REPOSITORY_NAME} \
+		BRANCH_NAME=${BRANCH_NAME} \
+		REPOSITORY_PATH=config
+	make prepare-scraper-frontend-env \
+		OUTPUT_FOLDER=${OUTPUT_FOLDER}
+	
+	cd ${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+	terragrunt init
+prepare-scraper-frontend-env:
+	$(eval MAKEFILE=$(shell find ${OUTPUT_FOLDER} -type f -name "*Makefile*"))
 	make -f ${MAKEFILE} prepare \
 		OUTPUT_FOLDER=${OUTPUT_FOLDER} \
-		NEXT_PUBLIC_API_URL="not-needed" \
-		PORT=3000
-
-	cd ${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}/${GH_REPO}
-	terragrunt init
+		NEXT_PUBLIC_API_URL="http://not-needed.com" \
+		PORT="3000"
 
 # github-set-environment:
 # # if ! curl -L --fail \
 # # 	-H "Accept: application/vnd.github+json" \
 # # 	-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # # 	-H "X-GitHub-Api-Version: 2022-11-28" \
-# # 	https://api.github.com/repos/${GH_REPO_OWNER}/${GH_REPO_NAME}/environments/${GH_ENV}; then \
-# # 	echo "Environemnt ${GH_ENV} is non existant and cannot be created with personal access token. Go create it on the repository ${GH_REPO_OWNER}/${GH_REPO_NAME}"; \
+# # 	https://api.github.com/repos/${REPOSITORY_NAME_OWNER}/${REPOSITORY_NAME_NAME}/environments/${GH_ENV}; then \
+# # 	echo "Environemnt ${GH_ENV} is non existant and cannot be created with personal access token. Go create it on the repository ${REPOSITORY_NAME_OWNER}/${REPOSITORY_NAME_NAME}"; \
 # # 	exit 10; \
 # # fi
 # 	echo GH_ENV=${GH_ENV}
-# 	$(eval GH_REPO_ID=$(shell curl -L \
+# 	$(eval REPOSITORY_NAME_ID=$(shell curl -L \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repos/${GH_REPO_OWNER}/${GH_REPO_NAME} | jq '.id'))
-# 	echo GH_REPO_ID=${GH_REPO_ID}
+# 		https://api.github.com/repos/${REPOSITORY_NAME_OWNER}/${REPOSITORY_NAME_NAME} | jq '.id'))
+# 	echo REPOSITORY_NAME_ID=${REPOSITORY_NAME_ID}
 # 	$(eval GH_PUBLIC_KEY_ID=$(shell curl -L \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/secrets/public-key  | jq '.key_id'))
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/secrets/public-key  | jq '.key_id'))
 # 	echo GH_PUBLIC_KEY_ID=${GH_PUBLIC_KEY_ID}
 # 	$(eval GH_ENV_PUBLIC_KEY=$(shell curl -L \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/secrets/public-key  | jq '.key'))
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/secrets/public-key  | jq '.key'))
 # 	echo GH_ENV_PUBLIC_KEY=${GH_ENV_PUBLIC_KEY}
 # # curl -L \
 # # 	-X POST \
 # # 	-H "Accept: application/vnd.github+json" \
 # # 	-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # # 	-H "X-GitHub-Api-Version: 2022-11-28" \
-# # 	https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/variables \
+# # 	https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/variables \
 # # 	-d '{"name":"MY_VAR","value":"vallll"}'
-# 	make github-set-environment-secret GH_REPO_ID=${GH_REPO_ID} GH_ENV=${GH_ENV} GH_KEY_ID=${GH_PUBLIC_KEY_ID} GH_PUBLIC_KEY=${GH_ENV_PUBLIC_KEY} GH_SECRET_NAME=MY_SECRET GH_SECRET_VALUE=vallll
-# 	# make github-set-environment-variable GH_REPO_ID=${GH_REPO_ID} GH_ENV=${GH_ENV} VAR_NAME=MY_VAR VAR_VALUE=vallll
+# 	make github-set-environment-secret REPOSITORY_NAME_ID=${REPOSITORY_NAME_ID} GH_ENV=${GH_ENV} GH_KEY_ID=${GH_PUBLIC_KEY_ID} GH_PUBLIC_KEY=${GH_ENV_PUBLIC_KEY} GH_SECRET_NAME=MY_SECRET GH_SECRET_VALUE=vallll
+# 	# make github-set-environment-variable REPOSITORY_NAME_ID=${REPOSITORY_NAME_ID} GH_ENV=${GH_ENV} VAR_NAME=MY_VAR VAR_VALUE=vallll
 # 	curl -L \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/secrets
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/secrets
 # 	curl -L \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/variables
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/variables
 # github-set-environment-variable:
 # 	curl -L \
 # 		-X POST \
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer <YOUR-TOKEN>"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/variables \
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/variables \
 # 		-d '{"name":"${VAR_NAME}","value":"${VAR_VALUE}"}'
 # github-set-environment-secret:
 # 	echo set secret
@@ -182,13 +217,14 @@ prepare-scraper-frontend:
 # 		-H "Accept: application/vnd.github+json" \
 # 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 # 		-H "X-GitHub-Api-Version: 2022-11-28" \
-# 		https://api.github.com/repositories/${GH_REPO_ID}/environments/${GH_ENV}/secrets/${GH_SECRET_NAME} \
+# 		https://api.github.com/repositories/${REPOSITORY_NAME_ID}/environments/${GH_ENV}/secrets/${GH_SECRET_NAME} \
 # 		-d '{"encrypted_value":${GH_SECRET_VALUE_ENCR},"key_id":"${GH_KEY_ID}"}';
 
 .ONESHELL: clean
 clean: ## Clean the test environment
-	make nuke-region-exclude-vpc
-	make clean-vpc
+	# make nuke-region-exclude-vpc
+	# make nuke-region-vpc
+	make nuke-region
 	make nuke-global
 
 	make clean-task-definition
@@ -218,16 +254,6 @@ clean-elb:
 	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
 clean-ecs:
 	for clusterArn in $(shell aws ecs describe-clusters --query 'clusters[].clusterArn'); do echo $$clusterArn; aws ecs delete-cluster --cluster $$clusterArn; done;
-clean-vpc:
-	# if [ ! -e ${PATH_ABS_AWS_VPC}/terraform.tfstate ]; then \
-	# 	make nuke-region-vpc; \
-	# else \
-	# 	echo "Deleting network acl..."; for networkAclId in $(aws ec2 describe-network-acls --query 'NetworkAcls[].NetworkAclId'); do aws ec2 delete-network-acl --network-acl-id $networkAclId; done; \
-	# 	cd ${PATH_ABS_AWS_VPC}; \
-	# 	terragrunt destroy -auto-approve; \
-	# 	rm ${PATH_ABS_AWS_VPC}/terraform.tfstate; \
-	# fi
-	make nuke-region-vpc;
 
 nuke-all: ## Nuke all resources in all regions
 	cloud-nuke aws;
@@ -235,6 +261,8 @@ nuke-region-exclude-vpc: ## Nuke within the user's region all resources excludin
 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --config .gruntwork/cloud-nuke/config.yaml --force;
 nuke-region-vpc:
 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --config .gruntwork/cloud-nuke/config.yaml --force;
+nuke-region:
+	cloud-nuke aws --region ${AWS_REGION} --config .gruntwork/cloud-nuke/config.yaml --force;
 nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 

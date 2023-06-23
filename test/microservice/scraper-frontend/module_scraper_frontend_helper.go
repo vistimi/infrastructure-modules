@@ -56,18 +56,19 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 
 	optionsProject := &terraform.Options{
 		TerraformDir: microservicePath,
-		Vars: map[string]any{
-			"vpc": map[string]any{
-				"name":       commonName,
-				"cidr_ipv4":  "2.0.0.0/16",
-				"enable_nat": false,
-				"tier":       "Public",
-			},
-		},
+		Vars:         map[string]any{},
 	}
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
+		"vpc": map[string]any{
+			"name":       commonName,
+			"cidr_ipv4":  "2.0.0.0/16",
+			"enable_nat": false,
+			"tier":       "Public",
+		},
+	})
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"traffic": map[string]any{
 			"listener_port":             listenerPort,
 			"listener_protocol":         listenerProtocol,
@@ -79,7 +80,7 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 		},
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"env_file_name":        envKey,
 		"repository_name":      strings.ToLower(fmt.Sprintf("%s-%s-%s", GithubProject.Organization, GithubProject.Repository, GithubProject.Branch)),
 		"repository_image_tag": GithubProject.ImageTag,
@@ -94,7 +95,7 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 			},
 		},
 	})
-	maps.Copy(optionsProject.Vars["bucket_env"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
 		"file_key":  envKey,
 		"file_path": "override.env",
 	})

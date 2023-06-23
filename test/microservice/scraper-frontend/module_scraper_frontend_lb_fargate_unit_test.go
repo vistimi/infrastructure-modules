@@ -19,7 +19,7 @@ func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
 
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"fargate": map[string]any{
 			"os":           "LINUX",
 			"architecture": "X86_64",
@@ -42,7 +42,7 @@ func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
 			"deployment_minimum_healthy_percent": 66,
 		},
 	})
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"cpu":    512,
 		"memory": 1024,
 	})

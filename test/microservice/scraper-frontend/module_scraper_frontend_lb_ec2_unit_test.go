@@ -25,7 +25,7 @@ func Test_Unit_ScraperFrontend_LB_EC2(t *testing.T) {
 	instance := microservice.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"ec2": map[string]map[string]any{
 			keySpot: {
 				"user_data":            userDataSpot,
@@ -97,7 +97,7 @@ func Test_Unit_ScraperFrontend_LB_EC2(t *testing.T) {
 			},
 		},
 	})
-	maps.Copy(optionsProject.Vars["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"cpu":                instance.Cpu,                                            // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
 		"memory":             instance.MemoryAllowed - microservice.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
 		"memory_reservation": instance.MemoryAllowed - microservice.ECSReservedMemory, // memory_reservation <= memory
