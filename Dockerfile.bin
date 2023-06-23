@@ -30,11 +30,6 @@ RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${TERR
     && mv terragrunt_linux_amd64 /usr/local/bin/terragrunt \
     && chmod +rx /usr/local/bin/terragrunt
 
-# sops
-ARG SOPS_VERSION=3.7.3
-RUN wget -q -O /usr/local/bin/sops https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64 \
-    && chmod +rx /usr/local/bin/sops
-
 # cloud-nuke
 ARG CLOUD_NUKE_VERSION=0.31.1
 RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v${CLOUD_NUKE_VERSION}/cloud-nuke_linux_amd64 \
