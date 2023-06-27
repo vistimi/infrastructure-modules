@@ -27,12 +27,12 @@ func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
 				keySpot: {
 					"base":           nil, // no preferred instance amount
 					"weight_percent": 50,  // 50% chance
-					"fargate":        "FARGATE",
+					"key":            "FARGATE",
 				},
 				keyOnDemand: {
 					"base":           nil, // no preferred instance amount
 					"weight_percent": 50,  // 50% chance
-					"fargate":        "FARGATE_SPOT",
+					"key":            "FARGATE_SPOT",
 				},
 			},
 		},

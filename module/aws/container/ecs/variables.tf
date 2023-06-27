@@ -112,16 +112,16 @@ variable "fargate" {
   type = object({
     os           = string
     architecture = string
-    capacity_provider = map(object({
+    capacity_provider = optional(map(object({
+      key            = string
       base           = optional(number)
       weight_percent = optional(number)
-    }))
+    })), {})
   })
   nullable = false
   default = {
-    os                = "LINUX"
-    architecture      = "X86_64"
-    capacity_provider = {}
+    os           = "LINUX"
+    architecture = "X86_64"
   }
 }
 

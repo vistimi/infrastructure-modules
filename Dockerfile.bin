@@ -134,10 +134,6 @@ RUN terraform --version
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 RUN terragrunt --version
 
-# sops
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/sops /usr/local/bin/sops
-RUN sops --version
-
 # tflint
 COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:latest /usr/local/bin/tflint /usr/local/bin/tflint
 RUN tflint --version

@@ -65,6 +65,7 @@ variable "ecs" {
       os           = string
       architecture = string
       capacity_provider = map(object({
+        key            = string
         base           = optional(number)
         weight_percent = optional(number)
       }))

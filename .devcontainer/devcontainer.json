@@ -14,7 +14,7 @@
 	"mounts": [
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
 	],
-	"postStartCommand": "make aws-configure && tflint --init",
+	"postStartCommand": "make aws-auth && tflint --init",
 	"customizations": {
 		"vscode": {
 			"extensions": [

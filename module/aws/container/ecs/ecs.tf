@@ -59,7 +59,7 @@ module "ecs" {
   default_capacity_provider_use_fargate = var.service.use_fargate ? true : false
   fargate_capacity_providers = {
     for key, cp in var.fargate.capacity_provider :
-    key => {
+    cp.key => {
       default_capacity_provider_strategy = {
         weight = cp.weight_percent
         base   = cp.base
