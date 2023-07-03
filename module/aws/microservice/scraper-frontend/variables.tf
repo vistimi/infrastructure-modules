@@ -76,11 +76,13 @@ variable "microservice" {
         }))
       }))
       ec2 = optional(map(object({
-        user_data            = optional(string)
-        instance_type        = string
-        ami_ssm_architecture = string
-        use_spot             = bool
-        key_name             = optional(string)
+        user_data     = optional(string)
+        instance_type = string
+        os            = string
+        os_version    = string
+        architecture  = string
+        use_spot      = bool
+        key_name      = optional(string)
         asg = object({
           min_size     = number
           desired_size = number

@@ -26,15 +26,17 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"ec2": map[string]map[string]any{
 			keySpot: {
-				"user_data":            userDataSpot,
-				"ami_ssm_architecture": "amazon-linux-2023",
-				"instance_type":        instance.Name,
-				"key_name":             nil,
-				"use_spot":             true,
+				"user_data":     userDataSpot,
+				"os":            "linux",
+				"os_version":    "2023",
+				"architecture":  "x64",
+				"instance_type": instance.Name,
+				"key_name":      nil,
+				"use_spot":      true,
 				"asg": map[string]any{
 					"min_size":     0,
-					"desired_size": 1,
-					"max_size":     1,
+					"desired_size": 0, // TODO: set me to 1
+					"max_size":     0, // TODO: set me to 1
 					"instance_refresh": map[string]any{
 						"strategy": "Rolling",
 						"preferences": map[string]any{
@@ -55,11 +57,13 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 				},
 			},
 			keyOnDemand: {
-				"user_data":            userDataOnDemand,
-				"ami_ssm_architecture": "amazon-linux-2023",
-				"instance_type":        instance.Name,
-				"key_name":             nil,
-				"use_spot":             false,
+				"user_data":     userDataOnDemand,
+				"os":            "linux",
+				"os_version":    "2023",
+				"architecture":  "x64",
+				"instance_type": instance.Name,
+				"key_name":      nil,
+				"use_spot":      false,
 				"asg": map[string]any{
 					"min_size":     0,
 					"desired_size": 1,

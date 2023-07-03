@@ -1,10 +1,9 @@
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
-data "aws_ssm_parameter" "ecs_optimized_ami" {
+data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name = var.ami_ssm_name[value.ami_ssm_architecture]
-      # name = "${var.ami_ssm_name[var.instance.ec2.ami_ssm_architecture]}/image_id"
+      name = var.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
     }
     if !var.service.use_fargate
   }
@@ -41,8 +40,8 @@ module "asg" {
       }] : []
       instance_type = value.instance_type
       key_name      = value.key_name # to SSH into instance
-      image_id      = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami[key].value)["image_id"]
-      # image_id = data.aws_ssm_parameter.ecs_optimized_ami.value
+      # image_id      = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami[key].value)["image_id"]
+      image_id         = data.aws_ssm_parameter.ecs_optimized_ami_id[key].value
       user_data        = base64encode(value.user_data)
       instance_refresh = value.asg.instance_refresh
     }

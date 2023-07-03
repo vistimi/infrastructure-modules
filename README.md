@@ -38,6 +38,7 @@ Repository permissions
   Contents: Read-only
   Environments: Read and write
   Metadata: Read-only
+  Pull-requests: Read and write
   Secrets: Read and write
   Variables: Read and write
 ```

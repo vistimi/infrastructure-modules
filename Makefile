@@ -146,6 +146,7 @@ prepare-scraper-frontend-env:
 		NEXT_PUBLIC_API_URL="http://not-needed.com" \
 		PORT="3000"
 
+# TODO: actions/github-script@v6 to run nodejs in wf
 # github-set-environment:
 # # if ! curl -L --fail \
 # # 	-H "Accept: application/vnd.github+json" \
@@ -222,8 +223,6 @@ prepare-scraper-frontend-env:
 
 .ONESHELL: clean
 clean: ## Clean the test environment
-	# make nuke-region-exclude-vpc
-	# make nuke-region-vpc
 	make nuke-region
 	make nuke-global
 
@@ -254,13 +253,8 @@ clean-elb:
 	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
 clean-ecs:
 	for clusterArn in $(shell aws ecs describe-clusters --query 'clusters[].clusterArn'); do echo $$clusterArn; aws ecs delete-cluster --cluster $$clusterArn; done;
+	for capacityProviderArn in $(shell aws ecs describe-capacity-providers --query 'capacityProviders[].capacityProviderArn'); do aws ecs   delete-capacity-provider --capacity-provider $$capacityProviderArn --query 'capacityProvider.capacityProviderArn'; done;
 
-nuke-all: ## Nuke all resources in all regions
-	cloud-nuke aws;
-nuke-region-exclude-vpc: ## Nuke within the user's region all resources excluding vpc, e.g. for repeating tests manually
-	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --config .gruntwork/cloud-nuke/config.yaml --force;
-nuke-region-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --config .gruntwork/cloud-nuke/config.yaml --force;
 nuke-region:
 	cloud-nuke aws --region ${AWS_REGION} --config .gruntwork/cloud-nuke/config.yaml --force;
 nuke-global:

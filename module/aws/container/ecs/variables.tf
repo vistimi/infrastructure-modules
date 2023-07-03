@@ -120,21 +120,62 @@ variable "fargate" {
   })
   nullable = false
   default = {
-    os           = "LINUX"
-    architecture = "X86_64"
+    os           = ""
+    architecture = ""
   }
 }
+
+resource "null_resource" "fargate" {
+  for_each = {
+    for key, value in {} : key => {}
+    if var.service.use_fargate
+  }
+
+  lifecycle {
+    precondition {
+      condition     = contains(["linux"], var.fargate.os)
+      error_message = "Fargate os must be one of [linux]"
+    }
+
+    precondition {
+      condition     = var.fargate.os == "linux" ? contains(["x64", "arm64"], var.fargate.architecture) : false
+      error_message = "Fargate architecture must for one of linux:[x64, arm64]"
+    }
+  }
+}
+
+variable "fargate_os" {
+  description = "Map to select the OS for Fargate"
+  type        = map(string)
+
+  default = {
+    linux = "LINUX"
+  }
+}
+
+variable "fargate_architecture" {
+  description = "Map to select the architecture for Fargate"
+  type        = map(string)
+
+  default = {
+    x64 = "X86_64"
+  }
+}
+
+
 
 #--------------
 # ASG
 #--------------
 variable "ec2" {
   type = map(object({
-    user_data            = optional(string)
-    instance_type        = string
-    ami_ssm_architecture = string
-    use_spot             = bool
-    key_name             = optional(string)
+    user_data     = optional(string)
+    instance_type = string
+    os            = string
+    os_version    = string
+    architecture  = string
+    use_spot      = bool
+    key_name      = optional(string)
     asg = object({
       min_size     = number
       desired_size = number
@@ -169,19 +210,81 @@ variable "ec2" {
   default  = {}
 }
 
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
+# https://aws.amazon.com/ec2/instance-types/
+resource "null_resource" "ec2_architecture" {
+  for_each = {
+    for key, value in var.ec2 :
+    key => {
+      architecture    = value.architecture
+      instance_type   = value.instance_type
+      instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)
+      instance_family = try(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)), substr(value.instance_type, 0, 1))
+    }
+    if !var.service.use_fargate
+  }
+
+  lifecycle {
+    precondition {
+      // TODO: add support for mac
+      condition = each.value.architecture == "x64" ? contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
+        each.value.architecture == "amd64" ? contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
+          each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
+            each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (
+              false
+            )
+          )
+        )
+      )
+      error_message = "EC2 instance config do not match, arch: ${each.value.architecture}, instance type ${each.value.instance_type}, instance family ${each.value.instance_family}, instance generation ${substr(each.value.instance.prefix, length(each.value.instance_family) + 0, 1)}, processor family ${substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)}, additional capability ${substr(each.value.instance.prefix, length(each.value.instance_family) + 2, -1)}, instance size ${each.value.instance.size}"
+    }
+  }
+}
+
+// TODO: add support for mac and windows
+resource "null_resource" "ec2_os" {
+  for_each = {
+    for key, value in var.ec2 :
+    key => {
+      os           = value.os
+      os_version   = value.os_version
+      architecture = value.architecture
+    }
+    if !var.service.use_fargate
+  }
+
+  lifecycle {
+    precondition {
+      condition     = contains(["linux"], each.value.os)
+      error_message = "EC2 os must be one of [linux]"
+    }
+
+    precondition {
+      condition     = each.value.os == "linux" ? contains(["2", "2023"], each.value.os_version) : false
+      error_message = "EC2 os version must be one of linux:[2, 2023]"
+    }
+
+    precondition {
+      condition     = each.value.os == "linux" ? contains(["x64", "arm64", "gpu", "inf"], each.value.architecture) : false
+      error_message = "EC2 architecture must for one of linux:[x64, arm64, gpu, inf]"
+    }
+  }
+}
+
+# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/retrieve-ecs-optimized_AMI.html
 variable "ami_ssm_name" {
   description = "Map to select an optimized ami for the correct architecture"
   type        = map(string)
 
   default = {
-    amazon-linux-2          = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
-    amazon-linux-2-arm64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended"
-    amazon-linux-2-gpu      = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended"
-    amazon-linux-2-inf      = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended"
-    amazon-linux-2023       = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended"
-    amazon-linux-2023-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended"
-    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended"
-    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended"
+    amazon-linux-2-x64      = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    amazon-linux-2-arm64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
+    amazon-linux-2-gpu      = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
+    amazon-linux-2-inf      = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
+    amazon-linux-2023-x64   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+    amazon-linux-2023-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
+    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
+    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
   }
 }
 

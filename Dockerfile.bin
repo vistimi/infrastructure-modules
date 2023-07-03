@@ -19,13 +19,13 @@ RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releas
     && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
 
 # terraform
-ARG TERRAFORM_VERSION=1.4.6
+ARG TERRAFORM_VERSION=1.5.2
 RUN wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
     && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip && mv terraform /usr/local/bin/terraform \
     && chmod +rx /usr/local/bin/terraform && rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
 
 # terragrunt
-ARG TERRAGRUNT_VERSION=0.45.17
+ARG TERRAGRUNT_VERSION=0.48.0
 RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64 \
     && mv terragrunt_linux_amd64 /usr/local/bin/terragrunt \
     && chmod +rx /usr/local/bin/terragrunt

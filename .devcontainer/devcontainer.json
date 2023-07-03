@@ -27,7 +27,8 @@
 				"bierner.markdown-emoji",
 				"ms-vscode.makefile-tools",
 				"ms-azuretools.vscode-docker",
-				"IronGeek.vscode-env"
+				"IronGeek.vscode-env",
+				"github.vscode-github-actions"
 			]
 		}
 	}
