@@ -96,7 +96,7 @@ variable "ecs" {
       })
       capacity_provider = object({
         base                        = optional(number)
-        weight                      = optional(number)
+        weight                      = number
         target_capacity_cpu_percent = number
         maximum_scaling_step_size   = number
         minimum_scaling_step_size   = number
