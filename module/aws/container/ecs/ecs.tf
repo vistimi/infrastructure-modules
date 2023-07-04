@@ -1,14 +1,3 @@
-locals {
-  // needs ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true in userdata
-  // aggregate for only one task definition
-  # single_instances = [
-  #   for key, value in var.ec2 :
-  #   value.asg.desired_size == 1 && value.asg.max_size == 1
-  # ]
-  # single_instance = alltrue(local.single_instances) && length(local.single_instances) == 1
-  single_instance = false
-}
-
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/${var.log.prefix}/${var.common_name}"
   retention_in_days = var.log.retention_days
@@ -41,7 +30,7 @@ module "ecs" {
     for key, cp in var.fargate.capacity_provider :
     cp.key => {
       default_capacity_provider_strategy = {
-        weight = cp.weight_percent
+        weight = cp.weight
         base   = cp.base
       }
     }
@@ -53,6 +42,7 @@ module "ecs" {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
+        // TODO: use target_tracking_scaling_policy_configuration.value.scale_in_cooldown
         maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size
         minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size
         target_capacity           = value.capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
@@ -60,7 +50,7 @@ module "ecs" {
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
           base   = value.capacity_provider.base
-          weight = value.capacity_provider.weight_percent
+          weight = value.capacity_provider.weight
         }
       }
       managed_termination_protection = "DISABLED"
@@ -75,7 +65,10 @@ module "ecs" {
       #------------
       force_new_deployment               = true
       launch_type                        = var.service.use_fargate ? "FARGATE" : "EC2"
-      desired_count                      = var.service.task_desired_count                 // amount of tasks desired
+      enable_autoscaling                 = true
+      autoscaling_min_capacity           = var.service.task_min_count
+      desired_count                      = var.service.task_desired_count
+      autoscaling_max_capacity           = var.service.task_max_count
       deployment_maximum_percent         = var.service.deployment_maximum_percent         // max % tasks running required
       deployment_minimum_healthy_percent = var.service.deployment_minimum_healthy_percent // min % tasks running required
       deployment_circuit_breaker         = var.service.deployment_circuit_breaker
@@ -131,6 +124,7 @@ module "ecs" {
             "ecs:StartTelemetrySession",
             "ecs:UpdateContainerInstancesState",
             "ecs:Submit*",
+            "ecs:StartTask",
           ]
           effect    = "Allow"
           resources = ["*"],
@@ -191,7 +185,7 @@ module "ecs" {
       family                   = var.common_name
       requires_compatibilities = var.service.use_fargate ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
-      network_mode = var.service.use_fargate ? "awsvpc" : local.single_instance ? "host" : "bridge" // "host" for single instance
+      network_mode = var.service.use_fargate ? "awsvpc" : "bridge" // "host" for single instance
 
       # Task definition container(s)
       container_definitions = {
@@ -209,11 +203,9 @@ module "ecs" {
           port_mappings = [
             {
               containerPort = var.traffic.target_port
-              # appProtocol   = var.traffic.target_protocol
-              # containerPortRange = "32768-65535"
-              hostPort = var.service.use_fargate || local.single_instance ? var.traffic.target_port : 0 // "host" network can use target port 
-              name     = "container-port"
-              protocol = "tcp"
+              hostPort      = var.service.use_fargate ? var.traffic.target_port : 0 // "host" network can use target port 
+              name          = "container-port"
+              protocol      = "tcp"
             }
           ]
           # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties

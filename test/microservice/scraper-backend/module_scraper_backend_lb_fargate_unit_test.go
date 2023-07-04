@@ -3,7 +3,6 @@ package scraper_backend_test
 import (
 	"testing"
 
-	"github.com/KookaS/infrastructure-modules/test/microservice"
 	"golang.org/x/exp/maps"
 )
 
@@ -17,26 +16,31 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 
+	keySpot := "spot"
+	keyOnDemand := "on-demand"
+	ServiceTaskDesiredCount := int64(2)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"fargate": map[string]any{
 			"os":           "linux",
 			"architecture": "x64",
 			"capacity_provider": map[string]map[string]any{
-				"FARGATE": {
-					"base":           nil, // no preferred instance amount
-					"weight_percent": 50,  // 50% chance
-					"key":            "FARGATE",
+				keySpot: {
+					"base":   nil, // no preferred instance amount
+					"weight": 50,  // 50% chance
+					"key":    "FARGATE",
 				},
-				"FARGATE_SPOT": {
-					"base":           nil, // no preferred instance amount
-					"weight_percent": 50,  // 50% chance
-					"key":            "FARGATE_SPOT",
+				keyOnDemand: {
+					"base":   nil, // no preferred instance amount
+					"weight": 50,  // 50% chance
+					"key":    "FARGATE_SPOT",
 				},
 			},
 		},
 		"service": map[string]any{
 			"use_fargate":                        true,
-			"task_desired_count":                 microservice.ServiceTaskDesiredCount,
+			"task_min_count":                     0,
+			"task_desired_count":                 ServiceTaskDesiredCount,
+			"task_max_count":                     ServiceTaskDesiredCount,
 			"deployment_minimum_healthy_percent": 66,
 		},
 	})
@@ -45,5 +49,5 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 		"memory": 1024,
 	})
 
-	RunTest(t, optionsProject, commonName)
+	RunTest(t, optionsProject, commonName, ServiceTaskDesiredCount)
 }

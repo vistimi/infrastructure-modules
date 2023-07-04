@@ -24,8 +24,7 @@ var (
 )
 
 const (
-	vpcPath                 = "../../../module/aws/vpc" // path for microservices
-	ServiceTaskDesiredCount = 1
+	vpcPath = "../../../module/aws/vpc" // path for microservices
 
 	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/memory-management.html#ecs-reserved-memory
 	ECSReservedMemory = 100
@@ -138,7 +137,7 @@ func RandomID(n int) string {
 	return string(b)
 }
 
-func TestMicroservice(t *testing.T, terraformOptions *terraform.Options, githubInformations GithubProjectInformation) {
+func TestMicroservice(t *testing.T, terraformOptions *terraform.Options, githubInformations GithubProjectInformation, ServiceTaskDesiredCount int64) {
 	// // TODO: plan test for updates
 	// // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_example_plan_test.go
 

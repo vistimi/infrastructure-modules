@@ -1,3 +1,7 @@
+locals {
+  weight_total = var.service.use_fargate ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
+}
+
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
 data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   for_each = {
@@ -11,7 +15,6 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   name = each.value.name
 }
 
-
 #------------------------
 #     EC2 autoscaler
 #------------------------
@@ -23,10 +26,8 @@ module "asg" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name             = "${var.common_name}-${key}"
-      min_size         = value.asg.min_size
-      desired_capacity = value.asg.desired_size
-      max_size         = value.asg.max_size
+      name              = "${var.common_name}-${key}"
+      capacity_provider = value.capacity_provider
       instance_market_options = value.use_spot ? {
         # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
         market_type = "spot"
@@ -132,9 +133,9 @@ module "asg" {
 
   # asg configuration
   ignore_desired_capacity_changes = false
-  min_size                        = each.value.min_size
-  max_size                        = each.value.max_size
-  desired_capacity                = each.value.desired_capacity
+  min_size                        = floor(var.service.task_min_count * each.value.capacity_provider.weight / local.weight_total)
+  max_size                        = ceil(var.service.task_max_count * each.value.capacity_provider.weight / local.weight_total)
+  desired_capacity                = ceil(var.service.task_desired_count * each.value.capacity_provider.weight / local.weight_total)
   vpc_zone_identifier             = local.subnets
   health_check_type               = "EC2"
   target_group_arns               = module.alb.target_group_arns

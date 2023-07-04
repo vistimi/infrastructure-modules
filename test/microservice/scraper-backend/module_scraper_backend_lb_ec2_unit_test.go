@@ -23,6 +23,7 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 	instance := microservice.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
+	ServiceTaskDesiredCount := int64(3)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"ec2": map[string]map[string]any{
 			keySpot: {
@@ -34,9 +35,6 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 				"key_name":      nil,
 				"use_spot":      true,
 				"asg": map[string]any{
-					"min_size":     0,
-					"desired_size": 0, // TODO: set me to 1
-					"max_size":     0, // TODO: set me to 1
 					"instance_refresh": map[string]any{
 						"strategy": "Rolling",
 						"preferences": map[string]any{
@@ -50,7 +48,7 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 				},
 				"capacity_provider": map[string]any{
 					"base":                        nil, // no preferred instance amount
-					"weight_percent":              50,  // 50% chance
+					"weight":                      50,  // 50% chance
 					"target_capacity_cpu_percent": 70,
 					"maximum_scaling_step_size":   1,
 					"minimum_scaling_step_size":   1,
@@ -65,9 +63,6 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 				"key_name":      nil,
 				"use_spot":      false,
 				"asg": map[string]any{
-					"min_size":     0,
-					"desired_size": 1,
-					"max_size":     1,
 					"instance_refresh": map[string]any{
 						"strategy": "Rolling",
 						"preferences": map[string]any{
@@ -81,7 +76,7 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 				},
 				"capacity_provider": map[string]any{
 					"base":                        nil, // no preferred instance amount
-					"weight_percent":              50,  // 50% chance
+					"weight":                      50,  // 50% chance
 					"target_capacity_cpu_percent": 70,
 					"maximum_scaling_step_size":   1,
 					"minimum_scaling_step_size":   1,
@@ -91,7 +86,9 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 
 		"service": map[string]any{
 			"use_fargate":                        false,
-			"task_desired_count":                 microservice.ServiceTaskDesiredCount,
+			"task_min_count":                     0,
+			"task_desired_count":                 ServiceTaskDesiredCount,
+			"task_max_count":                     ServiceTaskDesiredCount,
 			"deployment_minimum_healthy_percent": 66, // % tasks running required
 			"deployment_circuit_breaker": map[string]any{
 				"enable":   true,  // service deployment fail if no steady state
@@ -105,19 +102,5 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 		"memory_reservation": instance.MemoryAllowed - microservice.ECSReservedMemory, // memory_reservation <= memory
 	})
 
-	RunTest(t, optionsProject, commonName)
-
-	// service := terratest_aws.GetEcsService(t, microservice.AccountRegion, commonName, commonName)
-	// bashCode := fmt.Sprintf(`aws elbv2 describe-target-health --target-group-arn %s --query 'TargetHealthDescriptions[].TargetHealth.State'`, *service.LoadBalancers[0].TargetGroupArn)
-	// command := terratest_shell.Command{
-	// 	Command: "bash",
-	// 	Args:    []string{"-c", bashCode},
-	// }
-	// targetHealthStates := strings.Fields(terratest_shell.RunCommandAndGetOutput(t, command))
-	// for _, status := range targetHealthStates {
-	// 	if status == "unhealthy" {
-	// 		t.Fatal("At least one target is unhealthy")
-	// 		return
-	// 	}
-	// }
+	RunTest(t, optionsProject, commonName, ServiceTaskDesiredCount)
 }

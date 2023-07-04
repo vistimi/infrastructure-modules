@@ -103,7 +103,7 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	return optionsProject, commonName
 }
 
-func RunTest(t *testing.T, options *terraform.Options, commonName string) {
+func RunTest(t *testing.T, options *terraform.Options, commonName string, ServiceTaskDesiredCount int64) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
 	defer func() {
@@ -120,7 +120,7 @@ func RunTest(t *testing.T, options *terraform.Options, commonName string) {
 		terraform.InitAndApply(t, options)
 	})
 
-	microservice.TestMicroservice(t, options, GithubProject)
+	microservice.TestMicroservice(t, options, GithubProject, ServiceTaskDesiredCount)
 
 	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
 	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))

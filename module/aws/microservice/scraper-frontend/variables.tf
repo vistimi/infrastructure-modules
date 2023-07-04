@@ -27,7 +27,9 @@ variable "microservice" {
     ecs = object({
       service = object({
         use_fargate                        = bool
+        task_min_count                     = number
         task_desired_count                 = number
+        task_max_count                     = number
         deployment_maximum_percent         = optional(number)
         deployment_minimum_healthy_percent = optional(number)
         deployment_circuit_breaker = optional(object({
@@ -70,9 +72,9 @@ variable "microservice" {
         os           = string
         architecture = string
         capacity_provider = map(object({
-          key            = string
-          base           = optional(number)
-          weight_percent = optional(number)
+          key    = string
+          base   = optional(number)
+          weight = optional(number)
         }))
       }))
       ec2 = optional(map(object({
@@ -84,9 +86,6 @@ variable "microservice" {
         use_spot      = bool
         key_name      = optional(string)
         asg = object({
-          min_size     = number
-          desired_size = number
-          max_size     = number
           instance_refresh = optional(object({
             strategy = string
             preferences = optional(object({
@@ -102,7 +101,7 @@ variable "microservice" {
         })
         capacity_provider = object({
           base                        = optional(number)
-          weight_percent              = optional(number)
+          weight                      = optional(number)
           target_capacity_cpu_percent = number
           maximum_scaling_step_size   = number
           minimum_scaling_step_size   = number
