@@ -24,34 +24,77 @@ variable "vpc" {
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
 variable "traffic" {
   type = object({
-    listener_port             = number
-    listener_protocol         = string
-    listener_protocol_version = string
-    target_port               = number
-    target_protocol           = string
-    target_protocol_version   = string
-    health_check_path         = optional(string, "/")
+    listeners = list(objects({
+      port             = number
+      protocol         = string
+      protocol_version = string
+    }))
+    targets = list(objects({
+      port              = number
+      protocol          = string
+      protocol_version  = string
+      health_check_path = optional(string, "/")
+    }))
   })
 }
 
 resource "null_resource" "listener" {
+
+  for_each = {
+    for listener in var.traffic.listeners :
+    listener.port => listener
+  }
+
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], var.traffic.listener_protocol)
-      error_message = "Listener protocol must be one of [http, http2, grpc]"
+      condition     = contains(["http", "https"], each.value.protocol)
+      error_message = "Listener protocol must be one of [http, https]"
     }
     precondition {
-      condition     = contains(["http", "http2", "grpc"], var.traffic.listener_protocol_version)
+      condition     = contains(["http", "http2", "grpc"], each.value.protocol_version)
       error_message = "Listener protocol version must be one of [http, http2, grpc]"
     }
+  }
+}
+
+resource "null_resource" "target" {
+
+  for_each = {
+    for target in var.traffic.targets :
+    target.port => target
+  }
+
+  lifecycle {
     precondition {
-      condition     = contains(["http", "https"], var.traffic.target_protocol)
-      error_message = "Target protocol must be one of [http, http2, grpc]"
+      condition     = contains(["http", "https"], each.value.protocol)
+      error_message = "Target protocol must be one of [http, https]"
     }
     precondition {
-      condition     = contains(["http", "http2", "grpc"], var.traffic.target_protocol_version)
+      condition     = contains(["http", "http2", "grpc"], each.value.protocol_version)
       error_message = "Target protocol version must be one of [http, http2, grpc]"
     }
+  }
+}
+
+variable "protocols" {
+  description = "Map to select a routing protocol"
+  type        = map(string)
+
+  default = {
+    http  = "HTTP"
+    https = "HTTPS"
+    tcp   = "TCP"
+  }
+}
+
+variable "protocol_versions" {
+  description = "Map to select a routing protocol version"
+  type        = map(string)
+
+  default = {
+    http  = "HTTP1"
+    http2 = "HTTP2"
+    grpc  = "GRPC"
   }
 }
 
@@ -167,7 +210,7 @@ variable "fargate_architecture" {
 
 
 #--------------
-# ASG
+#   ASG
 #--------------
 variable "ec2" {
   type = map(object({
@@ -201,8 +244,8 @@ variable "ec2" {
       base                        = optional(number)
       weight                      = number
       target_capacity_cpu_percent = number
-      maximum_scaling_step_size   = number
-      minimum_scaling_step_size   = number
+      maximum_scaling_step_size   = optional(number)
+      minimum_scaling_step_size   = optional(number)
     })
   }))
   nullable = false

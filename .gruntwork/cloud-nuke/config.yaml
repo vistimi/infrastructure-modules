@@ -22,8 +22,8 @@ ECRRepository:
   include:
     names_regex:
       - local
-      - test
   exclude:
     names_regex:
+      - test
       - public
       - prod

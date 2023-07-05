@@ -138,7 +138,7 @@ module "asg" {
   desired_capacity                = ceil(var.service.task_desired_count * each.value.capacity_provider.weight / local.weight_total)
   vpc_zone_identifier             = local.subnets
   health_check_type               = "EC2"
-  target_group_arns               = module.alb.target_group_arns
+  target_group_arns               = module.elb.target_group_arns
   security_groups                 = [module.autoscaling_sg[each.key].security_group_id]
   service_linked_role_arn         = aws_iam_service_linked_role.autoscaling.arn
   instance_refresh                = each.value.instance_refresh
@@ -222,7 +222,7 @@ module "asg" {
     #   target_tracking_configuration = {
     #     predefined_metric_specification = {
     #       predefined_metric_type = "ALBRequestCountPerTarget"
-    #       resource_label         = "${module.alb.lb_arn_suffix}/${module.alb.target_group_arn_suffixes[0]}"
+    #       resource_label         = "${module.elb.lb_arn_suffix}/${module.elb.target_group_arn_suffixes[0]}"
     #     }
     #     target_value = 800
     #   }
@@ -268,16 +268,18 @@ module "autoscaling_sg" {
 
   // only accept incoming traffic from load balancer
   computed_ingress_with_source_security_group_id = [
+    for target in var.traffic.targets :
     {
       // dynamic port mapping requires all the ports open
-      from_port                = var.service.use_fargate ? var.traffic.target_port : 32768
-      to_port                  = var.service.use_fargate ? var.traffic.target_port : 65535
+      from_port                = var.service.use_fargate ? target.port : 32768
+      to_port                  = var.service.use_fargate ? target.port : 65535
       protocol                 = "tcp"
       description              = "Load Balancer ports"
-      source_security_group_id = module.alb_sg.security_group_id
+      source_security_group_id = module.elb_sg.security_group_id
     }
   ]
-  number_of_computed_ingress_with_source_security_group_id = 1
+  number_of_computed_ingress_with_source_security_group_id = length(var.traffic.targets)
+
   // accept SSH if key
   ingress_with_cidr_blocks = each.value.key_name != null ? [
     {
@@ -300,7 +302,7 @@ resource "aws_autoscaling_attachment" "ecs" {
     if !var.service.use_fargate
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
-  lb_target_group_arn    = module.alb.target_group_arns[0] # works only with one tg
+  lb_target_group_arn    = module.elb.target_group_arns[0] # works only with one tg
 }
 
 # group notification

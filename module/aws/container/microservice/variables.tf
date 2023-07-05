@@ -18,6 +18,18 @@ variable "vpc" {
   })
 }
 
+variable "route53" {
+  type = object({
+    zone = object({
+      name    = string
+      comment = optional(string)
+    })
+    record = object({
+      subdomain_name = string
+    })
+  })
+}
+
 variable "ecs" {
   type = object({
     service = object({
@@ -37,13 +49,17 @@ variable "ecs" {
       prefix         = optional(string)
     })
     traffic = object({
-      listener_port             = number
-      listener_protocol         = string
-      listener_protocol_version = string
-      target_port               = number
-      target_protocol           = string
-      target_protocol_version   = string
-      health_check_path         = optional(string)
+      listeners = list(objects({
+        port             = number
+        protocol         = string
+        protocol_version = string
+      }))
+      targets = list(objects({
+        port              = number
+        protocol          = string
+        protocol_version  = string
+        health_check_path = optional(string)
+      }))
     })
     task_definition = object({
       memory               = number
@@ -98,8 +114,8 @@ variable "ecs" {
         base                        = optional(number)
         weight                      = number
         target_capacity_cpu_percent = number
-        maximum_scaling_step_size   = number
-        minimum_scaling_step_size   = number
+        maximum_scaling_step_size   = optional(number)
+        minimum_scaling_step_size   = optional(number)
       })
     })))
   })

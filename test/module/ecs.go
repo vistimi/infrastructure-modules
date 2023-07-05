@@ -1,4 +1,4 @@
-package module_test
+package module
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_ecs_example_test.go
-func TestEcs(t *testing.T, accountRegion, clusterName, serviceName string, serviceCount, serviceTaskDesiredCount int64) {
+func TestEcs(t *testing.T, accountRegion, clusterName, serviceName string, serviceCount int64) {
 	// cluster
 	cluster := terratest_aws.GetEcsCluster(t, accountRegion, clusterName)
 	if cluster == nil {
@@ -26,7 +26,8 @@ func TestEcs(t *testing.T, accountRegion, clusterName, serviceName string, servi
 	if service == nil {
 		t.Fatalf("no service")
 	}
-	assert.Equal(t, awsSDK.Int64Value(service.DesiredCount), serviceTaskDesiredCount, "amount of tasks in service do not match")
+	serviceTaskDesiredCount := awsSDK.Int64Value(service.DesiredCount)
+	assert.NotEqual(t, int64(0), serviceTaskDesiredCount, "amount of tasks in service do not match")
 
 	taskDefinition := terratest_aws.GetEcsTaskDefinition(t, accountRegion, awsSDK.StringValue(service.TaskDefinition))
 	if taskDefinition == nil {

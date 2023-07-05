@@ -2,12 +2,34 @@
 #     VPC
 # ------------
 module "vpc" {
-  source     = "../../../../module/aws/vpc"
+  source = "../../../../module/aws/network/vpc"
+
   name       = var.common_name
   cidr_ipv4  = var.vpc.cidr_ipv4
   enable_nat = var.vpc.enable_nat
 
   tags = var.common_tags
+}
+
+# -----------------
+#     Route53
+# -----------------
+// TODO: check ecs service discovery
+module "route53_record" {
+  source = "../../../../module/aws/network/route53/record"
+
+  for_each = {
+    for key, value in { var.route53.record.subdomain_name = var.route53 } :
+    key => {}
+    if var.route53 != null
+  }
+
+  zone_name      = var.route53.zone.name
+  subdomain_name = var.route53.record.subdomain_name
+  alias_name     = "dualstack.${module.ecs.elb.lb_dns_name}"
+  alias_zone_id  = module.ecs.elb.lb_zone_id
+
+  depends_on = [module.ecs.module.elb]
 }
 
 # ------------
@@ -16,13 +38,14 @@ module "vpc" {
 module "ecs" {
   source = "../../../../module/aws/container/ecs"
 
-  common_name = var.common_name
-  common_tags = var.common_tags
   vpc = {
-    id                 = module.vpc.vpc.vpc_id
-    security_group_ids = [module.vpc.vpc.default_security_group_id]
+    id                 = module.vpc.vpc.id
+    security_group_ids = [module.vpc.default.security_group_id]
     tier               = var.vpc.tier
   }
+
+  common_name = var.common_name
+  common_tags = var.common_tags
 
   service = var.ecs.service
   traffic = var.ecs.traffic
@@ -38,9 +61,11 @@ module "ecs" {
 #     Bucket env
 # ------------------------
 module "bucket_env" {
-  source        = "../../../../module/aws/data/bucket"
+  source = "../../../../module/aws/data/bucket"
+
+  vpc_id = module.vpc.vpc.id
+
   name          = var.bucket_env.name
-  vpc_id        = module.vpc.vpc.vpc_id
   force_destroy = var.bucket_env.force_destroy
   versioning    = var.bucket_env.versioning
 

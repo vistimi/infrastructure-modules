@@ -7,8 +7,36 @@ output "ecs" {
   }
 }
 
+output "route53" {
+  value = {
+    for key, route53 in module.route53 : key => {
+      record = route53.record
+      zone   = route53.zone
+    }
+  }
+}
+
 output "vpc" {
-  value = module.vpc.vpc
+  value = {
+    azs                   = module.vpc.azs
+    cgw                   = module.vpc.cgw
+    database              = module.vpc.database
+    default               = module.vpc.default
+    dhcp                  = module.vpc.dhcp
+    egress                = module.vpc.egress
+    elasticache           = module.vpc.elasticache
+    igw                   = module.vpc.igw
+    intra                 = module.vpc.intra
+    name                  = module.vpc.name
+    nat                   = module.vpc.nat
+    outpost               = module.vpc.outpost
+    private               = module.vpc.private
+    public                = module.vpc.public
+    redshift              = module.vpc.redshift
+    this_customer_gateway = module.vpc.this_customer_gateway
+    vgw                   = module.vpc.vgw
+    vpc                   = module.vpc.vpc
+  }
 }
 
 output "bucket_env" {

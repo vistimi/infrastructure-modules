@@ -1,21 +1,21 @@
-# https://registry.terraform.io/module/terraform-aws-modules/alb/aws/8.6.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
+# https://registry.terraform.io/module/terraform-aws-modules/elb/aws/8.6.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "elb" {
   value = {
-    http_tcp_listener_arns    = module.alb.http_tcp_listener_arns
-    http_tcp_listener_ids     = module.alb.http_tcp_listener_ids
-    https_listener_arns       = module.alb.https_listener_arns
-    https_listener_ids        = module.alb.https_listener_ids
-    lb_arn                    = module.alb.lb_arn
-    lb_arn_suffix             = module.alb.lb_arn_suffix
-    lb_dns_name               = module.alb.lb_dns_name
-    lb_id                     = module.alb.lb_id
-    lb_zone_id                = module.alb.lb_zone_id
-    security_group_arn        = module.alb.security_group_arn
-    security_group_id         = module.alb.security_group_id
-    target_group_arn_suffixes = module.alb.target_group_arn_suffixes
-    target_group_arns         = module.alb.target_group_arns
-    target_group_attachments  = module.alb.target_group_attachments
-    target_group_names        = module.alb.target_group_names
+    http_tcp_listener_arns    = module.elb.http_tcp_listener_arns
+    http_tcp_listener_ids     = module.elb.http_tcp_listener_ids
+    https_listener_arns       = module.elb.https_listener_arns
+    https_listener_ids        = module.elb.https_listener_ids
+    lb_arn                    = module.elb.lb_arn
+    lb_arn_suffix             = module.elb.lb_arn_suffix
+    lb_dns_name               = module.elb.lb_dns_name
+    lb_id                     = module.elb.lb_id
+    lb_zone_id                = module.elb.lb_zone_id
+    security_group_arn        = module.elb.security_group_arn
+    security_group_id         = module.elb.security_group_id
+    target_group_arn_suffixes = module.elb.target_group_arn_suffixes
+    target_group_arns         = module.elb.target_group_arns
+    target_group_attachments  = module.elb.target_group_attachments
+    target_group_names        = module.elb.target_group_names
   }
 }
 
@@ -52,7 +52,6 @@ output "asg" {
       launch_template_name                        = asg.launch_template_name
     }
   }
-
 }
 
 # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/outputs.tf

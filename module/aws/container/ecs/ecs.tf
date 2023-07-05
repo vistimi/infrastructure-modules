@@ -42,9 +42,9 @@ module "ecs" {
       name                   = "${var.common_name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
-        // TODO: use target_tracking_scaling_policy_configuration.value.scale_in_cooldown
-        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size
-        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size
+        // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
+        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size == null ? max(min(ceil((var.service.task_max_count - var.service.task_min_count) / 3), 10), 1) : value.capacity_provider.maximum_scaling_step_size
+        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size == null ? max(min(floor((var.service.task_max_count - var.service.task_min_count) / 10), 10), 1) : value.capacity_provider.minimum_scaling_step_size
         target_capacity           = value.capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
@@ -79,7 +79,7 @@ module "ecs" {
 
       load_balancer = {
         service = {
-          target_group_arn = module.alb.target_group_arns[0] // one LB per target group
+          target_group_arn = module.elb.target_group_arns[0] // one LB per target group
           container_name   = var.common_name
           container_port   = var.traffic.target_port
         }
@@ -87,23 +87,27 @@ module "ecs" {
 
       # security group
       subnet_ids = local.subnets
-      security_group_rules = {
-        alb_ingress = {
-          type                     = "ingress"
-          from_port                = var.traffic.target_port
-          to_port                  = var.traffic.target_port
-          protocol                 = "tcp"
-          description              = "Service port"
-          source_security_group_id = module.alb_sg.security_group_id
+      security_group_rules = merge(
+        {
+          for index, listener in var.traffic.listeners :
+          "alb_ingress_${listener.port}" => {
+            type                     = "ingress"
+            from_port                = target.port
+            to_port                  = target.port
+            protocol                 = "tcp"
+            description              = "Service port"
+            source_security_group_id = module.elb_sg.security_group_id
+          }
+          }, {
+          egress_all = {
+            type        = "egress"
+            from_port   = 0
+            to_port     = 0
+            protocol    = "-1"
+            cidr_blocks = ["0.0.0.0/0"]
+          }
         }
-        egress_all = {
-          type        = "egress"
-          from_port   = 0
-          to_port     = 0
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
-        }
-      }
+      )
 
       #---------------------
       # Task definition

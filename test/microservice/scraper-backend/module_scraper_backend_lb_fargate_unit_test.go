@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"golang.org/x/exp/maps"
+
+	"github.com/KookaS/infrastructure-modules/test/module"
 )
 
 // TODO: autoscaling
@@ -18,7 +20,6 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
-	ServiceTaskDesiredCount := int64(2)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"fargate": map[string]any{
 			"os":           "linux",
@@ -39,8 +40,8 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 		"service": map[string]any{
 			"use_fargate":                        true,
 			"task_min_count":                     0,
-			"task_desired_count":                 ServiceTaskDesiredCount,
-			"task_max_count":                     ServiceTaskDesiredCount,
+			"task_desired_count":                 3,
+			"task_max_count":                     3,
 			"deployment_minimum_healthy_percent": 66,
 		},
 	})
@@ -49,5 +50,5 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 		"memory": 1024,
 	})
 
-	RunTest(t, optionsProject, commonName, ServiceTaskDesiredCount)
+	module.RunTestMicroservice(t, optionsProject, commonName, MicroservicePath, GithubProject, Endpoints)
 }
