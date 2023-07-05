@@ -21,6 +21,16 @@ variable "vpc" {
 # ELB & ECS
 #--------------
 
+variable "acm" {
+  type = object({
+    domain_name = string
+    key_types   = optional(list(string))
+    statuses    = optional(list(string))
+    types       = optional(list(string))
+    most_recent = optional(bool)
+  })
+}
+
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
 variable "traffic" {
   type = object({

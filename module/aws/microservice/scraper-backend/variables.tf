@@ -50,6 +50,13 @@ variable "microservice" {
         retention_days = number
         prefix         = optional(string)
       })
+      acm = optional(object({
+        domain_name = string
+        key_types   = optional(list(string))
+        statuses    = optional(list(string))
+        types       = optional(list(string))
+        most_recent = optional(bool)
+      }))
       traffic = object({
         listeners = list(objects({
           port             = number
@@ -57,9 +64,9 @@ variable "microservice" {
           protocol_version = string
         }))
         targets = list(objects({
-          port             = number
-          protocol         = string
-          protocol_version = string
+          port              = number
+          protocol          = string
+          protocol_version  = string
           health_check_path = optional(string)
         }))
       })

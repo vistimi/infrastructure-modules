@@ -98,6 +98,7 @@ module "ecs" {
             description              = "Service port"
             source_security_group_id = module.elb_sg.security_group_id
           }
+          if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
           }, {
           egress_all = {
             type        = "egress"

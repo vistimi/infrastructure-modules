@@ -1,3 +1,16 @@
+data "aws_acm_certificate" "this" {
+
+  for_each = {
+    for key, value in { var.acm.domain_name = var.acm } :
+    key => value
+    if var.acm != null
+  }
+
+  domain      = each.value.domain_name
+  types       = each.value.types
+  most_recent = each.value.most_recent
+}
+
 # Cognito for authentication: https://github.com/terraform-aws-modules/terraform-aws-alb/blob/master/examples/complete-alb/main.tf
 module "elb" {
   source  = "terraform-aws-modules/alb/aws"
@@ -11,29 +24,33 @@ module "elb" {
   subnets         = local.subnets
   security_groups = [module.elb_sg.security_group_id]
 
-  http_tcp_listeners = [
-    for index, listener in var.traffic.listeners : {
-      port               = listener.port
-      protocol           = try(var.protocols[listener.protocol], "TCP")
-      target_group_index = index
-    }
+  http_tcp_listeners = flatten([
+    for listener in var.traffic.listeners : [
+      for index, target in var.traffic.targets : {
+        port               = listener.port
+        protocol           = try(var.protocols[listener.protocol], "TCP")
+        target_group_index = index
+      }
+    ]
     if listener.protocol == "http"
-  ]
+  ])
 
-  https_listeners = [
-    for index, listener in var.traffic.listeners : {
-      port     = listener.port
-      protocol = try(var.protocols[listener.protocol], "TCP")
-      # certificate_arn    = "arn:${local.partition}:iam::123456789012:server-certificate/test_cert-123456789012"
-      target_group_index = index
-    }
-    if listener.protocol == "https"
-  ]
+  https_listeners = flatten([
+    for listener in var.traffic.listeners : [
+      for index, target in var.traffic.targets : {
+        port               = listener.port
+        protocol           = try(var.protocols[listener.protocol], "TCP")
+        certificate_arn    = data.aws_acm_certificate.this.arn
+        target_group_index = index
+      }
+    ]
+    if listener.protocol == "https" && var.acm != null
+  ])
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
   target_groups = [
-    for index, target in var.traffic.targets :
+    for target in var.traffic.targets :
     {
       name             = var.common_name
       backend_protocol = try(var.protocols[target.protocol], "TCP")
@@ -52,6 +69,7 @@ module "elb" {
       }
       protocol_version = try(var.protocol_versions[target.protocol_version], null)
     }
+    if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
   ]
 
   # Sleep to give time to the ASG not to fail
@@ -77,6 +95,7 @@ module "elb_sg" {
       description = "Listner port ${listener.port}"
       cidr_blocks = "0.0.0.0/0"
     }
+    if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
   ]
   egress_rules = ["all-all"]
   # egress_cidr_blocks = module.vpc.subnets_cidr_blocks
