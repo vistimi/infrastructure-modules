@@ -81,7 +81,7 @@ module "ecs" {
         service = {
           target_group_arn = module.elb.target_group_arns[0] // one LB per target group
           container_name   = var.common_name
-          container_port   = var.traffic.target_port
+          container_port   = var.traffic.target.port
         }
       }
 
@@ -92,13 +92,12 @@ module "ecs" {
           for index, listener in var.traffic.listeners :
           "alb_ingress_${listener.port}" => {
             type                     = "ingress"
-            from_port                = target.port
-            to_port                  = target.port
+            from_port                = listener.port
+            to_port                  = listener.port
             protocol                 = "tcp"
             description              = "Service port"
             source_security_group_id = module.elb_sg.security_group_id
-          }
-          if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
+          } if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
           }, {
           egress_all = {
             type        = "egress"
@@ -106,6 +105,7 @@ module "ecs" {
             to_port     = 0
             protocol    = "-1"
             cidr_blocks = ["0.0.0.0/0"]
+            description = "Allow all traffic"
           }
         }
       )
@@ -207,8 +207,8 @@ module "ecs" {
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [
             {
-              containerPort = var.traffic.target_port
-              hostPort      = var.service.use_fargate ? var.traffic.target_port : 0 // "host" network can use target port 
+              containerPort = var.traffic.target.port
+              hostPort      = var.service.use_fargate ? var.traffic.target.port : 0 // "host" network can use target port 
               name          = "container-port"
               protocol      = "tcp"
             }

@@ -23,28 +23,40 @@ variable "vpc" {
 
 variable "acm" {
   type = object({
-    domain_name = string
-    key_types   = optional(list(string))
-    statuses    = optional(list(string))
-    types       = optional(list(string))
-    most_recent = optional(bool)
+    zone_name = string
+    record = object({
+      subdomain_name = string
+      extensions     = optional(list(string))
+    })
+  })
+}
+
+variable "route53" {
+  type = object({
+    zone = object({
+      name = string
+    })
+    record = object({
+      extensions     = optional(list(string))
+      subdomain_name = string
+    })
   })
 }
 
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
 variable "traffic" {
   type = object({
-    listeners = list(objects({
+    listeners = list(object({
       port             = number
       protocol         = string
       protocol_version = string
     }))
-    targets = list(objects({
+    target = object({
       port              = number
       protocol          = string
       protocol_version  = string
       health_check_path = optional(string, "/")
-    }))
+    })
   })
 }
 
@@ -68,19 +80,13 @@ resource "null_resource" "listener" {
 }
 
 resource "null_resource" "target" {
-
-  for_each = {
-    for target in var.traffic.targets :
-    target.port => target
-  }
-
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], each.value.protocol)
+      condition     = contains(["http", "https"], var.traffic.target.protocol)
       error_message = "Target protocol must be one of [http, https]"
     }
     precondition {
-      condition     = contains(["http", "http2", "grpc"], each.value.protocol_version)
+      condition     = contains(["http", "http2", "grpc"], var.traffic.target.protocol_version)
       error_message = "Target protocol version must be one of [http, http2, grpc]"
     }
   }

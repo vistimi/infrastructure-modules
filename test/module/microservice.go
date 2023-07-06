@@ -75,8 +75,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	// id := RandomID(8)
-	id := "rlxazite"
+	id := RandomID(8)
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	commonName := strings.ToLower(fmt.Sprintf("%s-%s-%s", projectName, serviceName, environment_name))
 	commonTags := map[string]string{
@@ -132,7 +131,7 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 
 	tlsConfig := tls.Config{}
 	for _, endpoint := range endpoints {
-		options := terratest_http_helper.HttpGetOptions{Url: endpoint.Url, TlsConfig: &tlsConfig, Timeout: 10}
+		options := terratest_http_helper.HttpGetOptions{Url: endpoint.Path, TlsConfig: &tlsConfig, Timeout: 10}
 		expectedBody := ""
 		if endpoint.ExpectedBody != nil {
 			expectedBody = *endpoint.ExpectedBody
@@ -186,8 +185,8 @@ func RunTestMicroservice(t *testing.T, options *terraform.Options, commonName st
 
 	// test Load Balancer HTTP
 	elb := microserviceExtractElb(t, microservicePath)
-	if elb != nil && len(elb) != 0 {
-		elbDnsUrl := elb["lb_dns_name"].(string)
+	if elb != nil {
+		elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
 		elbDnsUrl = "http://" + elbDnsUrl
 		fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
 
@@ -208,13 +207,13 @@ func RunTestMicroservice(t *testing.T, options *terraform.Options, commonName st
 		})
 	}
 
-	// TODO: add HTTPS
+	// TODO: add HTTPS if no timeout from ACM
 
 	// test Route53
 	route53 := microserviceExtractRoute53(t, microservicePath)
-	if route53 != nil && len(route53) != 0 {
-		zoneName := elb["zone"].(map[string]any)["name"].(string)
-		recordSubdomainName := elb["record"].(map[string]any)["subdomain_name"].(string)
+	if route53 != nil {
+		zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
+		recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
 		route53DnsUrl := recordSubdomainName + "." + zoneName
 		fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
 
@@ -236,7 +235,7 @@ func RunTestMicroservice(t *testing.T, options *terraform.Options, commonName st
 	}
 }
 
-func microserviceExtractElb(t *testing.T, microservicePath string) map[string]any {
+func microserviceExtractElb(t *testing.T, microservicePath string) any {
 	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
 	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
 	if err != nil {
@@ -246,10 +245,10 @@ func microserviceExtractElb(t *testing.T, microservicePath string) map[string]an
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	var result map[string]any
 	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"].(map[string]any)
+	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"]
 }
 
-func microserviceExtractRoute53(t *testing.T, microservicePath string) map[string]any {
+func microserviceExtractRoute53(t *testing.T, microservicePath string) any {
 	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
 	if err != nil {
 		t.Fatal(err)
@@ -258,5 +257,5 @@ func microserviceExtractRoute53(t *testing.T, microservicePath string) map[strin
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	var result map[string]any
 	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["route53"].(map[string]any)
+	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["route53"]
 }

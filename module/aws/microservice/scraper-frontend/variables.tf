@@ -19,10 +19,10 @@ variable "microservice" {
     })
     route53 = optional(object({
       zone = object({
-        name    = string
-        comment = optional(string)
+        name = string
       })
       record = object({
+        extensions     = optional(list(string))
         subdomain_name = string
       })
     }))
@@ -50,25 +50,18 @@ variable "microservice" {
         retention_days = number
         prefix         = optional(string)
       })
-      acm = optional(object({
-        domain_name = string
-        key_types   = optional(list(string))
-        statuses    = optional(list(string))
-        types       = optional(list(string))
-        most_recent = optional(bool)
-      }))
       traffic = object({
-        listeners = list(objects({
+        listeners = list(object({
           port             = number
           protocol         = string
           protocol_version = string
         }))
-        targets = list(objects({
+        target = object({
           port              = number
           protocol          = string
           protocol_version  = string
           health_check_path = optional(string)
-        }))
+        })
       })
       task_definition = object({
         memory               = number

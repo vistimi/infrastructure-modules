@@ -21,12 +21,15 @@ const (
 	projectName = "scraper"
 	serviceName = "backend"
 
-	listenerPort            = 80
-	listenerProtocol        = "http"
-	listenerProtocolVersion = "http"
-	targetPort              = 8080
-	targetProtocol          = "http"
-	targetProtocolVersion   = "http"
+	listenerHttpPort             = 80
+	listenerHttpProtocol         = "http"
+	listenerHttpProtocolVersion  = "http"
+	listenerHttpsPort            = 443
+	listenerHttpsProtocol        = "https"
+	listenerHttpsProtocolVersion = "http"
+	targetPort                   = 8080
+	targetProtocol               = "http"
+	targetProtocolVersion        = "http"
 
 	MicroservicePath = "../../../module/aws/microservice/scraper-backend"
 )
@@ -122,19 +125,19 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
 		"vpc": map[string]any{
 			"name":       commonName,
-			"cidr_ipv4":  "1.0.0.0/16",
+			"cidr_ipv4":  "100.0.0.0/16",
 			"enable_nat": false,
-			"tier":       "Public",
+			"tier":       "public",
 		},
 		// FIXME: remove for test
 		"route53": map[string]any{
-			"domain_name": module.DomainName,
 			"zone": map[string]any{
 				"name":    module.DomainName,
 				"comment": module.DomainName,
 			},
 			"record": map[string]any{
-				"subdomain_name": fmt.Sprintf("www.%s", commonName),
+				"extensions":     []string{"www"},
+				"subdomain_name": commonName,
 			},
 		},
 	})
@@ -142,18 +145,16 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 		"traffic": map[string]any{
 			"listeners": []map[string]any{
 				{
-					"port":             listenerPort,
-					"protocol":         listenerProtocol,
-					"protocol_version": listenerProtocolVersion,
+					"port":             listenerHttpPort,
+					"protocol":         listenerHttpProtocol,
+					"protocol_version": listenerHttpProtocolVersion,
 				},
 			},
-			"targets": []map[string]any{
-				{
-					"port":              targetPort,
-					"protocol":          targetProtocol,
-					"protocol_version":  targetProtocolVersion,
-					"health_check_path": GithubProject.HealthCheckPath,
-				},
+			"target": map[string]any{
+				"port":              targetPort,
+				"protocol":          targetProtocol,
+				"protocol_version":  targetProtocolVersion,
+				"health_check_path": GithubProject.HealthCheckPath,
 			},
 		},
 	})

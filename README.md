@@ -160,7 +160,7 @@ terraform apply -var <var_to_change>=<new_value>
 ## Route53
 
 - Have a `domain` name (in this case hosted by aws)
-- Create a `Hosted zone` with the same name as the `domain` name
+- Create a public `Hosted zone` with the same name as the `domain` name. Make sure the `domain` name servers match the `hosted zone` name servers
 - Create a record that will redirect the traffic to your desired resource
   -  For mapping to a resource, use `A` (for ipv4) or `AAAA` (for ipv6) record
      -  For a microservice Load Balancer, a record is by default created if you give the route53 variables
@@ -168,24 +168,10 @@ terraform apply -var <var_to_change>=<new_value>
      -  For HTTPS, use a certificate and add the record to the `Hosted zone`
 
 ## vpc
-#### tier
-
-Use the tag to access with `data` the desired outputs from specific subnets, `Private` or `Public`:
-
-```hcl
-data "aws_subnets" "tier" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-
-  tags = {
-    Tier = var.vpc_tier
-  }
-}
-```
-
 #### cidr
+
+- 100.0.0.0/16 scraper-backend
+- 101.0.0.0/16 scraper-frontend
 
 Using `/16` for CIDR blocks means that the last two parts of the adress are customizable for subnets.
 
@@ -200,10 +186,6 @@ To check the first and last ip of a CIDR block:
 cidrhost("192.168.0.0/16", 0)
 cidrhost("192.168.0.0/16", -1)
 ```
-
-- 1.0.0.0/16 scraper test
-
-
 
 # terratest 
 

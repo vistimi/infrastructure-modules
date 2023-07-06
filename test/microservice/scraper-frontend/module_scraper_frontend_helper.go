@@ -18,12 +18,15 @@ const (
 	projectName = "scraper"
 	serviceName = "frontend"
 
-	listenerPort            = 80
-	listenerProtocol        = "http"
-	listenerProtocolVersion = "http"
-	targetPort              = 3000
-	targetProtocol          = "http"
-	targetProtocolVersion   = "http"
+	listenerHttpPort             = 80
+	listenerHttpProtocol         = "http"
+	listenerHttpProtocolVersion  = "http"
+	listenerHttpsPort            = 443
+	listenerHttpsProtocol        = "https"
+	listenerHttpsProtocolVersion = "http"
+	targetPort                   = 3000
+	targetProtocol               = "http"
+	targetProtocolVersion        = "http"
 
 	MicroservicePath = "../../../module/aws/microservice/scraper-frontend"
 )
@@ -69,40 +72,27 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
 		"vpc": map[string]any{
 			"name":       commonName,
-			"cidr_ipv4":  "2.0.0.0/16",
+			"cidr_ipv4":  "101.0.0.0/16",
 			"enable_nat": false,
-			"tier":       "Public",
+			"tier":       "public",
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"traffic": map[string]any{
 			"listeners": []map[string]any{
 				{
-					"port":             listenerPort,
-					"protocol":         listenerProtocol,
-					"protocol_version": listenerProtocolVersion,
+					"port":             listenerHttpPort,
+					"protocol":         listenerHttpProtocol,
+					"protocol_version": listenerHttpProtocolVersion,
 				},
 			},
-			"targets": []map[string]any{
-				{
-					"port":               targetPort,
-					"protocol":           targetProtocol,
-					"protocol_version":   targetProtocolVersion,
-					"health_check_path":         GithubProject.HealthCheckPath,
-				},
-			},		
+			"target": map[string]any{
+				"port":              targetPort,
+				"protocol":          targetProtocol,
+				"protocol_version":  targetProtocolVersion,
+				"health_check_path": GithubProject.HealthCheckPath,
+			},
 		},
-
-		listeners = list(objects({
-			port             = number
-			protocol         = string
-			protocol_version = string
-		  }))
-		  targets = list(objects({
-			port             = number
-			protocol         = string
-			protocol_version = string
-		  }))
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{

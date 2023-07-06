@@ -19,6 +19,31 @@ output "elb" {
   }
 }
 
+output "acm" {
+  value = {
+    for key, acm in module.acm : key => {
+      acm_certificate_arn                       = acm.acm_certificate_arn
+      acm_certificate_domain_validation_options = acm.acm_certificate_domain_validation_options
+      acm_certificate_status                    = acm.acm_certificate_status
+      acm_certificate_validation_emails         = acm.acm_certificate_validation_emails
+      distinct_domain_names                     = acm.distinct_domain_names
+      validation_domains                        = acm.validation_domains
+      validation_route53_record_fqdns           = acm.validation_route53_record_fqdns
+    }
+  }
+}
+
+output "route53" {
+  value = {
+    records = {
+    for key, record in module.route53_records : key => {
+      name = record.name
+      fqdn = record.fqdn
+    }
+  }
+  }
+}
+
 # https://registry.terraform.io/module/terraform-aws-modules/autoscaling/aws/6.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "asg" {
   value = {

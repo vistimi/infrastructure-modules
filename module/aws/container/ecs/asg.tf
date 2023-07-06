@@ -268,17 +268,16 @@ module "autoscaling_sg" {
 
   // only accept incoming traffic from load balancer
   computed_ingress_with_source_security_group_id = [
-    for target in var.traffic.targets :
     {
       // dynamic port mapping requires all the ports open
-      from_port                = var.service.use_fargate ? target.port : 32768
-      to_port                  = var.service.use_fargate ? target.port : 65535
+      from_port                = var.service.use_fargate ? var.traffic.target.port : 32768
+      to_port                  = var.service.use_fargate ? var.traffic.target.port : 65535
       protocol                 = "tcp"
       description              = "Load Balancer ports"
       source_security_group_id = module.elb_sg.security_group_id
     }
   ]
-  number_of_computed_ingress_with_source_security_group_id = length(var.traffic.targets)
+  number_of_computed_ingress_with_source_security_group_id = 1
 
   // accept SSH if key
   ingress_with_cidr_blocks = each.value.key_name != null ? [

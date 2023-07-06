@@ -8,12 +8,6 @@ import (
 	"github.com/KookaS/infrastructure-modules/test/module"
 )
 
-// TODO: autoscaling
-// https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy#ecs-service-autoscaling
-// https://towardsaws.com/aws-ecs-service-autoscaling-terraform-included-d4b46997742b
-// iam application-autoscaling
-
-// FIXME: no fargate spot, only on-demand is working
 func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
@@ -46,8 +40,8 @@ func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"cpu":    512,
-		"memory": 1024,
+		"cpu":    1024,
+		"memory": 2048,
 	})
 
 	module.RunTestMicroservice(t, optionsProject, commonName, MicroservicePath, GithubProject, Endpoints)

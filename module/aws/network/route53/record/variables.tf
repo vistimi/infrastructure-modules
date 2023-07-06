@@ -3,17 +3,18 @@ variable "zone_name" {
   type        = string
 }
 
-variable "subdomain_name" {
-  description = "The record name prefixed to the zone name"
-  type        = string
-}
-
-variable "alias_name" {
-  description = "Url of the record"
-  type        = string
-}
-
-variable "alias_zone_id" {
-  description = "Zone id of the record"
-  type        = string
+variable "record" {
+  description = "The name of the zone"
+  type = object({
+    subdomain_name = string
+    extensions     = optional(list(string), [])
+    type           = string
+    alias = optional(object({
+      name    = string
+      zone_id = string
+    }))
+    ttl            = optional(number)
+    records        = optional(list(string))
+    set_identifier = optional(string)
+  })
 }

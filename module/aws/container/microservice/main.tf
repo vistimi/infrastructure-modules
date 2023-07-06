@@ -7,29 +7,9 @@ module "vpc" {
   name       = var.common_name
   cidr_ipv4  = var.vpc.cidr_ipv4
   enable_nat = var.vpc.enable_nat
+  tier       = var.vpc_tiers[var.vpc.tier]
 
   tags = var.common_tags
-}
-
-# -----------------
-#     Route53
-# -----------------
-// TODO: check ecs service discovery
-module "route53_record" {
-  source = "../../../../module/aws/network/route53/record"
-
-  for_each = {
-    for key, value in { var.route53.record.subdomain_name = var.route53 } :
-    key => {}
-    if var.route53 != null
-  }
-
-  zone_name      = var.route53.zone.name
-  subdomain_name = var.route53.record.subdomain_name
-  alias_name     = "dualstack.${module.ecs.elb.lb_dns_name}"
-  alias_zone_id  = module.ecs.elb.lb_zone_id
-
-  depends_on = [module.ecs.module.elb]
 }
 
 # ------------
@@ -41,8 +21,17 @@ module "ecs" {
   vpc = {
     id                 = module.vpc.vpc.id
     security_group_ids = [module.vpc.default.security_group_id]
-    tier               = var.vpc.tier
+    tier               = var.vpc_tiers[var.vpc.tier]
   }
+
+  acm = var.route53 != null ? {
+    zone_name = var.route53.zone.name
+    record = {
+      subdomain_name = var.route53.record.subdomain_name
+      extensions     = var.route53.record.extensions
+    }
+  } : null
+  route53 = var.route53
 
   common_name = var.common_name
   common_tags = var.common_tags
