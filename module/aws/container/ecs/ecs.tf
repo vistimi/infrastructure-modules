@@ -87,28 +87,24 @@ module "ecs" {
 
       # security group
       subnet_ids = local.subnets
-      security_group_rules = merge(
-        {
-          for index, listener in var.traffic.listeners :
-          "alb_ingress_${listener.port}" => {
-            type                     = "ingress"
-            from_port                = listener.port
-            to_port                  = listener.port
-            protocol                 = "tcp"
-            description              = "Service port"
-            source_security_group_id = module.elb_sg.security_group_id
-          } if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
-          }, {
-          egress_all = {
-            type        = "egress"
-            from_port   = 0
-            to_port     = 0
-            protocol    = "-1"
-            cidr_blocks = ["0.0.0.0/0"]
-            description = "Allow all traffic"
-          }
+      security_group_rules = {
+        elb_ingress = {
+          type                     = "ingress"
+          from_port                = var.traffic.target.port
+          to_port                  = var.traffic.target.port
+          protocol                 = "tcp"
+          description              = "Service port"
+          source_security_group_id = module.elb_sg.security_group_id
         }
-      )
+        egress_all = {
+          type        = "egress"
+          from_port   = 0
+          to_port     = 0
+          protocol    = "-1"
+          cidr_blocks = ["0.0.0.0/0"]
+          description = "Allow all traffic"
+        }
+      }
 
       #---------------------
       # Task definition
