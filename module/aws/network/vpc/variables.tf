@@ -14,8 +14,23 @@ variable "cidr_ipv4" {
   type        = string
 }
 
+resource "null_resource" "cidr_ipv4" {
+  lifecycle {
+    precondition {
+      condition     = regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)?", var.cidr_ipv4).size == "16"
+      error_message = "cidr ${jsonencode(regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)?", var.cidr_ipv4))} must have a block of size 16"
+    }
+  }
+}
+
 variable "enable_nat" {
   description = "Enable the NAT gateway"
   type        = bool
   default     = false
+}
+
+variable "tier" {
+  description = "Choose which tier"
+  type        = string
+  default     = "public"
 }

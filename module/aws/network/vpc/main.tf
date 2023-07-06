@@ -22,14 +22,12 @@ module "vpc" {
   single_nat_gateway     = var.enable_nat
   one_nat_gateway_per_az = false
 
-  azs = data.aws_availability_zones.available.names
-  # public_subnets  = local.public_cidrs_ipv4
-  # private_subnets = local.private_cidrs_ipv4
+  azs             = data.aws_availability_zones.available.names
   public_subnets  = local.subnets["public"]
   private_subnets = local.subnets["private"]
 
   private_subnet_tags = { Tier = "Private" }
   public_subnet_tags  = { Tier = "Public" }
 
-  tags = var.tags
+  tags = merge(var.tags, { Zones = jsonencode(data.aws_availability_zones.available.names) })
 }

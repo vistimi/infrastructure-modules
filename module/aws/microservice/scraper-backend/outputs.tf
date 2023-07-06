@@ -1,5 +1,9 @@
 output "microservice" {
-  value = module.microservice
+  value = {
+    ecs        = module.microservice.ecs
+    vpc        = module.microservice.vpc
+    bucket_env = module.microservice.bucket_env
+  }
 }
 
 output "dynamodb_tables" {

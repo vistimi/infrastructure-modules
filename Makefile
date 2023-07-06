@@ -8,7 +8,6 @@ PATH_REL_AWS=module/aws
 PATH_ABS_AWS=${PATH_ABS_ROOT}/${PATH_REL_AWS}
 PATH_REL_AWS_MICROSERVICE=${PATH_REL_AWS}/microservice
 PATH_ABS_AWS_MICROSERVICE=${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}
-PATH_ABS_AWS_VPC=${PATH_ABS_ROOT}/${PATH_REL_AWS}/vpc
 PATH_ABS_AWS_ECR=${PATH_ABS_ROOT}/${PATH_REL_AWS}/container/ecr
 PATH_REL_TEST_MICROSERVICE=test/microservice
 
@@ -273,9 +272,7 @@ nuke-global:
 
 # it needs the tfstate files which are generated with apply
 graph:
-	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}//vpc/graph.png
-graph-module-vpc: ## Generate the graph for the VPC
-	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/vpc
+	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}/graph.png
 graph-module-microservice-scraper-backend: ## Generate the graph for the scraper backend
 	make graph INFRAMAP_PATH=${PATH_ABS_ROOT}/module/services/scraper-backend
 graph-module-microservice-scraper-frontend: ## Generate the graph for the scraper frontend
