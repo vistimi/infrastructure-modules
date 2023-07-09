@@ -26,6 +26,7 @@ resource "null_resource" "cidr_ipv4" {
 variable "enable_nat" {
   description = "Enable the NAT gateway"
   type        = bool
+  required    = false
   default     = false
 }
 
