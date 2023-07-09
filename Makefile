@@ -223,6 +223,7 @@ prepare-scraper-frontend-env:
 .ONESHELL: clean
 clean: ## Clean the test environment
 	make nuke-region
+	make nuke-vpc
 	make nuke-global
 
 	make clean-task-definition
@@ -256,6 +257,8 @@ clean-ecs:
 
 nuke-region:
 	cloud-nuke aws --region ${AWS_REGION} --config .gruntwork/cloud-nuke/config.yaml --force;
+nuke-vpc:
+	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
 nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 

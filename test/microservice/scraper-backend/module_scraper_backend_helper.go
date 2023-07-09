@@ -124,21 +124,9 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
 		"vpc": map[string]any{
-			"name":       commonName,
-			"cidr_ipv4":  "100.0.0.0/16",
-			"enable_nat": false,
-			"tier":       "public",
-		},
-		// FIXME: remove for test
-		"route53": map[string]any{
-			"zone": map[string]any{
-				"name":    module.DomainName,
-				"comment": module.DomainName,
-			},
-			"record": map[string]any{
-				"extensions":     []string{"www"},
-				"subdomain_name": commonName,
-			},
+			"name":      commonName,
+			"cidr_ipv4": "100.0.0.0/16",
+			"tier":      "public",
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
