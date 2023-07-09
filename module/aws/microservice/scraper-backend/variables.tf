@@ -14,8 +14,8 @@ variable "microservice" {
     vpc = object({
       name       = string
       cidr_ipv4  = string
-      enable_nat = bool
       tier       = string
+      enable_nat = optional(bool)
     })
     route53 = optional(object({
       zone = object({
