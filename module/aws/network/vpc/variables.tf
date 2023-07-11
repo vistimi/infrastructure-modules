@@ -35,3 +35,19 @@ variable "tier" {
   type        = string
   default     = "public"
 }
+
+variable "tier_tags" {
+  description = "vpc tier tags"
+  type        = list(string)
+
+  default = ["private", "public"]
+}
+
+resource "null_resource" "tier_tag_names" {
+  lifecycle {
+    precondition {
+      condition     = contains(var.tier_tags, var.tier)
+      error_message = "vpc tier must be one of ${jsonencode(var.tier_tags)}"
+    }
+  }
+}

@@ -223,8 +223,6 @@ variable "fargate_architecture" {
   }
 }
 
-
-
 #--------------
 #   ASG
 #--------------

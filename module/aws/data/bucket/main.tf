@@ -22,6 +22,7 @@ data "aws_iam_policy_document" "bucket_policy" {
       ]
     }
 
+    // TODO: conditions that will restrict for public, org, role, users, user, microservice
     condition {
       test     = "ForAnyValue:StringEquals"
       variable = "aws:SourceVpce"
@@ -29,7 +30,7 @@ data "aws_iam_policy_document" "bucket_policy" {
     }
 
     condition {
-      test     = "StringEquals"
+      test     = "ForAnyValue:StringEquals"
       variable = "aws:SourceAccount"
       values   = [local.account_id]
     }

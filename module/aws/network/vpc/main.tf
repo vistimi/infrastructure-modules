@@ -1,8 +1,7 @@
 locals {
-  vpc_tier_names = ["private", "public"]
   # # increment from `0.0.0.0/16` to `0.0.16.0/16`
   subnets = {
-    for i, tier in local.vpc_tier_names :
+    for i, tier in var.tier_tags :
     "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
   }
 }
@@ -26,8 +25,8 @@ module "vpc" {
   public_subnets  = local.subnets["public"]
   private_subnets = local.subnets["private"]
 
-  private_subnet_tags = { Tier = "Private" }
-  public_subnet_tags  = { Tier = "Public" }
+  private_subnet_tags = { Tier = "private" }
+  public_subnet_tags  = { Tier = "public" }
 
   tags = merge(var.tags, { Zones = jsonencode(data.aws_availability_zones.available.names) })
 }
