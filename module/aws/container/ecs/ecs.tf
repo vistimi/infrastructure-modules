@@ -25,7 +25,7 @@ module "ecs" {
   }
 
   # capacity providers
-  default_capacity_provider_use_fargate = var.service.use_fargate ? true : false
+  default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
   fargate_capacity_providers = {
     for key, cp in var.fargate.capacity_provider :
     cp.key => {
@@ -34,7 +34,7 @@ module "ecs" {
         base   = cp.base
       }
     }
-    if var.service.use_fargate
+    if var.service.deployment_type == "fargate"
   }
   autoscaling_capacity_providers = {
     for key, value in var.ec2 :
@@ -55,7 +55,7 @@ module "ecs" {
       }
       managed_termination_protection = "DISABLED"
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   services = {
@@ -64,7 +64,7 @@ module "ecs" {
       # Service
       #------------
       force_new_deployment               = true
-      launch_type                        = var.service.use_fargate ? "FARGATE" : "EC2"
+      launch_type                        = var.service.deployment_type == "fargate" ? "FARGATE" : "EC2"
       enable_autoscaling                 = true
       autoscaling_min_capacity           = var.service.task_min_count
       desired_count                      = var.service.task_desired_count
@@ -74,8 +74,8 @@ module "ecs" {
       deployment_circuit_breaker         = var.service.deployment_circuit_breaker
 
       # network awsvpc for fargate
-      subnets          = var.service.use_fargate ? local.subnets : null
-      assign_public_ip = var.service.use_fargate ? true : null // if private subnets, use NAT
+      subnets          = var.service.deployment_type == "fargate" ? local.subnets : null
+      assign_public_ip = var.service.deployment_type == "fargate" ? true : null // if private subnets, use NAT
 
       load_balancer = {
         service = {
@@ -184,9 +184,9 @@ module "ecs" {
       memory                   = var.task_definition.memory
       cpu                      = var.task_definition.cpu
       family                   = var.common_name
-      requires_compatibilities = var.service.use_fargate ? ["FARGATE"] : ["EC2"]
+      requires_compatibilities = var.service.deployment_type == "fargate" ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
-      network_mode = var.service.use_fargate ? "awsvpc" : "bridge" // "host" for single instance
+      network_mode = var.service.deployment_type == "fargate" ? "awsvpc" : "bridge" // "host" for single instance
 
       # Task definition container(s)
       container_definitions = {
@@ -204,7 +204,7 @@ module "ecs" {
           port_mappings = [
             {
               containerPort = var.traffic.target.port
-              hostPort      = var.service.use_fargate ? var.traffic.target.port : 0 // "host" network can use target port 
+              hostPort      = var.service.deployment_type == "fargate" ? var.traffic.target.port : 0 // "host" network can use target port 
               name          = "container-port"
               protocol      = "tcp"
             }
@@ -217,7 +217,7 @@ module "ecs" {
           log_configuration  = null # other driver than json-file
 
           // fargate AMI
-          runtime_platform = var.service.use_fargate ? {
+          runtime_platform = var.service.deployment_type == "fargate" ? {
             "operatingSystemFamily" = var.fargate_os[var.fargate.os],
             "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
           } : null

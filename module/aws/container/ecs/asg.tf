@@ -1,5 +1,5 @@
 locals {
-  weight_total = var.service.use_fargate ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
+  weight_total = var.service.deployment_type == "fargate" ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
@@ -9,7 +9,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
     key => {
       name = var.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   name = each.value.name
@@ -46,7 +46,7 @@ module "asg" {
       user_data        = base64encode(value.user_data)
       instance_refresh = value.asg.instance_refresh
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   name     = each.value.name
@@ -258,7 +258,7 @@ module "autoscaling_sg" {
       name     = "${var.common_name}-${key}-asg"
       key_name = value.key_name # to SSH into instance
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   description = "Autoscaling group security group" # "Security group with HTTP port open for everyone, and HTTPS open just for the default security group"
@@ -270,8 +270,8 @@ module "autoscaling_sg" {
   computed_ingress_with_source_security_group_id = [
     {
       // dynamic port mapping requires all the ports open
-      from_port                = var.service.use_fargate ? var.traffic.target.port : 32768
-      to_port                  = var.service.use_fargate ? var.traffic.target.port : 65535
+      from_port                = var.service.deployment_type == "fargate" ? var.traffic.target.port : 32768
+      to_port                  = var.service.deployment_type == "fargate" ? var.traffic.target.port : 65535
       protocol                 = "tcp"
       description              = "Load Balancer ports"
       source_security_group_id = module.elb_sg.security_group_id
@@ -298,7 +298,7 @@ resource "aws_autoscaling_attachment" "ecs" {
   for_each = {
     for key, _ in var.ec2 :
     key => {}
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
   lb_target_group_arn    = module.elb.target_group_arns[0] # works only with one tg

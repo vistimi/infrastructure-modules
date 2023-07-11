@@ -92,15 +92,15 @@ module "elb" {
       name             = var.common_name
       backend_protocol = try(var.protocols[var.traffic.target.protocol], "TCP")
       backend_port     = var.traffic.target.port
-      target_type      = var.service.use_fargate ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
+      target_type      = var.service.deployment_type == "fargate" ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
       health_check = {
         enabled             = true
         interval            = 15 // seconds before new request
         path                = var.traffic.target.health_check_path
-        port                = var.service.use_fargate ? var.traffic.target.port : null // traffic port by default
-        healthy_threshold   = 3                                                        // consecutive health check failures before healthy
-        unhealthy_threshold = 3                                                        // consecutive health check failures before unhealthy
-        timeout             = 5                                                        // seconds for timeout of request
+        port                = var.service.deployment_type == "fargate" ? var.traffic.target.port : null // traffic port by default
+        healthy_threshold   = 3                                                                         // consecutive health check failures before healthy
+        unhealthy_threshold = 3                                                                         // consecutive health check failures before unhealthy
+        timeout             = 5                                                                         // seconds for timeout of request
         protocol            = try(var.protocols[var.traffic.target.protocol], "TCP")
         matcher             = "200-299"
       }

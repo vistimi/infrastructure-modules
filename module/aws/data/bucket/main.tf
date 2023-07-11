@@ -5,67 +5,19 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
   partition  = data.aws_partition.current.partition  // aws
-}
 
-data "aws_iam_policy_document" "bucket_policy" {
-  statement {
-    actions = ["s3:GetBucketLocation", "s3:ListBucket"]
-
-    resources = [
-      "arn:${local.partition}:s3:::${var.name}",
-    ]
-
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.${local.dns_suffix}",
-      ]
+  iam_statements = [
+    {
+      actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+      resources = ["arn:${local.partition}:s3:::${var.name}"]
+      effect    = "Allow"
+    },
+    {
+      actions   = ["s3:GetObject"]
+      resources = ["arn:${local.partition}:s3:::${var.name}/*"]
+      effect    = "Allow"
     }
-
-    // TODO: conditions that will restrict for public, org, role, users, user, microservice
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceVpce"
-      values   = ["${var.vpc_id}"]
-    }
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [local.account_id]
-    }
-  }
-
-  statement {
-    actions = ["s3:GetObject"]
-
-    resources = [
-      "arn:${local.partition}:s3:::${var.name}/*",
-    ]
-
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.${local.dns_suffix}",
-      ]
-    }
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceVpce"
-      values   = ["${var.vpc_id}"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [local.account_id]
-    }
-  }
-
-  #     "kms:GetPublicKey",
-  #     "kms:GetKeyPolicy",
-  #     "kms:DescribeKey"
+  ]
 }
 
 // TODO: add encryption
@@ -81,7 +33,7 @@ module "s3_bucket" {
   } : {}
 
   attach_policy = true
-  policy        = data.aws_iam_policy_document.bucket_policy.json
+  policy        = module.bucket_policy.json
   force_destroy = var.force_destroy
 
   # control_object_ownership = true
@@ -90,34 +42,30 @@ module "s3_bucket" {
   tags = merge(var.tags, { Name = var.name })
 }
 
+module "bucket_policy" {
+  source = "../../iam/policy_document"
+
+  scope               = var.iam.scope
+  statements          = local.iam_statements
+  principals_services = ["ec2"]
+  account_ids         = var.iam.account_ids
+  vpc_ids             = concat(var.iam.vpc_ids, [var.vpc_id])
+}
+
 #-------------------
 #   Attachments
 #-------------------
 resource "aws_iam_policy" "role_attachment" {
   name = "${var.name}-role-attachment"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
-        Effect   = "Allow"
-        Resource = "arn:${local.partition}:s3:::${var.name}",
-      },
-      {
-        Action   = ["s3:GetObject"]
-        Effect   = "Allow"
-        Resource = "arn:${local.partition}:s3:::${var.name}/*",
-      },
-    ]
-  })
+  policy = module.bucket_policy.json
 
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "role_attachment" {
-  count = length(var.role_names)
+  for_each = { for role_name in var.bucket_attachement_role_names : role_name => {} }
 
-  role       = var.role_names[count.index]
+  role       = each.key
   policy_arn = aws_iam_policy.role_attachment.arn
 }

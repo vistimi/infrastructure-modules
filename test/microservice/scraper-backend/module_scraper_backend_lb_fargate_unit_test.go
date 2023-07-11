@@ -32,7 +32,7 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 			},
 		},
 		"service": map[string]any{
-			"use_fargate":                        true,
+			"deployment_type":                    "fargate",
 			"task_min_count":                     0,
 			"task_desired_count":                 1,
 			"task_max_count":                     1,

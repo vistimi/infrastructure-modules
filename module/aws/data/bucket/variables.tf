@@ -27,8 +27,16 @@ variable "versioning" {
   default     = false
 }
 
-variable "role_names" {
+variable "bucket_attachement_role_names" {
   description = "List of role names that will have access to this bucket"
   type        = list(string)
   default     = []
+}
+
+variable "iam" {
+  type = object({
+    scope       = string
+    account_ids = optional(string)
+    vpc_ids     = optional(string)
+  })
 }

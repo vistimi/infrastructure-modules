@@ -50,7 +50,7 @@ resource "random_integer" "cidr" {
   for_each = {
     for key, value in var.ec2 :
     key => {}
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   min = 1
@@ -65,7 +65,7 @@ resource "aws_eip" "single" {
   for_each = {
     for key, value in var.ec2 :
     key => {}
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   domain = "vpc"

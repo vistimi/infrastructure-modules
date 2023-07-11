@@ -35,7 +35,7 @@ variable "microservice" {
     })
     ecs = object({
       service = object({
-        use_fargate                        = bool
+        deployment_type                    = string
         task_min_count                     = number
         task_desired_count                 = number
         task_max_count                     = number

@@ -19,3 +19,12 @@ locals {
   region      = data.aws_region.current.name
   subnets     = data.aws_subnets.tier.ids
 }
+
+resource "null_resource" "vpc_subnets" {
+  lifecycle {
+    precondition {
+      condition     = length(local.subnets) >= 2
+      error_message = "For a Load Balancer: At least two subnets in two different Availability Zones must be specified, subnets: ${jsonencode(local.subnets)}"
+    }
+  }
+}

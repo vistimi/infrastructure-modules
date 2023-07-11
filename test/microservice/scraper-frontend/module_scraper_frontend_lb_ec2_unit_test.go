@@ -85,7 +85,7 @@ func Test_Unit_ScraperFrontend_LB_EC2(t *testing.T) {
 		},
 
 		"service": map[string]any{
-			"use_fargate":                        false,
+			"deployment_type":                    "ec2",
 			"task_min_count":                     0,
 			"task_desired_count":                 3,
 			"task_max_count":                     3,
