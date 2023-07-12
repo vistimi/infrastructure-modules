@@ -15,8 +15,8 @@ sudo docker run --rm -it --name $NAME --env-file .devcontainer/devcontainer.env 
 ## devcontainer
 
 ```
-AWS_REGION=***
-AWS_PROFILE=***
+AWS_REGION_NAME=***
+AWS_PROFILE_NAME=***
 AWS_ACCOUNT_ID=***
 AWS_ACCESS_KEY=***
 AWS_SECRET_KEY=***
@@ -56,9 +56,9 @@ Environment secrets:
 - AWS_SECRET_KEY
 
 Environment variables:
-- AWS_REGION
+- AWS_REGION_NAME
 - AWS_ACCOUNT_ID
-- AWS_PROFILE
+- AWS_PROFILE_NAME
 
 # terraform
 

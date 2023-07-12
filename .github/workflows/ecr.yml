@@ -10,16 +10,16 @@ on:
         default: KookaS
       event:
         type: choice
-        description: 'Type of event'     
+        description: "Type of event"
         required: true
         options:
-        - push
-        - create
-        - delete
+          - push
+          - create
+          - delete
       image-tag:
-        description: 'Image tag for worker image'
+        description: "Image tag for worker image"
         required: false
-        default: 'latest'
+        default: "latest"
   push:
     branches-ignore: [dependabot/**]
   # will also run if push and create happen together
@@ -40,12 +40,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'KookaS' }}
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_PROFILE: ${{ vars.AWS_PROFILE }}
+      AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
+      AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-      ECR_REGISTRY_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      ECR_REGISTRY_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION_NAME }}.amazonaws.com
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -77,13 +77,13 @@ jobs:
           aws --version
           aws configure set aws_access_key_id $AWS_ACCESS_KEY
           aws configure set aws_secret_access_key $AWS_SECRET_KEY
-          aws configure set region $AWS_REGION
+          aws configure set region $AWS_REGION_NAME
       - name: Login to ECR
         run: |
           if [[ $AWS_CLI_SERVICE == ecr ]]; then
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
+            aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
           elif [[ $AWS_CLI_SERVICE == ecr-public ]]; then
-            aws ecr-public get-login-password --region $AWS_REGION | docker login --username AWS ---password-stdin public.ecr.aws
+            aws ecr-public get-login-password --region $AWS_REGION_NAME | docker login --username AWS ---password-stdin public.ecr.aws
           fi
       - name: Run workflow for each Dockerfile
         run: |
@@ -94,7 +94,7 @@ jobs:
               --repository-name $ECR_REPOSITORY_NAME \
               --image-tag-mutability MUTABLE \
               --image-scanning-configuration scanOnPush=true \
-              --tags Key=Account,Value=$AWS_PROFILE Key=Region,Value=$AWS_REGION Key=Organization,Value=$ORG Key=Repository,Value=$REPO Key=Branch,Value=$BRANCH
+              --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORG Key=Repository,Value=$REPO Key=Branch,Value=$BRANCH
             json_string=$(
               jq --null-input \
                 --argjson count "${IMAGE_KEEP_COUNT}" \

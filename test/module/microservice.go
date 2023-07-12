@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	AccountName   = util.GetEnvVariable("AWS_PROFILE")
+	AccountName   = util.GetEnvVariable("AWS_PROFILE_NAME")
 	AccountId     = util.GetEnvVariable("AWS_ACCOUNT_ID")
-	AccountRegion = util.GetEnvVariable("AWS_REGION")
+	AccountRegion = util.GetEnvVariable("AWS_REGION_NAME")
 	DomainName    = util.GetEnvVariable("DOMAIN_NAME")
 )
 

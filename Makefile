@@ -13,7 +13,7 @@ PATH_REL_TEST_MICROSERVICE=test/microservice
 
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
-export AWS_REGION AWS_PROFILE AWS_ACCOUNT_ID AWS_ACCESS_KEY AWS_SECRET_KEY ENVIRONMENT_NAME
+export AWS_REGION_NAME AWS_PROFILE_NAME AWS_ACCOUNT_ID AWS_ACCESS_KEY AWS_SECRET_KEY ENVIRONMENT_NAME
 
 .PHONY: build help
 help:
@@ -24,10 +24,10 @@ fmt: ## Format all files
 
 .ONESHELL: aws-auth
 aws-auth:
-	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE}
-	aws configure set --profile ${AWS_PROFILE} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE}
-	aws configure set region ${AWS_REGION} --profile ${AWS_PROFILE}
-	aws configure set output 'text' --profile ${AWS_PROFILE}
+	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE_NAME}
+	aws configure set --profile ${AWS_PROFILE_NAME} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
+	aws configure set region ${AWS_REGION_NAME} --profile ${AWS_PROFILE_NAME}
+	aws configure set output 'text' --profile ${AWS_PROFILE_NAME}
 	make aws-auth-check
 aws-auth-check:
 	aws configure list
@@ -76,8 +76,8 @@ prepare: ## Setup the test environment
 prepare-account-aws:
 	cat <<-EOF > ${PATH_ABS_AWS}/aws_account_override.hcl 
 	locals {
-		aws_account_region="${AWS_REGION}"
-		aws_account_name="${AWS_PROFILE}"
+		aws_account_region="${AWS_REGION_NAME}"
+		aws_account_name="${AWS_PROFILE_NAME}"
 		aws_account_id="${AWS_ACCOUNT_ID}"
 	}
 	EOF
@@ -256,9 +256,9 @@ clean-ecs:
 	for capacityProviderArn in $(shell aws ecs describe-capacity-providers --query 'capacityProviders[].capacityProviderArn'); do aws ecs   delete-capacity-provider --capacity-provider $$capacityProviderArn --query 'capacityProvider.capacityProviderArn'; done;
 
 nuke-region:
-	cloud-nuke aws --region ${AWS_REGION} --config .gruntwork/cloud-nuke/config.yaml --force;
+	cloud-nuke aws --region ${AWS_REGION_NAME} --config .gruntwork/cloud-nuke/config.yaml --force;
 nuke-vpc:
-	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --force;
+	cloud-nuke aws --region ${AWS_REGION_NAME} --resource-type vpc --force;
 nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 
@@ -269,9 +269,9 @@ nuke-global:
 # 	make nuke-old-region-vpc;
 # OLD=4h
 # nuke-old-region-exclude-vpc:
-# 	cloud-nuke aws --region ${AWS_REGION} --exclude-resource-type vpc --older-than $OLD --force;
+# 	cloud-nuke aws --region ${AWS_REGION_NAME} --exclude-resource-type vpc --older-than $OLD --force;
 # nuke-old-region-vpc:
-# 	cloud-nuke aws --region ${AWS_REGION} --resource-type vpc --older-than $OLD --force;
+# 	cloud-nuke aws --region ${AWS_REGION_NAME} --resource-type vpc --older-than $OLD --force;
 
 # it needs the tfstate files which are generated with apply
 graph:
