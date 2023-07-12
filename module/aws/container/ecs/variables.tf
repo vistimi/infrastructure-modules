@@ -135,6 +135,8 @@ variable "task_definition" {
     cpu                  = number
     env_bucket_name      = string
     env_file_name        = string
+    repository_privacy   = string
+    repository_alias     = optional(string)
     repository_name      = string
     repository_image_tag = string
     tmpfs = optional(object({
@@ -147,6 +149,16 @@ variable "task_definition" {
       value : string
     })), [])
   })
+
+  validation {
+    condition     = contains(["public", "private"], var.task_definition.repository_privacy)
+    error_message = "task definition repository privacy must be one of [public, private]"
+  }
+
+  validation {
+    condition     = var.task_definition.repository_privacy == "public" ? length(coalesce(var.task_definition.repository_alias, "")) > 0 : true
+    error_message = "task definition repository alias need when repository privacy is `public`"
+  }
 }
 
 variable "service" {
@@ -197,8 +209,8 @@ resource "null_resource" "fargate" {
     }
 
     precondition {
-      condition     = var.fargate.os == "linux" ? contains(["x64", "arm64"], var.fargate.architecture) : false
-      error_message = "Fargate architecture must for one of linux:[x64, arm64]"
+      condition     = var.fargate.os == "linux" ? contains(["x86_64", "arm_64"], var.fargate.architecture) : false
+      error_message = "Fargate architecture must for one of linux:[x86_64, arm_64]"
     }
   }
 }
@@ -217,7 +229,7 @@ variable "fargate_architecture" {
   type        = map(string)
 
   default = {
-    x64 = "X86_64"
+    x86_64 = "X86_64"
   }
 }
 

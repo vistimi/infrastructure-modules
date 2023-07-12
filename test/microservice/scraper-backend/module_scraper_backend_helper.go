@@ -152,6 +152,8 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"env_file_name":        envKey,
+		"repository_privacy":   "public",
+		"repository_alias":     "not-known-yet",
 		"repository_name":      strings.ToLower(fmt.Sprintf("%s-%s-%s", GithubProject.Organization, GithubProject.Repository, GithubProject.Branch)),
 		"repository_image_tag": GithubProject.ImageTag,
 	})

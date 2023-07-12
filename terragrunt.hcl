@@ -24,6 +24,7 @@ terraform {
 EOF
 }
 
+# TODO: add ecr account for private repos
 # Generate provider block
 generate "provider" {
   path      = "provider_override.tf"

@@ -7,7 +7,7 @@ on:
         type: environment
         description: "The environment to deploy to"
         required: false
-        default: KookaS
+        default: trunk
       event:
         type: choice
         description: "Type of event"
@@ -28,24 +28,29 @@ on:
   delete:
 
 env:
-  AWS_CLI_SERVICE: ecr
+  ECR_PRIVACY: public
   IMAGE_TAG: ${{ github.sha }}
   ORG: ${{ github.repository_owner }}
   BRANCH: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   LOG_file: log.out
+  DEFAULT_BRANCH: trunk
+  ARCHITECTURES: \[\"x86-64\"\] # ARM   ARM 64   x86   x86-64
+  OS: \[\"Linux\"\]
 
 jobs:
   ecr-publish:
     name: ECR publish steps
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'KookaS' }}
+    environment: ${{ inputs.environment || 'trunk' }}
     env:
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-      ECR_REGISTRY_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION_NAME }}.amazonaws.com
+      ECR_REGISTRY_PRIVATE_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION_NAME }}.amazonaws.com
+      ECR_REGISTRY_PUBLIC_URI: public.ecr.aws
+      ECR_REGISTRY_PUBLIC_ALIAS: h4s7f1i8
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -55,7 +60,7 @@ jobs:
           echo "inputs.event=${{ inputs.event }}"
           REPO=$(basename ${{ github.repository }})
           echo "REPO: $REPO"
-          IMAGE_KEEP_COUNT=$(if [[ $BRANCH == master ]]; then echo "5"; else echo "1"; fi)
+          IMAGE_KEEP_COUNT=$(if [[ $BRANCH == $DEFAULT_BRANCH ]]; then echo "3"; else echo "1"; fi)
           echo "IMAGE_KEEP_COUNT: $IMAGE_KEEP_COUNT"
           DOCKERFILES=$(
             jq --null-input \
@@ -80,55 +85,105 @@ jobs:
           aws configure set region $AWS_REGION_NAME
       - name: Login to ECR
         run: |
-          if [[ $AWS_CLI_SERVICE == ecr ]]; then
-            aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
-          elif [[ $AWS_CLI_SERVICE == ecr-public ]]; then
-            aws ecr-public get-login-password --region $AWS_REGION_NAME | docker login --username AWS ---password-stdin public.ecr.aws
+          if [[ $ECR_PRIVACY == private ]]; then
+            aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_PRIVATE_URI
+          elif [[ $ECR_PRIVACY == public ]]; then
+            aws ecr-public get-login-password --region $AWS_REGION_NAME | docker login --username AWS ---password-stdin $ECR_REGISTRY_PUBLIC_URI
           fi
       - name: Run workflow for each Dockerfile
         run: |
           # functions
           func_ecr_create () {
             echo -e '\033[43mCreating repository in ECR\033[0m'
-            aws $AWS_CLI_SERVICE create-repository \
-              --repository-name $ECR_REPOSITORY_NAME \
-              --image-tag-mutability MUTABLE \
-              --image-scanning-configuration scanOnPush=true \
-              --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORG Key=Repository,Value=$REPO Key=Branch,Value=$BRANCH
-            json_string=$(
-              jq --null-input \
-                --argjson count "${IMAGE_KEEP_COUNT}" \
-                '{
-                  rules: [ 
-                    { 
-                      rulePriority: 1, 
-                      description: "Keep only \($count) images", 
-                      selection: { tagStatus: "any", 
-                      countType: "imageCountMoreThan", countNumber: $count }, 
-                      action: { type: "expire" } 
-                    } 
-                  ] 
-                }'
-            )
-            echo $json_string > ecr-lifecycle-policy.json
-            aws $AWS_CLI_SERVICE put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
-            json_string=$(
-              jq --null-input \
-                --arg accountId "${AWS_ACCOUNT_ID}" \
-                '{
-                  Version: "2012-10-17", 
-                  Statement: [ 
-                    { 
-                      Effect: "Allow", 
-                      Principal: { Service: "ec2.amazonaws.com" }, 
-                      Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], 
-                      Condition: { "StringEquals": { "aws:SourceAccount": $accountId } }
-                    } 
-                  ] 
-                }'
-            )
-            echo $json_string > ecr-repository-policy.json
-            aws $AWS_CLI_SERVICE set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
+            if [[ $ECR_PRIVACY == private ]]; then
+
+              # create repository
+              AWS_CLI_SERVICE=ecr
+              ECR_REGISTRY_URI=$(
+                aws ecr create-repository \
+                  --repository-name $ECR_REPOSITORY_NAME \
+                  --encryption-configuration encryptionType=KMS \
+                  --image-tag-mutability MUTABLE \
+                  --image-scanning-configuration scanOnPush=true \
+                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORG Key=Repository,Value=$REPO Key=Branch,Value=$BRANCH \
+                  --query '.repository.repositoryUri'
+              )
+
+              # add lifecycle policy
+              json_string=$(
+                jq --null-input \
+                  --argjson count "${IMAGE_KEEP_COUNT}" \
+                  '{
+                    rules: [ 
+                      { 
+                        rulePriority: 1, 
+                        description: "Keep only \($count) images", 
+                        selection: { tagStatus: "any", 
+                        countType: "imageCountMoreThan", countNumber: $count }, 
+                        action: { type: "expire" } 
+                      } 
+                    ] 
+                  }'
+              )
+              echo $json_string > ecr-lifecycle-policy.json
+              aws ecr put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
+
+              # add repository policy
+              json_string=$(
+                jq --null-input \
+                  --arg accountId "${AWS_ACCOUNT_ID}" \
+                  '{
+                    Version: "2012-10-17", 
+                    Statement: [ 
+                      { 
+                        Effect: "Allow", 
+                        Principal: { Service: "ec2.amazonaws.com" }, 
+                        Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], 
+                        Condition: { "StringEquals": { "aws:SourceAccount": $accountId } }
+                      } 
+                    ] 
+                  }'
+              )
+              echo $json_string > ecr-repository-policy.json
+              aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
+
+            elif [[ $ECR_PRIVACY == public ]]; then
+
+              # create repository
+              AWS_CLI_SERVICE=ecr-public
+              ECR_REGISTRY_URI=$(
+                aws ecr-public create-repository \
+                  --repository-name $ECR_REPOSITORY_NAME \
+                  --image-tag-mutability MUTABLE \
+                  --image-scanning-configuration scanOnPush=true \
+                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORG Key=Repository,Value=$REPO Key=Branch,Value=$BRANCH \
+                  --query '.repository.repositoryUri'
+              )
+
+              # registry catalog data is set manually
+              # add repository catalog data
+              json_string=$(
+                jq --null-input \
+                  --argjson architectures "${ARCHITECTURES}" \
+                  --argjson os "${OS}" \
+                  --argjson image_base64 "" \
+                  --arg aboutText "" \
+                  --arg usageText "" \
+                  --arg description "" \
+                  "logoImageBlob": $image_base64,
+                  '{ 
+                    "aboutText": $aboutText,
+                    "architectures": $architectures,
+                    "description": $description,                    
+                    "operatingSystems": $os,
+                    "usageText": $usageText
+                 }'
+              )
+              aws ecr-public put-repository-catalog-data \
+                --repository-name $ECR_REPOSITORY_NAME \
+                # --registry-id "" \
+                --catalog-data $json_string
+            fi
           }
           func_ecr_push () {
             # check existance of repository

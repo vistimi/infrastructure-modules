@@ -34,9 +34,9 @@ variable "microservice" {
       file_key      = string
     })
     iam = object({
-      scope               = string
-      account_ids         = optional(list(string))
-      vpc_ids             = optional(list(string))
+      scope       = string
+      account_ids = optional(list(string))
+      vpc_ids     = optional(list(string))
     })
     ecs = object({
       service = object({
@@ -74,6 +74,8 @@ variable "microservice" {
         cpu                  = number
         env_bucket_name      = string
         env_file_name        = string
+        repository_privacy   = string
+        repository_alias     = optional(string)
         repository_name      = string
         repository_image_tag = string
         tmpfs = optional(object({

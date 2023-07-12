@@ -2,6 +2,17 @@ variable "tags" {
   description = "Custom tags"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = length(try(var.tags[var.vpc_tag_name], "")) > 0
+    error_message = "missing the tag ${var.vpc_tag_name} in tags: ${jsonencode(var.tags)}"
+  }
+}
+
+variable "vpc_tag_name" {
+  description = "tag for vpc id"
+  type        = string
+  default     = "VpcId"
 }
 
 variable "scope" {

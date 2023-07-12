@@ -1,24 +1,19 @@
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
-locals {
-  vpc_tag_name = "VpcId"
-}
-
 data "aws_vpc" "current" {
-  id = var.tags[local.vpc_tag_name]
+  id = var.tags[var.vpc_tag_name]
 
   lifecycle {
     postcondition {
       condition     = length(try(self.id, "")) > 0
-      error_message = "missing the tag ${local.vpc_tag_name} in tags: ${jsonencode(var.tags)}"
+      error_message = "no vpc found in policy_document with tags: ${jsonencode(var.tags)}"
     }
   }
 }
 
 locals {
   account_id = data.aws_caller_identity.current.account_id
-  # vpc_id     = try(data.aws_vpc.current[local.vpc_tag_name].id, "")
   vpc_id     = data.aws_vpc.current.id
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
   partition  = data.aws_partition.current.partition  // aws

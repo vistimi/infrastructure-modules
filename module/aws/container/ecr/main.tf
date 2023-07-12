@@ -7,6 +7,38 @@ locals {
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
   partition  = data.aws_partition.current.partition  // aws
   region     = data.aws_region.current.name
+
+  repository_service = var.privacy == "public" ? "ecr-public" : var.privacy == "private" ? "ecr" : null
+
+  repository_arn = var.privacy == "public" ? [
+    "arn:${local.partition}:${local.repository_service}::${local.account_id}:repository/${var.name}"
+    ] : var.privacy == "private" ? [
+    "arn:${local.partition}:${local.repository_service}:${local.region}:${local.account_id}:repository/${var.name}"
+  ] : null
+
+  iam_statements = [
+    {
+      actions = [
+        "${local.repository_service}:GetAuthorizationToken",
+        "${local.repository_service}:BatchCheckLayerAvailability",
+        "${local.repository_service}:GetDownloadUrlForLayer",
+        "${local.repository_service}:BatchGetImage",
+      ]
+      resources = [loca.repository_arn]
+      effect    = "Allow"
+    }
+  ]
+}
+
+module "bucket_policy" {
+  source = "../../iam/policy_document"
+
+  scope       = var.iam.scope
+  statements  = local.iam_statements
+  account_ids = var.iam.account_ids
+  vpc_ids     = var.iam.vpc_ids
+
+  tags = var.tags
 }
 
 module "ecr" {
@@ -18,36 +50,7 @@ module "ecr" {
 
   # Registry Policy
   create_repository_policy = true
-  # repository_policy = jsonencode({
-  #   Version = "2012-10-17",
-  #   Statement = [
-  #     {
-  #       Effect = "Allow",
-  #       Principal = {
-  #         Service : [
-  #           "ec2.${local.dns_suffix}",
-  #         ]
-  #       },
-  #       Action = [
-  #         "ecr:GetAuthorizationToken",
-  #         "ecr:BatchCheckLayerAvailability",
-  #         "ecr:GetDownloadUrlForLayer",
-  #         "ecr:BatchGetImage",
-  #       ],
-  #       Resource = [
-  #         "arn:${local.partition}:ecr:${local.region}:${local.account_id}:repository/${var.name}"
-  #       ],
-  #       Condition = {
-  #         "ForAnyValue:StringEquals" : {
-  #           "aws:SourceVpce" : ["${var.vpc_id}"]
-  #         },
-  #         "StringEquals" : {
-  #           "aws:SourceAccount" : [local.account_id],
-  #         },
-  #       }
-  #     },
-  #   ]
-  # })
+  repository_policy        = module.bucket_policy.json
 
   create_lifecycle_policy = true
   repository_lifecycle_policy = jsonencode({
@@ -70,4 +73,22 @@ module "ecr" {
   repository_image_tag_mutability = "MUTABLE"
 
   tags = var.tags
+}
+
+#-------------------
+#   Attachments
+#-------------------
+resource "aws_iam_policy" "role_attachment" {
+  name = "${var.name}-role-attachment"
+
+  policy = module.bucket_policy.json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "role_attachment" {
+  count = length(var.repository_attachement_role_names)
+
+  role       = var.repository_attachement_role_names[count.index]
+  policy_arn = aws_iam_policy.role_attachment.arn
 }
