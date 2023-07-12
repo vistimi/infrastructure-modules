@@ -1,9 +1,9 @@
-variable "common_name" {
+variable "name" {
   description = "The common part of the name used for all resources"
   type        = string
 }
 
-variable "common_tags" {
+variable "tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
@@ -17,27 +17,25 @@ variable "vpc" {
   })
 }
 
+resource "null_resource" "deployment_type" {
+  lifecycle {
+    precondition {
+      condition     = contains(["fargate", "ec2"], var.service.deployment_type)
+      error_message = "EC2 os must be one of [fargate, ec2]"
+    }
+  }
+}
+
 #--------------
 # ELB & ECS
 #--------------
-
-variable "acm" {
-  type = object({
-    zone_name = string
-    record = object({
-      subdomain_name = string
-      extensions     = optional(list(string))
-    })
-  })
-}
-
 variable "route53" {
   type = object({
-    zone = object({
+    zones = list(object({
       name = string
-    })
+    }))
     record = object({
-      extensions     = optional(list(string))
+      prefixes       = optional(list(string))
       subdomain_name = string
     })
   })
@@ -153,7 +151,7 @@ variable "task_definition" {
 
 variable "service" {
   type = object({
-    use_fargate                        = bool
+    deployment_type                    = string
     task_min_count                     = number
     task_desired_count                 = number
     task_max_count                     = number
@@ -189,7 +187,7 @@ variable "fargate" {
 resource "null_resource" "fargate" {
   for_each = {
     for key, value in {} : key => {}
-    if var.service.use_fargate
+    if var.service.deployment_type == "fargate"
   }
 
   lifecycle {
@@ -277,7 +275,7 @@ resource "null_resource" "ec2_architecture" {
       instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)
       instance_family = try(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)), substr(value.instance_type, 0, 1))
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   lifecycle {
@@ -306,7 +304,7 @@ resource "null_resource" "ec2_os" {
       os_version   = value.os_version
       architecture = value.architecture
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   lifecycle {

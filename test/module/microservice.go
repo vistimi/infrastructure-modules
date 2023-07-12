@@ -90,8 +90,8 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	options := &terraform.Options{
 		Vars: map[string]any{
-			"common_name": commonName,
-			"common_tags": commonTags,
+			"name": commonName,
+			"tags": commonTags,
 
 			"microservice": map[string]any{
 				"ecs": map[string]any{

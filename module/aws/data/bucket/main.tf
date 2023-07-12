@@ -5,67 +5,28 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
   partition  = data.aws_partition.current.partition  // aws
+
+  iam_statements = [
+    {
+      actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+      resources = ["arn:${local.partition}:s3:::${var.name}"]
+      effect    = "Allow"
+    },
+    {
+      actions   = ["s3:GetObject"]
+      resources = ["arn:${local.partition}:s3:::${var.name}/*"]
+      effect    = "Allow"
+    }
+  ]
 }
 
-data "aws_iam_policy_document" "bucket_policy" {
-  statement {
-    actions = ["s3:GetBucketLocation", "s3:ListBucket"]
+resource "aws_kms_key" "objects" {
+  for_each = var.encryption != null ? { "${var.name}" = {} } : {}
 
-    resources = [
-      "arn:${local.partition}:s3:::${var.name}",
-    ]
+  description             = "KMS key is used to encrypt bucket objects"
+  deletion_window_in_days = var.encryption.deletion_window_in_days
 
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.${local.dns_suffix}",
-      ]
-    }
-
-    // TODO: conditions that will restrict for public, org, role, users, user, microservice
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceVpce"
-      values   = ["${var.vpc_id}"]
-    }
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [local.account_id]
-    }
-  }
-
-  statement {
-    actions = ["s3:GetObject"]
-
-    resources = [
-      "arn:${local.partition}:s3:::${var.name}/*",
-    ]
-
-    principals {
-      type = "Service"
-      identifiers = [
-        "ec2.${local.dns_suffix}",
-      ]
-    }
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:SourceVpce"
-      values   = ["${var.vpc_id}"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [local.account_id]
-    }
-  }
-
-  #     "kms:GetPublicKey",
-  #     "kms:GetKeyPolicy",
-  #     "kms:DescribeKey"
+  tags = var.tags
 }
 
 // TODO: add encryption
@@ -81,43 +42,70 @@ module "s3_bucket" {
   } : {}
 
   attach_policy = true
-  policy        = data.aws_iam_policy_document.bucket_policy.json
+  policy        = module.bucket_policy.json
   force_destroy = var.force_destroy
 
   # control_object_ownership = true
   # object_ownership         = "ObjectWriter"
 
-  tags = merge(var.tags, { Name = var.name })
+  server_side_encryption_configuration = var.encryption != null ? {
+    rule = {
+      apply_server_side_encryption_by_default = {
+        kms_master_key_id = aws_kms_key.objects[var.name].arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  } : {}
+
+  tags = var.tags
+}
+
+module "bucket_policy" {
+  source = "../../iam/policy_document"
+
+  scope       = var.iam.scope
+  statements  = local.iam_statements
+  account_ids = var.iam.account_ids
+  vpc_ids     = var.iam.vpc_ids
+
+  tags = var.tags
 }
 
 #-------------------
 #   Attachments
 #-------------------
+data "aws_iam_policy_document" "role_attachment" {
+  dynamic "statement" {
+    for_each = concat(
+      local.iam_statements,
+      var.encryption != null ? [
+        {
+          actions   = ["kms:GetPublicKey", "kms:GetKeyPolicy", "kms:DescribeKey"]
+          resources = ["arn:${local.partition}:s3:::${var.name}"]
+          effect    = "Allow"
+        },
+      ] : []
+    )
+
+    content {
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
+}
+
 resource "aws_iam_policy" "role_attachment" {
   name = "${var.name}-role-attachment"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action   = ["s3:GetBucketLocation", "s3:ListBucket"]
-        Effect   = "Allow"
-        Resource = "arn:${local.partition}:s3:::${var.name}",
-      },
-      {
-        Action   = ["s3:GetObject"]
-        Effect   = "Allow"
-        Resource = "arn:${local.partition}:s3:::${var.name}/*",
-      },
-    ]
-  })
+  policy = data.aws_iam_policy_document.role_attachment.json
 
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "role_attachment" {
-  count = length(var.role_names)
+  count = length(var.bucket_attachement_role_names)
 
-  role       = var.role_names[count.index]
+  role       = var.bucket_attachement_role_names[count.index]
   policy_arn = aws_iam_policy.role_attachment.arn
 }

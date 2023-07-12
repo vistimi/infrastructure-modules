@@ -99,11 +99,11 @@ Check the [HCL](https://developer.hashicorp.com/terraform/language).
 
 <details><summary> <b>Code</b> </summary>
 
-For reources tags, where `common_tags` is a map:
+For reources tags, where `tags` is a map:
 
 ```hcl
 resource "aws_resource_type" "resource_name" {
-  tags = merge(var.common_tags, {Name="..."})
+  tags = merge(var.tags, {Name="..."})
 }
 ```
 

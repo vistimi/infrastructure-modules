@@ -72,8 +72,16 @@ variable "predictable_capacity" {
   }
 }
 
-variable "role_names" {
+variable "table_attachement_role_names" {
   description = "List of role names that will have access to this table"
   type        = list(string)
   default     = []
+}
+
+variable "iam" {
+  type = object({
+    scope       = string
+    account_ids = optional(list(string))
+    vpc_ids     = optional(list(string))
+  })
 }

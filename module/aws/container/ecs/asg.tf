@@ -1,5 +1,5 @@
 locals {
-  weight_total = var.service.use_fargate ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
+  weight_total = var.service.deployment_type == "fargate" ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
@@ -9,7 +9,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
     key => {
       name = var.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   name = each.value.name
@@ -26,7 +26,7 @@ module "asg" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name              = "${var.common_name}-${key}"
+      name              = "${var.name}-${key}"
       capacity_provider = value.capacity_provider
       instance_market_options = value.use_spot ? {
         # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
@@ -37,7 +37,7 @@ module "asg" {
       } : {}
       tag_specifications = value.use_spot ? [{
         resource_type = "spot-instances-request"
-        tags          = merge(var.common_tags, { Name = "${var.common_name}-spot-instance-request" })
+        tags          = merge(var.tags, { Name = "${var.name}-spot-instance-request" })
       }] : []
       instance_type = value.instance_type
       key_name      = value.key_name # to SSH into instance
@@ -46,7 +46,7 @@ module "asg" {
       user_data        = base64encode(value.user_data)
       instance_refresh = value.asg.instance_refresh
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   name     = each.value.name
@@ -54,28 +54,28 @@ module "asg" {
 
   # iam configuration
   create_iam_instance_profile = true
-  iam_role_name               = "${var.common_name}-asg"
+  iam_role_name               = "${var.name}-asg"
   iam_role_path               = "/ec2/"
-  iam_role_description        = "ASG role for ${var.common_name}"
+  iam_role_description        = "ASG role for ${var.name}"
   iam_role_policies = {
     AmazonEC2ContainerServiceforEC2Role = "arn:${local.partition}:iam::${local.partition}:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
     AmazonSSMManagedInstanceCore        = "arn:${local.partition}:iam::${local.partition}:policy/AmazonSSMManagedInstanceCore"
   }
-  iam_role_tags = var.common_tags
+  iam_role_tags = var.tags
 
 
   # launch template configuration
   create_launch_template = true
   tag_specifications = concat(each.value.tag_specifications, [{
     resource_type = "instance"
-    tags          = merge(var.common_tags, { Name = "${var.common_name}-instance" })
+    tags          = merge(var.tags, { Name = "${var.name}-instance" })
   }])
   instance_market_options     = each.value.instance_market_options
   instance_type               = each.value.instance_type
   image_id                    = each.value.image_id
   user_data                   = each.value.user_data
-  launch_template_name        = var.common_name
-  launch_template_description = "${var.common_name} asg launch template"
+  launch_template_name        = var.name
+  launch_template_description = "${var.name} asg launch template"
   update_default_version      = true
   ebs_optimized               = false # optimized ami does not support ebs_optimized
   # metadata_options = {
@@ -152,7 +152,7 @@ module "asg" {
   #     notification_metadata = jsonencode({
   #       "event"         = "launch",
   #       "timestamp"     = timestamp(),
-  #       "auto_scaling"  = var.common_name,
+  #       "auto_scaling"  = var.name,
   #       "group"         = each.key,
   #       "instance_type" = var.instance.ec2.instance_type
   #     })
@@ -167,7 +167,7 @@ module "asg" {
   #     notification_metadata = jsonencode({
   #       "event"         = "termination",
   #       "timestamp"     = timestamp(),
-  #       "auto_scaling"  = var.common_name,
+  #       "auto_scaling"  = var.name,
   #       "group"         = each.key,
   #       "instance_type" = var.instance.ec2.instance_type
   #     })
@@ -230,7 +230,7 @@ module "asg" {
   }
 
   autoscaling_group_tags = {}
-  tags                   = var.common_tags
+  tags                   = var.tags
 
   depends_on = [aws_iam_service_linked_role.autoscaling]
 }
@@ -238,14 +238,14 @@ module "asg" {
 resource "aws_iam_service_linked_role" "autoscaling" {
   aws_service_name = "autoscaling.${local.dns_suffix}"
   description      = "A service linked role for autoscaling"
-  custom_suffix    = var.common_name
+  custom_suffix    = var.name
 
   # Sometimes good sleep is required to have some IAM resources created before they can be used
   provisioner "local-exec" {
     command = "sleep 10"
   }
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
 module "autoscaling_sg" {
@@ -255,10 +255,10 @@ module "autoscaling_sg" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name     = "${var.common_name}-${key}-asg"
+      name     = "${var.name}-${key}-asg"
       key_name = value.key_name # to SSH into instance
     }
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
 
   description = "Autoscaling group security group" # "Security group with HTTP port open for everyone, and HTTPS open just for the default security group"
@@ -270,8 +270,8 @@ module "autoscaling_sg" {
   computed_ingress_with_source_security_group_id = [
     {
       // dynamic port mapping requires all the ports open
-      from_port                = var.service.use_fargate ? var.traffic.target.port : 32768
-      to_port                  = var.service.use_fargate ? var.traffic.target.port : 65535
+      from_port                = var.service.deployment_type == "fargate" ? var.traffic.target.port : 32768
+      to_port                  = var.service.deployment_type == "fargate" ? var.traffic.target.port : 65535
       protocol                 = "tcp"
       description              = "Load Balancer ports"
       source_security_group_id = module.elb_sg.security_group_id
@@ -291,14 +291,14 @@ module "autoscaling_sg" {
   ] : []
   egress_rules = ["all-all"]
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
 resource "aws_autoscaling_attachment" "ecs" {
   for_each = {
     for key, _ in var.ec2 :
     key => {}
-    if !var.service.use_fargate
+    if var.service.deployment_type == "ec2"
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
   lb_target_group_arn    = module.elb.target_group_arns[0] # works only with one tg

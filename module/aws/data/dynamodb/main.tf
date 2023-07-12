@@ -7,6 +7,25 @@ locals {
   dns_suffix = data.aws_partition.current.dns_suffix // amazonaws.com
   partition  = data.aws_partition.current.partition  // aws
   region     = data.aws_region.current.name
+
+  iam_statements = [
+    {
+      actions = [
+        "dynamodb:BatchGet*",
+        "dynamodb:DescribeStream",
+        "dynamodb:DescribeTable",
+        "dynamodb:Get*",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchWrite*",
+        "dynamodb:Delete*",
+        "dynamodb:Update*",
+        "dynamodb:PutItem",
+      ]
+      resources = ["arn:${local.partition}:dynamodb:${local.region}:${local.account_id}:table/${var.table_name}"]
+      effect    = "Allow"
+    }
+  ]
 }
 
 module "dynamodb_table" {
@@ -55,37 +74,29 @@ module "dynamodb_table" {
 #-------------------
 #   Attachments
 #-------------------
+data "aws_iam_policy_document" "role_attachment" {
+  dynamic "statement" {
+    for_each = local.iam_statements
+
+    content {
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
+}
+
 resource "aws_iam_policy" "role_attachment" {
   name = "${var.table_name}-role-attachment"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "dynamodb:BatchGet*",
-          "dynamodb:DescribeStream",
-          "dynamodb:DescribeTable",
-          "dynamodb:Get*",
-          "dynamodb:Query",
-          "dynamodb:Scan",
-          "dynamodb:BatchWrite*",
-          "dynamodb:Delete*",
-          "dynamodb:Update*",
-          "dynamodb:PutItem",
-        ]
-        Effect   = "Allow"
-        Resource = "arn:${local.partition}:dynamodb:${local.region}:${local.account_id}:table/${var.table_name}",
-      },
-    ]
-  })
+  policy = data.aws_iam_policy_document.role_attachment.json
 
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "role_attachment" {
-  count = length(var.role_names)
+  count = length(var.table_attachement_role_names)
 
-  role       = var.role_names[count.index]
+  role       = var.table_attachement_role_names[count.index]
   policy_arn = aws_iam_policy.role_attachment.arn
 }
