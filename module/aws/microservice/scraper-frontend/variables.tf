@@ -1,9 +1,9 @@
-variable "common_name" {
+variable "name" {
   description = "The common part of the name used for all resources"
   type        = string
 }
 
-variable "common_tags" {
+variable "tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
@@ -18,12 +18,12 @@ variable "microservice" {
       enable_nat = optional(bool)
     })
     route53 = optional(object({
-      zone = object({
+      zones = list(object({
         name = string
-      })
+      }))
       record = object({
-        extensions     = optional(list(string))
         subdomain_name = string
+        prefixes       = optional(list(string))
       })
     }))
     bucket_env = object({
@@ -32,6 +32,11 @@ variable "microservice" {
       versioning    = bool
       file_path     = string
       file_key      = string
+    })
+    iam = object({
+      scope               = string
+      account_ids         = optional(list(string))
+      vpc_ids             = optional(list(string))
     })
     ecs = object({
       service = object({

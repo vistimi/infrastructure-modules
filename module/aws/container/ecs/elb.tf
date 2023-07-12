@@ -2,10 +2,16 @@
 # -----------------
 #     ACM
 # -----------------
-data "aws_route53_zone" "this" {
-  for_each = { for listener in var.traffic.listeners : "${var.acm.record.subdomain_name}" => {} if listener.protocol == "https" }
+data "aws_route53_zone" "current" {
+  for_each = {
+    for name in flatten([
+      for listener in var.traffic.listeners : [
+        for zone in try(var.route53.zones, []) : zone.name
+      ] if listener.protocol == "https"
+    ]) : name => {}
+  }
 
-  name         = var.acm.zone_name
+  name         = each.key
   private_zone = false
 }
 
@@ -13,7 +19,13 @@ module "acm" {
   source  = "terraform-aws-modules/acm/aws"
   version = "4.3.2"
 
-  for_each = { for listener in var.traffic.listeners : "${var.acm.record.subdomain_name}" => {} if listener.protocol == "https" }
+  for_each = {
+    for name in flatten([
+      for listener in var.traffic.listeners : [
+        for zone in try(var.route53.zones, []) : zone.name
+      ] if listener.protocol == "https"
+    ]) : name => {}
+  }
 
   create_certificate     = true
   create_route53_records = true
@@ -21,15 +33,15 @@ module "acm" {
   key_algorithm     = "RSA_2048"
   validation_method = "DNS"
 
-  domain_name = "${var.acm.record.subdomain_name}.${var.acm.zone_name}"
-  zone_id     = data.aws_route53_zone.this[var.acm.record.subdomain_name].zone_id
+  domain_name = "${var.route53.record.subdomain_name}.${each.key}"
+  zone_id     = data.aws_route53_zone.current[each.key].zone_id
 
-  subject_alternative_names = [for extension in distinct(compact(var.acm.record.extensions)) : "${extension}.${var.acm.record.subdomain_name}.${var.acm.zone_name}"]
+  subject_alternative_names = [for prefix in distinct(compact(var.route53.record.prefixes)) : "${prefix}.${var.route53.record.subdomain_name}.${each.key}"]
 
   wait_for_validation = true
   validation_timeout  = "15m"
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
 # -----------------
@@ -39,12 +51,12 @@ module "acm" {
 module "route53_records" {
   source = "../../../../module/aws/network/route53/record"
 
-  for_each = { for k, v in var.route53 != null ? { "${var.route53.record.subdomain_name}" = {} } : {} : k => v }
+  for_each = { for zone in coalesce(try(var.route53.zones, []), []) : zone.name => {} }
 
-  zone_name = var.route53.zone.name
+  zone_name = each.key
   record = {
     subdomain_name = var.route53.record.subdomain_name
-    extensions     = var.route53.record.extensions
+    prefixes       = var.route53.record.prefixes
     type           = "A"
     alias = {
       name    = "dualstack.${module.elb.lb_dns_name}"
@@ -60,7 +72,7 @@ module "elb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "8.6.0"
 
-  name = var.common_name
+  name = var.name
 
   load_balancer_type = "application"
 
@@ -80,16 +92,16 @@ module "elb" {
     for listener in var.traffic.listeners : {
       port               = listener.port
       protocol           = try(var.protocols[listener.protocol], "TCP")
-      certificate_arn    = module.acm[var.acm.record.subdomain_name].acm_certificate_arn
+      certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
       target_group_index = 0
-    } if listener.protocol == "https" && var.acm != null
+    } if listener.protocol == "https" && var.route53 != null
   ]
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
   target_groups = [
     {
-      name             = var.common_name
+      name             = var.name
       backend_protocol = try(var.protocols[var.traffic.target.protocol], "TCP")
       backend_port     = var.traffic.target.port
       target_type      = var.service.deployment_type == "fargate" ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
@@ -112,14 +124,14 @@ module "elb" {
   load_balancer_create_timeout = "5m"
   load_balancer_update_timeout = "5m"
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
 module "elb_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "5.0.0"
 
-  name        = "${var.common_name}-sg-elb"
+  name        = "${var.name}-sg-elb"
   description = "Security group for ALB within VPC"
   vpc_id      = var.vpc.id
 
@@ -130,10 +142,10 @@ module "elb_sg" {
       protocol    = "tcp"
       description = "Listner port ${listener.port}"
       cidr_blocks = "0.0.0.0/0"
-    } if listener.protocol == "http" || (listener.protocol == "https" && var.acm != null)
+    } if listener.protocol == "http" || (listener.protocol == "https" && var.route53 != null)
   ]
   egress_rules = ["all-all"]
   # egress_cidr_blocks = module.vpc.subnets_cidr_blocks
 
-  tags = var.common_tags
+  tags = var.tags
 }

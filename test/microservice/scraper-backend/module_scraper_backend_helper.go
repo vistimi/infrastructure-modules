@@ -128,6 +128,9 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 			"cidr_ipv4": "100.0.0.0/16",
 			"tier":      "public",
 		},
+		"iam": map[string]any{
+			"scope": "microservices",
+		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"traffic": map[string]any{

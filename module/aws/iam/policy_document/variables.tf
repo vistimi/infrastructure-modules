@@ -1,3 +1,9 @@
+variable "tags" {
+  description = "Custom tags"
+  type        = map(string)
+  default     = {}
+}
+
 variable "scope" {
   description = "scope to restrain the access to the resource"
   type        = string
@@ -13,13 +19,6 @@ variable "statements" {
   }))
 }
 
-variable "principals_services" {
-  description = "the prefix of each service name that is added to principals: [ec2, ecs, ...]"
-  type        = list(string)
-  nullable    = false
-  default     = []
-}
-
 variable "account_ids" {
   description = "(Scope `accounts`) extra account ids to give access to the resource"
   type        = list(string)
@@ -28,7 +27,7 @@ variable "account_ids" {
 }
 
 variable "vpc_ids" {
-  description = "(Scope `microservice`) vpc ids to give access to the resource"
+  description = "(Scope `microservices`) vpc ids to give access to the resource"
   type        = list(string)
   nullable    = false
   default     = []
@@ -39,7 +38,7 @@ variable "scopes" {
   description = "scopes to restrain the access to the resource"
   type        = list(string)
 
-  default = ["public", "accounts", "microservice"]
+  default = ["public", "accounts", "microservices"]
 }
 
 resource "null_resource" "scopes" {

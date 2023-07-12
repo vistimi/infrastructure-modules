@@ -20,6 +20,15 @@ locals {
   ]
 }
 
+resource "aws_kms_key" "objects" {
+  for_each = var.encryption != null ? { "${var.name}" = {} } : {}
+
+  description             = "KMS key is used to encrypt bucket objects"
+  deletion_window_in_days = var.encryption.deletion_window_in_days
+
+  tags = var.tags
+}
+
 // TODO: add encryption
 module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
@@ -39,33 +48,64 @@ module "s3_bucket" {
   # control_object_ownership = true
   # object_ownership         = "ObjectWriter"
 
-  tags = merge(var.tags, { Name = var.name })
+  server_side_encryption_configuration = var.encryption != null ? {
+    rule = {
+      apply_server_side_encryption_by_default = {
+        kms_master_key_id = aws_kms_key.objects[var.name].arn
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  } : {}
+
+  tags = var.tags
 }
 
 module "bucket_policy" {
   source = "../../iam/policy_document"
 
-  scope               = var.iam.scope
-  statements          = local.iam_statements
-  principals_services = ["ec2"]
-  account_ids         = var.iam.account_ids
-  vpc_ids             = concat(var.iam.vpc_ids, [var.vpc_id])
+  scope       = var.iam.scope
+  statements  = local.iam_statements
+  account_ids = var.iam.account_ids
+  vpc_ids     = var.iam.vpc_ids
+
+  tags = var.tags
 }
 
 #-------------------
 #   Attachments
 #-------------------
+data "aws_iam_policy_document" "role_attachment" {
+  dynamic "statement" {
+    for_each = concat(
+      local.iam_statements,
+      var.encryption != null ? [
+        {
+          actions   = ["kms:GetPublicKey", "kms:GetKeyPolicy", "kms:DescribeKey"]
+          resources = ["arn:${local.partition}:s3:::${var.name}"]
+          effect    = "Allow"
+        },
+      ] : []
+    )
+
+    content {
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
+}
+
 resource "aws_iam_policy" "role_attachment" {
   name = "${var.name}-role-attachment"
 
-  policy = module.bucket_policy.json
+  policy = data.aws_iam_policy_document.role_attachment.json
 
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "role_attachment" {
-  for_each = { for role_name in var.bucket_attachement_role_names : role_name => {} }
+  count = length(var.bucket_attachement_role_names)
 
-  role       = each.key
+  role       = var.bucket_attachement_role_names[count.index]
   policy_arn = aws_iam_policy.role_attachment.arn
 }

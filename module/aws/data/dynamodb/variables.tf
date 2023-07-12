@@ -80,7 +80,8 @@ variable "table_attachement_role_names" {
 
 variable "iam" {
   type = object({
-    scope                         = string
-    account_ids                   = optional(string)
+    scope       = string
+    account_ids = optional(list(string))
+    vpc_ids     = optional(list(string))
   })
 }

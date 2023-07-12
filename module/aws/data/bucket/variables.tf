@@ -10,9 +10,12 @@ variable "tags" {
   default     = {}
 }
 
-variable "vpc_id" {
-  description = "The IDs of the VPC which contains the subnets"
-  type        = string
+variable "encryption" {
+  description = "Enable server side encryption"
+  type = object({
+    deletion_window_in_days = optional(number)
+  })
+  default = null
 }
 
 variable "force_destroy" {
@@ -36,7 +39,7 @@ variable "bucket_attachement_role_names" {
 variable "iam" {
   type = object({
     scope       = string
-    account_ids = optional(string)
-    vpc_ids     = optional(string)
+    account_ids = optional(list(string))
+    vpc_ids     = optional(list(string))
   })
 }

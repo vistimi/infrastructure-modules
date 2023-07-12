@@ -9,6 +9,13 @@ data "aws_subnets" "tier" {
   tags = {
     Tier = var.vpc.tier
   }
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.ids) >= 2
+      error_message = "For a Load Balancer: At least two subnets in two different Availability Zones must be specified, subnets: ${jsonencode(self.ids)}"
+    }
+  }
 }
 
 locals {
@@ -18,13 +25,4 @@ locals {
   partition   = data.aws_partition.current.partition  // aws
   region      = data.aws_region.current.name
   subnets     = data.aws_subnets.tier.ids
-}
-
-resource "null_resource" "vpc_subnets" {
-  lifecycle {
-    precondition {
-      condition     = length(local.subnets) >= 2
-      error_message = "For a Load Balancer: At least two subnets in two different Availability Zones must be specified, subnets: ${jsonencode(local.subnets)}"
-    }
-  }
 }

@@ -1,9 +1,9 @@
-variable "common_name" {
+variable "name" {
   description = "The common part of the name used for all resources"
   type        = string
 }
 
-variable "common_tags" {
+variable "tags" {
   description = "Custom tags to set on the Instances in the ASG"
   type        = map(string)
   default     = {}
@@ -29,24 +29,13 @@ resource "null_resource" "deployment_type" {
 #--------------
 # ELB & ECS
 #--------------
-
-variable "acm" {
-  type = object({
-    zone_name = string
-    record = object({
-      subdomain_name = string
-      extensions     = optional(list(string))
-    })
-  })
-}
-
 variable "route53" {
   type = object({
-    zone = object({
+    zones = list(object({
       name = string
-    })
+    }))
     record = object({
-      extensions     = optional(list(string))
+      prefixes       = optional(list(string))
       subdomain_name = string
     })
   })
@@ -315,7 +304,7 @@ resource "null_resource" "ec2_os" {
       os_version   = value.os_version
       architecture = value.architecture
     }
-    if !var.service.deployment_type == "ec2"
+    if var.service.deployment_type == "ec2"
   }
 
   lifecycle {

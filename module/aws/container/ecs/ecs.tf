@@ -1,15 +1,15 @@
 resource "aws_cloudwatch_log_group" "cluster" {
-  name              = "/${var.log.prefix}/${var.common_name}"
+  name              = "/${var.log.prefix}/${var.name}"
   retention_in_days = var.log.retention_days
 
-  tags = var.common_tags
+  tags = var.tags
 }
 
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
 
-  cluster_name = var.common_name
+  cluster_name = var.name
 
   create_cloudwatch_log_group = false
   # cloudwatch_log_group_retention_in_days = var.log.retention_days
@@ -39,7 +39,7 @@ module "ecs" {
   autoscaling_capacity_providers = {
     for key, value in var.ec2 :
     key => {
-      name                   = "${var.common_name}-${key}"
+      name                   = "${var.name}-${key}"
       auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
       managed_scaling = {
         // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
@@ -59,7 +59,7 @@ module "ecs" {
   }
 
   services = {
-    "${var.common_name}" = {
+    "${var.name}" = {
       #------------
       # Service
       #------------
@@ -80,7 +80,7 @@ module "ecs" {
       load_balancer = {
         service = {
           target_group_arn = module.elb.target_group_arns[0] // one LB per target group
-          container_name   = var.common_name
+          container_name   = var.name
           container_port   = var.traffic.target.port
         }
       }
@@ -110,7 +110,7 @@ module "ecs" {
       # Task definition
       #---------------------
       create_task_exec_iam_role = true
-      task_exec_iam_role_tags   = var.common_tags
+      task_exec_iam_role_tags   = var.tags
       task_exec_iam_statements = {
         custom = {
           actions = [
@@ -162,7 +162,7 @@ module "ecs" {
 
 
       create_tasks_iam_role = true
-      task_iam_role_tags    = var.common_tags
+      task_iam_role_tags    = var.tags
       tasks_iam_role_statements = {
         custom = {
           actions = [
@@ -183,15 +183,15 @@ module "ecs" {
       # Task definition
       memory                   = var.task_definition.memory
       cpu                      = var.task_definition.cpu
-      family                   = var.common_name
+      family                   = var.name
       requires_compatibilities = var.service.deployment_type == "fargate" ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
       network_mode = var.service.deployment_type == "fargate" ? "awsvpc" : "bridge" // "host" for single instance
 
       # Task definition container(s)
       container_definitions = {
-        "${var.common_name}" = {
-          name = var.common_name
+        "${var.name}" = {
+          name = var.name
           environment_files = [
             {
               "value" = "arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/${var.task_definition.env_file_name}",
@@ -229,5 +229,5 @@ module "ecs" {
     }
   }
 
-  tags = var.common_tags
+  tags = var.tags
 }

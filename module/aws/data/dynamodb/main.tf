@@ -10,18 +10,18 @@ locals {
 
   iam_statements = [
     {
-      actions   = [
-          "dynamodb:BatchGet*",
-          "dynamodb:DescribeStream",
-          "dynamodb:DescribeTable",
-          "dynamodb:Get*",
-          "dynamodb:Query",
-          "dynamodb:Scan",
-          "dynamodb:BatchWrite*",
-          "dynamodb:Delete*",
-          "dynamodb:Update*",
-          "dynamodb:PutItem",
-        ]
+      actions = [
+        "dynamodb:BatchGet*",
+        "dynamodb:DescribeStream",
+        "dynamodb:DescribeTable",
+        "dynamodb:Get*",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchWrite*",
+        "dynamodb:Delete*",
+        "dynamodb:Update*",
+        "dynamodb:PutItem",
+      ]
       resources = ["arn:${local.partition}:dynamodb:${local.region}:${local.account_id}:table/${var.table_name}"]
       effect    = "Allow"
     }
@@ -74,25 +74,29 @@ module "dynamodb_table" {
 #-------------------
 #   Attachments
 #-------------------
-module "table_policy" {
-  source = "../../iam/policy_document"
+data "aws_iam_policy_document" "role_attachment" {
+  dynamic "statement" {
+    for_each = local.iam_statements
 
-  scope               = var.iam.scope
-  statements          = local.iam_statements
-  account_ids         = var.iam.account_ids
+    content {
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
 }
 
 resource "aws_iam_policy" "role_attachment" {
   name = "${var.table_name}-role-attachment"
 
-  policy = module.table_policy.json
+  policy = data.aws_iam_policy_document.role_attachment.json
 
   tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "role_attachment" {
-  for_each = { for role_name in var.table_attachement_role_names : role_name => {} }
+  count = length(var.table_attachement_role_names)
 
-  role       = each.key
+  role       = var.table_attachement_role_names[count.index]
   policy_arn = aws_iam_policy.role_attachment.arn
 }
