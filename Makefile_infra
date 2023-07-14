@@ -22,30 +22,20 @@ OVERRIDE_EXTENSION=override
 # https://www.gnu.org/software/make/manual/html_node/Options-Summary.html
 MAKEFLAGS += --no-print-directory	# stop printing entering/leaving directory messages
 MAKEFLAGS += --warn-undefined-variables	# warn when an undefined variable is referenced
+.ONESHELL: # run one shell per target
+
+# error for undefined variables
+check_defined = \
+    $(strip $(foreach 1,$1, \
+        $(call __check_defined,$1,$(strip $(value 2)))))
+__check_defined = \
+    $(if $(value $1),, \
+      $(error Undefined $1$(if $2, ($2))))
 
 .PHONY: build help
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-fmt: ## Format all files
-	terragrunt hclfmt
-
-.ONESHELL: clean
-clean: ## Clean the test environment
-	make nuke-region
-	make nuke-ecs
-	make nuke-vpc
-	make nuke-global
-
-	make clean-task-definition
-	make clean-elb
-	make clean-ecs
-
-	make clean-local
-clean-local: ## Clean the local files and folders
-	echo "Delete state backup files..."; for folderPath in $(shell find . -type f -name ".terraform.lock.hcl"); do echo $$folderPath; rm -Rf $$folderPath; done; \
-	echo "Delete override files..."; for filePath in $(shell find . -type f -name "*override*"); do echo $$filePath; rm $$filePath; done; \
-	echo "Delete temp folder..."; for folderPath in $(shell find . -type d -name ".terragrunt-cache"); do echo $$folderPath; rm -Rf $$folderPath; done;
 clean-cloudwatch:
 	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
 clean-task-definition:
@@ -71,17 +61,15 @@ nuke-ecs:
 nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 
-.ONESHELL: aws-auth
 aws-auth:
 	aws --version
 	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE_NAME}
 	aws configure set --profile ${AWS_PROFILE_NAME} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
 	aws configure set region ${AWS_REGION_NAME} --profile ${AWS_PROFILE_NAME}
 	aws configure set output 'text' --profile ${AWS_PROFILE_NAME}
-	make aws-auth-check
+	aws configure list
 aws-auth-check:
 	aws configure list
-.ONESHELL: ecr-configure
 
 ssh-auth:
 	$(eval GIT_HOST=github.com)
@@ -92,36 +80,31 @@ ssh-auth:
 gh-auth-check:
 	gh auth status
 gh-list-branches:
+	$(call check_defined, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME)
 	curl -s -L \
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
 		-H "X-GitHub-Api-Version: 2022-11-28" \
 		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/branches | jq '.[].name'
-.ONESHELL: gh-load-folder
 gh-load-folder:
+	$(call check_defined, OVERRIDE_EXTENSION, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME, BRANCH_NAME, REPOSITORY_CONFIG_PATH_FOLDER, TERRAGRUNT_CONFIG_PATH)
 	echo GET Github folder:: ${REPOSITORY_CONFIG_PATH_FOLDER}@${BRANCH_NAME}
 	$(eval filesPath=$(shell curl -s -L \
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: Bearer ${GITHUB_TOKEN}" \
 		-H "X-GitHub-Api-Version: 2022-11-28" \
 		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_CONFIG_PATH_FOLDER}?ref=${BRANCH_NAME} | jq -c '.[].path'))
-	for filePath in ${filesPath}; do		
-		make gh-load-config-file \
-			OVERRIDE_EXTENSION=${OVERRIDE_EXTENSION} \
-			GITHUB_TOKEN=${GITHUB_TOKEN} \
-			REPOSITORY_CONFIG_PATH_FILE="$$filePath" \
-			ORGANIZATION_NAME=${ORGANIZATION_NAME} \
-			TERRAGRUNT_CONFIG_PATH=${TERRAGRUNT_CONFIG_PATH} \
-			BRANCH_NAME=${BRANCH_NAME}; \
-    done
-gh-load-config-file:
-	echo GET Github file:: ${REPOSITORY_CONFIG_PATH_FILE}@${BRANCH_NAME}
-	curl -s -L -o ${TERRAGRUNT_CONFIG_PATH}/$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${REPOSITORY_CONFIG_PATH_FILE}" = *.* ]] && echo .$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f2) || echo '') \
+	for filePath in ${filesPath}; do
+		$(eval REPOSITORY_CONFIG_PATH_FILE="$$filePath")
+		echo GET Github file:: ${REPOSITORY_CONFIG_PATH_FILE}@${BRANCH_NAME}
+		curl -s -L -o ${TERRAGRUNT_CONFIG_PATH}/$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${REPOSITORY_CONFIG_PATH_FILE}" = *.* ]] && echo .$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f2) || echo '') \
 			-H "Accept: application/vnd.github.v3.raw" \
 			-H "Authorization: Bearer ${GITHUB_TOKEN}" \
 			-H "X-GitHub-Api-Version: 2022-11-28" \
 			https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_CONFIG_PATH_FILE}?ref=${BRANCH_NAME}
+	done
 gh-get-default-branch:
+	$(call check_defined, OVERRIDE_EXTENSION, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME)
 	curl -s -L \
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: Bearer ${GITHUB_TOKEN}"\
@@ -129,15 +112,14 @@ gh-get-default-branch:
 		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/branches
 
 list-override-files:
+	$(call check_defined, OVERRIDE_EXTENSION)
 	find ./live -type f -name "*${OVERRIDE_EXTENSION}*"
 
 # it needs the tfstate files which are generated with apply
 graph:
+	$(call check_defined, INFRAMAP_PATH)
 	cat ${INFRAMAP_PATH}/terraform.tfstate | inframap generate --tfstate | dot -Tpng > ${INFRAMAP_PATH}//vpc/graph.png
-graph-scraper-vpc: ## Generate the graph for the VPC
-	make graph INFRAMAP_PATH=${ROOT_PATH}/live/region/vpc
 
-rover-docker:
-	sudo rover -workingDir ${ROVER_PATH} -tfVarsFile ${ROVER_PATH}/terraform_${OVERRIDE_EXTENSION}.tfvars -genImage true
-rover-vpc: ## Generate the rover for the VPC
-	make rover-docker ROVER_PATH=${ROOT_PATH}/live/region/vpc
+rover:
+	$(call check_defined, ROVER_PATH, OVERRIDE_EXTENSION)
+	rover -workingDir ${ROVER_PATH} -tfVarsFile ${ROVER_PATH}/terraform_${OVERRIDE_EXTENSION}.tfvars -genImage true
