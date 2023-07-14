@@ -7,7 +7,7 @@ on:
         type: environment
         description: "Github environment name"
         required: false
-        default: trunk
+        default: repository
       event_name:
         type: choice
         description: "Type of action event name"
@@ -26,7 +26,7 @@ env:
   ORGANIZATION_NAME: ${{ github.repository_owner }}
   BRANCH_NAME: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   LOG_file: log.out
-  DEFAULT_BRANCH_NAME: ${{ github.event.repository.default_branch }}
+  DEFAULT_BRANCH_NAME: ${{ 'repositories' || github.event.repository.default_branch }}
   ARCHITECTURES: \[\"x86-64\"\] # ARM   ARM 64   x86   x86-64
   OS: \[\"Linux\"\] # Windows
   IMAGE_KEEP_COUNT_DEFAULT: 3
@@ -36,7 +36,7 @@ jobs:
   ecr-publish:
     name: ECR publish
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || github.event.repository.default_branch }}
+    environment: ${{ inputs.environment || 'repositories' || github.event.repository.default_branch }}
     env:
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
