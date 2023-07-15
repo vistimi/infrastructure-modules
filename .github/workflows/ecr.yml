@@ -164,15 +164,15 @@ jobs:
 
             elif [[ $ECR_PRIVACY == public ]]; then
 
-              echo OS="${OS}"
-              echo ARCHITECTURES="${ARCHITECTURES}"
+              echo OS=${{ env.OS }}
+              echo ARCHITECTURES=${{ env.ARCHITECTURES }}
 
               # TODO: registry catalog data logo ImageBlob
               # add repository catalog data
               json_string=$(
                 jq --null-input \
-                  --argjson architectures '${ARCHITECTURES}' \
-                  --argjson os '${OS}' \
+                  --argjson architectures ${{ env.ARCHITECTURES }} \
+                  --argjson os ${{ env.OS }} \
                   --arg aboutText "" \
                   --arg usageText "" \
                   --arg description "" \
