@@ -7,7 +7,7 @@ on:
         type: environment
         description: "Github environment name"
         required: false
-        default: repository
+        default: repositories
       event_name:
         type: choice
         description: "Type of action event name"
@@ -26,15 +26,15 @@ env:
   ORGANIZATION_NAME: ${{ github.repository_owner }}
   BRANCH_NAME: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   LOG_file: log.out
-  DEFAULT_BRANCH_NAME: ${{ 'repositories' || github.event.repository.default_branch }}
+  DEFAULT_BRANCH_NAME: ${{ 'trunk' || github.event.repository.default_branch }}
   ARCHITECTURES: \[\"x86-64\"\] # ARM   ARM 64   x86   x86-64
   OS: \[\"Linux\"\] # Windows
   IMAGE_KEEP_COUNT_DEFAULT: 3
   IMAGE_KEEP_COUNT_NON_DEFAULT: 1
 
 jobs:
-  ecr-publish:
-    name: ECR publish
+  ecr:
+    name: ECR
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'repositories' || github.event.repository.default_branch }}
     env:
@@ -66,17 +66,11 @@ jobs:
           echo DOCKERFILES=$DOCKERFILES
           echo DOCKERFILES=$DOCKERFILES >> $GITHUB_ENV
 
-      - name: Setup region
-        run: |
-          if [[ $ECR_PRIVACY == public ]]; then
-            
-          fi
-
       - name: Setup privacy env
         run: |
           if [[ $ECR_PRIVACY == private ]]; then
             # keep default region
-            
+
             AWS_CLI_SERVICE=ecr
 
             ECR_REGISTRY_URI=$ECR_REGISTRY_PRIVATE_URI
@@ -106,7 +100,7 @@ jobs:
 
       - name: Login to ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
+          aws $AWS_CLI_SERVICE get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
 
       - name: Login to Public ECR
         uses: docker/login-action@v2
@@ -235,7 +229,7 @@ jobs:
               func_ecr_push
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
-              aws ecr delete-repository --repository-name $ECR_REPOSITORY_NAME --force
+              aws $AWS_CLI_SERVICE delete-repository --repository-name $ECR_REPOSITORY_NAME --force
             else
               echo -e '\033[41mError\033[0m'
               echo Error: event do not match, event_name ${{ github.event_name }}, inputs.event_name ${{ inputs.event_name }}
@@ -250,7 +244,7 @@ jobs:
             DOCKERFILE_PATH=$(jq -r '.path' <<< "$dockerfile")
             echo "DOCKERFILE_PATH:: $DOCKERFILE_PATH"
 
-            # ecr extension name
+            # repository extension name
             extension=$(jq -r '.extension' <<< "$dockerfile")
             if [[ -n "$extension" && $extension != null ]]; then
               dockerfile_extension="-$extension"
