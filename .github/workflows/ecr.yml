@@ -75,7 +75,7 @@ jobs:
 
             ECR_REGISTRY_URI=$ECR_REGISTRY_PRIVATE_URI
           elif [[ $ECR_PRIVACY == public ]]; then
-            AWS_REGION_NAME=$AWS_REGION_NAME
+            AWS_REGION_NAME=us-east-1
             echo AWS_REGION_NAME=$AWS_REGION_NAME
             echo AWS_REGION_NAME=$AWS_REGION_NAME >> $GITHUB_ENV
 
@@ -98,10 +98,6 @@ jobs:
           aws configure set region $AWS_REGION_NAME
           aws configure list
 
-      - name: Login to ECR
-        run: |
-          aws $AWS_CLI_SERVICE get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
-
       - name: Login to Public ECR
         uses: docker/login-action@v2
         with:
@@ -110,6 +106,10 @@ jobs:
           password: ${{ secrets.AWS_SECRET_KEY }}
         env:
           AWS_REGION: ${{ env.AWS_REGION_NAME }}
+
+      - name: Login to ECR
+        run: |
+          aws $AWS_CLI_SERVICE get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
 
       - name: Run workflow for each Dockerfile
         run: |
