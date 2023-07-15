@@ -27,8 +27,8 @@ env:
   BRANCH_NAME: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   LOG_file: log.out
   DEFAULT_BRANCH_NAME: ${{ 'trunk' || github.event.repository.default_branch }}
-  ARCHITECTURES: '"x86-64","ARM 64"' # ARM   ARM 64   x86   x86-64
-  OS: '"Linux"' # Windows
+  ARCHITECTURES: '"x86-64", "ARM 64"' # "ARM"   "ARM 64"   "x86"   "x86-64"
+  OS: '"Linux"' # "Windows"
   IMAGE_KEEP_COUNT_DEFAULT: 3
   IMAGE_KEEP_COUNT_NON_DEFAULT: 1
 
@@ -109,9 +109,9 @@ jobs:
       - name: Run workflow for each Dockerfile
         run: |
           # functions
-          func_ecr_create () {
-            echo -e '\033[43mCreating repository in ECR\033[0m'
+          func_ecr_create () {            
             if [[ $ECR_PRIVACY == private ]]; then
+              echo -e '\033[43mCreating private repository in ECR\033[0m'
 
               # create repository
               ECR_REPOSITORY_URI=$(
@@ -163,25 +163,9 @@ jobs:
               aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
 
             elif [[ $ECR_PRIVACY == public ]]; then
+              echo -e '\033[43mCreating public repository in ECR\033[0m'
 
               # TODO: repository catalog data logo ImageBlob
-              # add repository catalog data
-              json_string=$(
-                jq --null-input \
-                  --argjson architectures '${{ env.ARCHITECTURES }}' \
-                  --argjson os '${{ env.OS }}' \
-                  --arg aboutText "" \
-                  --arg usageText "" \
-                  --arg description "" \
-                  '{ 
-                    "aboutText": $aboutText,
-                    "architectures": $architectures,
-                    "description": $description,                    
-                    "operatingSystems": $os,
-                    "usageText": $usageText
-                }'
-              )
-
               # create repository
               ECR_REPOSITORY_URI=$(
                 aws ecr-public create-repository \
@@ -192,7 +176,7 @@ jobs:
               )
             fi
 
-            aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryName'
+            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
           }
           func_ecr_push () {
             # check existance of repository
@@ -206,13 +190,17 @@ jobs:
 
             # Push new image
             echo -e '\033[43mPushing image to ECR\033[0m'
-            docker build --progress=plain --no-cache -t $ECR_REPOSITORY_URI/$IMAGE_TAG -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
-            DOCKER_SRC=$(docker images -q $ECR_REPOSITORY_URI/$IMAGE_TAG)
-            echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" ${DOCKER_SRC} | numfmt --to=si)
-            docker tag ${DOCKER_SRC} $ECR_REPOSITORY_URI:$IMAGE_TAG
-            docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-            docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
-            docker push $ECR_REPOSITORY_URI:latest
+            # docker buildx create --name multiarch --platform linux/amd64,linux/arm64 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
+            docker buildx create --use --name multiarch
+
+            docker buildx inspect multiarch --bootstrap
+
+            docker buildx build --push --builder multiarch --platform linux/amd64,linux/arm64 -t $ECR_REPOSITORY_URI:$IMAGE_TAG -t $ECR_REPOSITORY_URI:latest -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
+            aws ecr-public describe-images --repository-name test
+            docker manifest inspect $ECR_REPOSITORY_URI
+
+            # DOCKER_SRC=$(docker images -q $ECR_REPOSITORY_URI:$IMAGE_TAG)
+            # echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" ${DOCKER_SRC} | numfmt --to=si)
 
             # Describe new image
             echo -e '\033[44mECR IMAGE THIS\033[0m'::
