@@ -27,8 +27,8 @@ env:
   BRANCH_NAME: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   LOG_file: log.out
   DEFAULT_BRANCH_NAME: ${{ 'trunk' || github.event.repository.default_branch }}
-  ARCHITECTURES: '["x86-64"]' # ARM   ARM 64   x86   x86-64
-  OS: '["Linux"]' # Windows
+  ARCHITECTURES: '"x86-64","ARM 64"' # ARM   ARM 64   x86   x86-64
+  OS: '"Linux"' # Windows
   IMAGE_KEEP_COUNT_DEFAULT: 3
   IMAGE_KEEP_COUNT_NON_DEFAULT: 1
 
@@ -164,15 +164,12 @@ jobs:
 
             elif [[ $ECR_PRIVACY == public ]]; then
 
-              echo OS=${{ env.OS }}
-              echo ARCHITECTURES=${{ env.ARCHITECTURES }}
-
-              # TODO: registry catalog data logo ImageBlob
+              # TODO: repository catalog data logo ImageBlob
               # add repository catalog data
               json_string=$(
                 jq --null-input \
-                  --argjson architectures ${{ env.ARCHITECTURES }} \
-                  --argjson os ${{ env.OS }} \
+                  --argjson architectures '${{ env.ARCHITECTURES }}' \
+                  --argjson os '${{ env.OS }}' \
                   --arg aboutText "" \
                   --arg usageText "" \
                   --arg description "" \
@@ -189,11 +186,13 @@ jobs:
               ECR_REPOSITORY_URI=$(
                 aws ecr-public create-repository \
                   --repository-name $ECR_REPOSITORY_NAME \
-                  --catalog-data $json_string \
+                  --catalog-data description="",architectures=${{ env.ARCHITECTURES }},operatingSystems=${{ env.OS }},aboutText="",usageText="" \
                   --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
                   --query 'repository.repositoryUri'
               )
             fi
+
+            aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryName'
           }
           func_ecr_push () {
             # check existance of repository
