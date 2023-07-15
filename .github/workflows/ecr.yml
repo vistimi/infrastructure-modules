@@ -91,14 +91,14 @@ jobs:
 
               # create repository
               AWS_CLI_SERVICE=ecr
-              ECR_REGISTRY_URI=$(
+              ECR_REPOSITORY_URI=$(
                 aws ecr create-repository \
-                  --repository-name $ECR_REPOSITORY_NAMESITORY_NAME \
+                  --repository-name $ECR_REPOSITORY_NAME \
                   --encryption-configuration encryptionType=KMS \
                   --image-tag-mutability MUTABLE \
                   --image-scanning-configuration scanOnPush=true \
                   --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
-                  --query '.repository.repositoryUri'
+                  --query 'repository.repositoryUri'
               )
 
               # add lifecycle policy
@@ -118,7 +118,7 @@ jobs:
                   }'
               )
               echo $json_string > ecr-lifecycle-policy.json
-              aws ecr put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAMESITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
+              aws ecr put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
 
               # add repository policy
               json_string=$(
@@ -137,32 +137,30 @@ jobs:
                   }'
               )
               echo $json_string > ecr-repository-policy.json
-              aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAMESITORY_NAME --policy-text "file://ecr-repository-policy.json"
+              aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
 
             elif [[ $ECR_PRIVACY == public ]]; then
 
               # create repository
               AWS_CLI_SERVICE=ecr-public
-              ECR_REGISTRY_URI=$(
+              ECR_REPOSITORY_URI=$(
                 aws ecr-public create-repository \
-                  --repository-name $ECR_REPOSITORY_NAMESITORY_NAME \
+                  --repository-name $ECR_REPOSITORY_NAME \
                   --image-tag-mutability MUTABLE \
                   --image-scanning-configuration scanOnPush=true \
                   --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
-                  --query '.repository.repositoryUri'
+                  --query 'repository.repositoryUri'
               )
 
-              # registry catalog data is set manually
+              # TODO: registry catalog data image
               # add repository catalog data
               json_string=$(
                 jq --null-input \
                   --argjson architectures "${ARCHITECTURES}" \
                   --argjson os "${OS}" \
-                  --argjson image_base64 "" \
                   --arg aboutText "" \
                   --arg usageText "" \
                   --arg description "" \
-                  "logoImageBlob": $image_base64,
                   '{ 
                     "aboutText": $aboutText,
                     "architectures": $architectures,
@@ -172,16 +170,15 @@ jobs:
                  }'
               )
               aws ecr-public put-repository-catalog-data \
-                --repository-name $ECR_REPOSITORY_NAMESITORY_NAME \
-                # --registry-id "" \
+                --repository-name $ECR_REPOSITORY_NAME \
                 --catalog-data $json_string
             fi
           }
           func_ecr_push () {
             # check existance of repository
-            REPOSITORY_NAMESITORY_NAME_EXISTING=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAMESITORY_NAME --query 'repositories[0].repositoryName' || true)
-            echo REPOSITORY_NAMESITORY_NAME_EXISTING=$REPOSITORY_NAMESITORY_NAME_EXISTING
-            if [ -z ${REPOSITORY_NAMESITORY_NAME_EXISTING} ]; then
+            REPOSITORY_NAME_EXISTING=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryName' || true)
+            echo REPOSITORY_NAME_EXISTING=$REPOSITORY_NAME_EXISTING
+            if [ -z ${REPOSITORY_NAME_EXISTING} ]; then
               func_ecr_create
             else
               echo -e '\033[46mRepository already exists\033[0m'
@@ -189,17 +186,17 @@ jobs:
 
             # Push new image
             echo -e '\033[43mPushing image to ECR\033[0m'
-            docker build --progress=plain --no-cache -t $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME/$IMAGE_TAG -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
-            DOCKER_SRC=$(docker images -q $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME/$IMAGE_TAG)
+            docker build --progress=plain --no-cache -t $ECR_REPOSITORY_URI/$IMAGE_TAG -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
+            DOCKER_SRC=$(docker images -q $ECR_REPOSITORY_URI/$IMAGE_TAG)
             echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" ${DOCKER_SRC} | numfmt --to=si)
-            docker tag ${DOCKER_SRC} $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME:$IMAGE_TAG
-            docker push $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME:$IMAGE_TAG
-            docker tag $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME:$IMAGE_TAG $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME:latest
-            docker push $ECR_REGISTRY_URI/$ECR_REPOSITORY_NAMESITORY_NAME:latest
+            docker tag ${DOCKER_SRC} $ECR_REPOSITORY_URI:$IMAGE_TAG
+            docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+            docker tag $ECR_REPOSITORY_URI:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+            docker push $ECR_REPOSITORY_URI:latest
 
             # Describe new image
             echo -e '\033[44mECR IMAGE THIS\033[0m'::
-            aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAMESITORY_NAME --image-ids imageTag=latest --output json
+            aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME --image-ids imageTag=latest --output json
           }
           func_ecr () {
             # create/push/delete
@@ -209,7 +206,7 @@ jobs:
               func_ecr_push
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
-              aws ecr delete-repository --repository-name $ECR_REPOSITORY_NAMESITORY_NAME --force
+              aws ecr delete-repository --repository-name $ECR_REPOSITORY_NAME --force
             else
               echo -e '\033[41mError\033[0m'
               echo Error: event do not match, event_name ${{ github.event_name }}, inputs.event_name ${{ inputs.event_name }}
@@ -232,8 +229,8 @@ jobs:
               dockerfile_extension=$([[ "$DOCKERFILE_PATH" = *.* ]] && echo "-${DOCKERFILE_PATH##*.}" || echo '')
             fi
             echo dockerfile_extension:: $dockerfile_extension
-            ECR_REPOSITORY_NAMESITORY_NAME="$(echo $REPOSITORY_NAME-$BRANCH_NAME$dockerfile_extension | tr A-Z a-z)"
-            echo ECR_REPOSITORY_NAMESITORY_NAME:: $ECR_REPOSITORY_NAMESITORY_NAME
+            ECR_REPOSITORY_NAME="$(echo $REPOSITORY_NAME-$BRANCH_NAME$dockerfile_extension | tr A-Z a-z)"
+            echo ECR_REPOSITORY_NAME:: $ECR_REPOSITORY_NAME
 
             # docker build args
             DOCKERFILE_ARGS=""
