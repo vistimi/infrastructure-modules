@@ -102,14 +102,10 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: public.ecr.aws
-          username: ${{ secrets.AWS_ACCESS_KEY }}
-          password: ${{ secrets.AWS_SECRET_KEY }}
-        env:
-          AWS_REGION: ${{ env.AWS_REGION_NAME }}
 
-      - name: Login to ECR
-        run: |
-          aws $AWS_CLI_SERVICE get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
+      # - name: Login to ECR
+      #   run: |
+      #     aws $AWS_CLI_SERVICE get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
 
       - name: Run workflow for each Dockerfile
         run: |
@@ -169,12 +165,15 @@ jobs:
 
             elif [[ $ECR_PRIVACY == public ]]; then
 
+              echo OS="${OS}"
+              echo ARCHITECTURES="${ARCHITECTURES}"
+
               # TODO: registry catalog data logo ImageBlob
               # add repository catalog data
               json_string=$(
                 jq --null-input \
-                  --argjson architectures "${ARCHITECTURES}" \
-                  --argjson os "${OS}" \
+                  --argjson architectures '${ARCHITECTURES}' \
+                  --argjson os '${OS}' \
                   --arg aboutText "" \
                   --arg usageText "" \
                   --arg description "" \
