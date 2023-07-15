@@ -66,6 +66,36 @@ jobs:
           echo DOCKERFILES=$DOCKERFILES
           echo DOCKERFILES=$DOCKERFILES >> $GITHUB_ENV
 
+      - name: Setup region
+        run: |
+          if [[ $ECR_PRIVACY == public ]]; then
+            
+          fi
+
+      - name: Setup privacy env
+        run: |
+          if [[ $ECR_PRIVACY == private ]]; then
+            # keep default region
+            
+            AWS_CLI_SERVICE=ecr
+
+            ECR_REGISTRY_URI=$ECR_REGISTRY_PRIVATE_URI
+          elif [[ $ECR_PRIVACY == public ]]; then
+            AWS_REGION_NAME=$AWS_REGION_NAME
+            echo AWS_REGION_NAME=$AWS_REGION_NAME
+            echo AWS_REGION_NAME=$AWS_REGION_NAME >> $GITHUB_ENV
+
+            AWS_CLI_SERVICE=ecr-public
+
+            ECR_REGISTRY_URI=$ECR_REGISTRY_PUBLIC_URI
+          fi
+
+          echo AWS_CLI_SERVICE=$AWS_CLI_SERVICE
+          echo AWS_CLI_SERVICE=$AWS_CLI_SERVICE >> $GITHUB_ENV
+
+          echo ECR_REGISTRY_URI=$ECR_REGISTRY_URI
+          echo ECR_REGISTRY_URI=$ECR_REGISTRY_URI >> $GITHUB_ENV
+
       - name: Setup AWS CLI
         run: |
           aws --version
@@ -76,11 +106,16 @@ jobs:
 
       - name: Login to ECR
         run: |
-          if [[ $ECR_PRIVACY == private ]]; then
-            aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_PRIVATE_URI
-          elif [[ $ECR_PRIVACY == public ]]; then
-            aws ecr-public get-login-password --region us-east-1  | docker login --username AWS --password-stdin $ECR_REGISTRY_PUBLIC_URI
-          fi
+          aws ecr get-login-password --region $AWS_REGION_NAME | docker login --username AWS --password-stdin $ECR_REGISTRY_URI
+
+      - name: Login to Public ECR
+        uses: docker/login-action@v2
+        with:
+          registry: public.ecr.aws
+          username: ${{ secrets.AWS_ACCESS_KEY }}
+          password: ${{ secrets.AWS_SECRET_KEY }}
+        env:
+          AWS_REGION: ${{ env.AWS_REGION_NAME }}
 
       - name: Run workflow for each Dockerfile
         run: |
@@ -90,7 +125,6 @@ jobs:
             if [[ $ECR_PRIVACY == private ]]; then
 
               # create repository
-              AWS_CLI_SERVICE=ecr
               ECR_REPOSITORY_URI=$(
                 aws ecr create-repository \
                   --repository-name $ECR_REPOSITORY_NAME \
@@ -141,18 +175,7 @@ jobs:
 
             elif [[ $ECR_PRIVACY == public ]]; then
 
-              # create repository
-              AWS_CLI_SERVICE=ecr-public
-              ECR_REPOSITORY_URI=$(
-                aws ecr-public create-repository \
-                  --repository-name $ECR_REPOSITORY_NAME \
-                  --image-tag-mutability MUTABLE \
-                  --image-scanning-configuration scanOnPush=true \
-                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
-                  --query 'repository.repositoryUri'
-              )
-
-              # TODO: registry catalog data image
+              # TODO: registry catalog data logo ImageBlob
               # add repository catalog data
               json_string=$(
                 jq --null-input \
@@ -167,11 +190,17 @@ jobs:
                     "description": $description,                    
                     "operatingSystems": $os,
                     "usageText": $usageText
-                 }'
+                }'
               )
-              aws ecr-public put-repository-catalog-data \
-                --repository-name $ECR_REPOSITORY_NAME \
-                --catalog-data $json_string
+
+              # create repository
+              ECR_REPOSITORY_URI=$(
+                aws ecr-public create-repository \
+                  --repository-name $ECR_REPOSITORY_NAME \
+                  --catalog-data $json_string \
+                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
+                  --query 'repository.repositoryUri'
+              )
             fi
           }
           func_ecr_push () {
