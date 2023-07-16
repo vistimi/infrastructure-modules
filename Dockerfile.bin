@@ -99,7 +99,7 @@ COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/go/ /usr/lo
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /go/ /go/
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
-RUN sudo mkdir -p $GOPATH/src $GOPATH/bin && sudo chmod -R 777 $GOPATH
+RUN mkdir -p $GOPATH/src $GOPATH/bin && chmod -R 777 $GOPATH
 WORKDIR $GOPATH
 RUN go version
 
