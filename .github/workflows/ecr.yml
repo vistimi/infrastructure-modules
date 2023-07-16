@@ -107,82 +107,89 @@ jobs:
 
       - name: Run workflow for each Dockerfile
         run: |
-          # functions
-          func_ecr_create () {            
+          func_ecr_create_private_repository () {  
+            # create repository
+            ECR_REPOSITORY_URI=$(
+              aws ecr create-repository \
+                --repository-name $ECR_REPOSITORY_NAME \
+                --encryption-configuration encryptionType=KMS \
+                --image-tag-mutability MUTABLE \
+                --image-scanning-configuration scanOnPush=true \
+                --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
+                --query 'repository.repositoryUri' | tr -d '"'
+            )
+            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
+            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI >> $GITHUB_ENV
+
+            # add lifecycle policy
+            json_string=$(
+              jq --null-input \
+                --argjson count "${IMAGE_KEEP_COUNT}" \
+                '{
+                  rules: [ 
+                    { 
+                      rulePriority: 1, 
+                      description: "Keep only \($count) images", 
+                      selection: { tagStatus: "any", 
+                      countType: "imageCountMoreThan", countNumber: $count }, 
+                      action: { type: "expire" } 
+                    } 
+                  ] 
+                }'
+            )
+            echo $json_string > ecr-lifecycle-policy.json
+            aws ecr put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
+
+            # add repository policy
+            json_string=$(
+              jq --null-input \
+                --arg accountId "${AWS_ACCOUNT_ID}" \
+                '{
+                  Version: "2012-10-17", 
+                  Statement: [ 
+                    { 
+                      Effect: "Allow", 
+                      Principal: { Service: "ec2.amazonaws.com" }, 
+                      Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], 
+                      Condition: { "StringEquals": { "aws:SourceAccount": $accountId } }
+                    } 
+                  ] 
+                }'
+            )
+            echo $json_string > ecr-repository-policy.json
+            aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
+          }
+
+          func_ecr_create_public_repository () {
+            # TODO: repository catalog data logo ImageBlob
+            # create repository
+            ECR_REPOSITORY_URI=$(
+              aws ecr-public create-repository \
+                --repository-name $ECR_REPOSITORY_NAME \
+                --catalog-data description="",architectures=${{ env.ARCHITECTURES }},operatingSystems=${{ env.OS }},aboutText="",usageText="" \
+                --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
+                --query 'repository.repositoryUri' | tr -d '"'
+            )
+            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
+            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI >> $GITHUB_ENV
+          }
+
+          func_ecr_create_repository () {            
             if [[ $ECR_PRIVACY == private ]]; then
               echo -e '\033[43mCreating private repository in ECR\033[0m'
-
-              # create repository
-              ECR_REPOSITORY_URI=$(
-                aws ecr create-repository \
-                  --repository-name $ECR_REPOSITORY_NAME \
-                  --encryption-configuration encryptionType=KMS \
-                  --image-tag-mutability MUTABLE \
-                  --image-scanning-configuration scanOnPush=true \
-                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
-                  --query 'repository.repositoryUri'
-              )
-
-              # add lifecycle policy
-              json_string=$(
-                jq --null-input \
-                  --argjson count "${IMAGE_KEEP_COUNT}" \
-                  '{
-                    rules: [ 
-                      { 
-                        rulePriority: 1, 
-                        description: "Keep only \($count) images", 
-                        selection: { tagStatus: "any", 
-                        countType: "imageCountMoreThan", countNumber: $count }, 
-                        action: { type: "expire" } 
-                      } 
-                    ] 
-                  }'
-              )
-              echo $json_string > ecr-lifecycle-policy.json
-              aws ecr put-lifecycle-policy --repository-name $ECR_REPOSITORY_NAME --lifecycle-policy-text "file://ecr-lifecycle-policy.json"
-
-              # add repository policy
-              json_string=$(
-                jq --null-input \
-                  --arg accountId "${AWS_ACCOUNT_ID}" \
-                  '{
-                    Version: "2012-10-17", 
-                    Statement: [ 
-                      { 
-                        Effect: "Allow", 
-                        Principal: { Service: "ec2.amazonaws.com" }, 
-                        Action: [ "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer" ], 
-                        Condition: { "StringEquals": { "aws:SourceAccount": $accountId } }
-                      } 
-                    ] 
-                  }'
-              )
-              echo $json_string > ecr-repository-policy.json
-              aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
-
+              func_ecr_create_private_repository
             elif [[ $ECR_PRIVACY == public ]]; then
               echo -e '\033[43mCreating public repository in ECR\033[0m'
-
-              # TODO: repository catalog data logo ImageBlob
-              # create repository
-              ECR_REPOSITORY_URI=$(
-                aws ecr-public create-repository \
-                  --repository-name $ECR_REPOSITORY_NAME \
-                  --catalog-data description="",architectures=${{ env.ARCHITECTURES }},operatingSystems=${{ env.OS }},aboutText="",usageText="" \
-                  --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
-                  --query 'repository.repositoryUri'
-              )
+              func_ecr_create_public_repository              
             fi
-
-            echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
           }
-          func_ecr_push () {
+
+          func_ecr_push_image () {
             # check existance of repository
-            ECR_REPOSITORY_URI=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryUri'  | tr -d '"')
+            ECR_REPOSITORY_URI=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryUri' | tr -d '"')
             echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
             if [ -z ${ECR_REPOSITORY_URI} ]; then
-              func_ecr_create
+              func_ecr_create_repository
             else
               echo -e '\033[46mRepository already exists\033[0m'
             fi
@@ -198,19 +205,19 @@ jobs:
             aws ecr-public describe-images --repository-name $ECR_REPOSITORY_NAME
             docker manifest inspect $ECR_REPOSITORY_URI
 
-            # DOCKER_SRC=$(docker images -q $ECR_REPOSITORY_URI:$IMAGE_TAG)
-            # echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" ${DOCKER_SRC} | numfmt --to=si)
+            # echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" $(docker images -q $ECR_REPOSITORY_URI:$latest) | numfmt --to=si)
 
             # Describe new image
             echo -e '\033[44mECR IMAGE THIS\033[0m'::
             aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME --image-ids imageTag=latest --output json
           }
-          func_ecr () {
+
+          func_gh_event_to_ecr () {
             # create/push/delete
             if [[ "${{ github.event_name }}" == "create" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "create") ]]; then
-              func_ecr_create
+              func_ecr_create_repository
             elif [[ "${{ github.event_name }}" == "push" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "push") ]]; then
-              func_ecr_push
+              func_ecr_push_image
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
               aws $AWS_CLI_SERVICE delete-repository --repository-name $ECR_REPOSITORY_NAME --force
@@ -250,5 +257,5 @@ jobs:
             echo DOCKERFILE_ARGS:: $DOCKERFILE_ARGS
 
             # run function
-            echo $(func_ecr)
+            echo $(func_gh_event_to_ecr)
           done
