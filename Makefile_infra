@@ -62,9 +62,10 @@ nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 
 aws-auth:
+	$(call check_defined, AWS_PROFILE_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION_NAME)
 	aws --version
 	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE_NAME}
-	aws configure set --profile ${AWS_PROFILE_NAME} aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
+	aws configure set aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
 	aws configure set region ${AWS_REGION_NAME} --profile ${AWS_PROFILE_NAME}
 	aws configure set output 'text' --profile ${AWS_PROFILE_NAME}
 	aws configure list
@@ -95,14 +96,23 @@ gh-load-folder:
 		-H "X-GitHub-Api-Version: 2022-11-28" \
 		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_CONFIG_PATH_FOLDER}?ref=${BRANCH_NAME} | jq -c '.[].path'))
 	for filePath in ${filesPath}; do
-		$(eval REPOSITORY_CONFIG_PATH_FILE="$$filePath")
-		echo GET Github file:: ${REPOSITORY_CONFIG_PATH_FILE}@${BRANCH_NAME}
-		curl -s -L -o ${TERRAGRUNT_CONFIG_PATH}/$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${REPOSITORY_CONFIG_PATH_FILE}" = *.* ]] && echo .$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f2) || echo '') \
-			-H "Accept: application/vnd.github.v3.raw" \
-			-H "Authorization: Bearer ${GITHUB_TOKEN}" \
-			-H "X-GitHub-Api-Version: 2022-11-28" \
-			https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_CONFIG_PATH_FILE}?ref=${BRANCH_NAME}
+		make -f Makefile_infra gh-load-file \
+			REPOSITORY_CONFIG_PATH_FILE=$$filePath \
+			TERRAGRUNT_CONFIG_PATH=${TERRAGRUNT_CONFIG_PATH} \
+			OVERRIDE_EXTENSION=${OVERRIDE_EXTENSION} \
+			GITHUB_TOKEN=${GITHUB_TOKEN} \
+			ORGANIZATION_NAME=${ORGANIZATION_NAME} \
+			REPOSITORY_NAME=${REPOSITORY_NAME} \
+			BRANCH_NAME=${BRANCH_NAME}
 	done
+gh-load-file:
+	$(call check_defined, REPOSITORY_CONFIG_PATH_FILE, OVERRIDE_EXTENSION, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME, BRANCH_NAME)
+	echo GET Github file:: ${REPOSITORY_CONFIG_PATH_FILE}@${BRANCH_NAME}
+	curl -s -L -o ${TERRAGRUNT_CONFIG_PATH}/$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f1)_${OVERRIDE_EXTENSION}$(shell [[ "${REPOSITORY_CONFIG_PATH_FILE}" = *.* ]] && echo .$(shell basename ${REPOSITORY_CONFIG_PATH_FILE} | cut -d. -f2) || echo '') \
+		-H "Accept: application/vnd.github.v3.raw" \
+		-H "Authorization: Bearer ${GITHUB_TOKEN}" \
+		-H "X-GitHub-Api-Version: 2022-11-28" \
+		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/contents/${REPOSITORY_CONFIG_PATH_FILE}?ref=${BRANCH_NAME}
 gh-get-default-branch:
 	$(call check_defined, OVERRIDE_EXTENSION, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME)
 	curl -s -L \
