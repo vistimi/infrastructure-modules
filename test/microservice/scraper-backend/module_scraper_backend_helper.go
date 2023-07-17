@@ -38,7 +38,7 @@ var (
 	GithubProject = module.GithubProjectInformation{
 		Organization:    "KookaS",
 		Repository:      "scraper-backend",
-		Branch:          "master", // TODO: make it flexible for testing other branches
+		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
 		ImageTag:        "latest",
 	}
@@ -62,20 +62,11 @@ var (
 )
 
 func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
-
-	// setup terraform override variables
-	bashCode := fmt.Sprintf(`cd %s; terragrunt init;`, MicroservicePath)
-	command := terratest_shell.Command{
-		Command: "bash",
-		Args:    []string{"-c", bashCode},
-	}
-	terratest_shell.RunCommandAndGetOutput(t, command)
-
 	optionsMicroservice, commonName := module.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	// override.env
-	bashCode = fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", commonName, MicroservicePath)
-	command = terratest_shell.Command{
+	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", commonName, MicroservicePath)
+	command := terratest_shell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
@@ -151,11 +142,14 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"env_file_name":        envKey,
-		"repository_privacy":   "public",
-		"repository_alias":     "not-known-yet",
-		"repository_name":      strings.ToLower(fmt.Sprintf("%s-%s-%s", GithubProject.Organization, GithubProject.Repository, GithubProject.Branch)),
-		"repository_image_tag": GithubProject.ImageTag,
+		"env_file_name": envKey,
+		"repository": map[string]any{
+			"privacy":    "private",
+			"name":       strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
+			"image_tag":  GithubProject.ImageTag,
+			"account_id": util.GetEnvVariable("REPOSITORIES_AWS_ACCOUNT_ID"),
+			"region":     util.GetEnvVariable("REPOSITORIES_AWS_REGION_NAME"),
+		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
 		"file_key":  envKey,

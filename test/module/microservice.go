@@ -164,15 +164,15 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 func RunTestMicroservice(t *testing.T, options *terraform.Options, commonName string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratest_structure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratest_structure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratest_structure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)

@@ -130,15 +130,21 @@ variable "log" {
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
 variable "task_definition" {
   type = object({
-    memory               = number
-    memory_reservation   = optional(number)
-    cpu                  = number
-    env_bucket_name      = string
-    env_file_name        = string
-    repository_privacy   = string
-    repository_alias     = optional(string)
-    repository_name      = string
-    repository_image_tag = string
+    memory             = number
+    memory_reservation = optional(number)
+    cpu                = number
+    env_bucket_name    = string
+    env_file_name      = string
+    repository = object({
+      privacy    = string
+      name       = string
+      image_tag  = string
+      account_id = string
+      region     = optional(string, "us-east-1")
+      public = optional(object({
+        alias = string
+      }))
+    })
     tmpfs = optional(object({
       ContainerPath : optional(string),
       MountOptions : optional(list(string)),
@@ -151,13 +157,23 @@ variable "task_definition" {
   })
 
   validation {
-    condition     = contains(["public", "private"], var.task_definition.repository_privacy)
+    condition     = contains(["public", "private"], var.task_definition.repository.privacy)
     error_message = "task definition repository privacy must be one of [public, private]"
   }
 
   validation {
-    condition     = var.task_definition.repository_privacy == "public" ? length(coalesce(var.task_definition.repository_alias, "")) > 0 : true
+    condition     = var.task_definition.repository.privacy == "public" ? length(coalesce(var.task_definition.repository.public.alias, "")) > 0 : true
     error_message = "task definition repository alias need when repository privacy is `public`"
+  }
+}
+
+variable "ecr_services" {
+  description = "Map to select an aws ecr service"
+  type        = map(string)
+
+  default = {
+    private = "ecr"
+    public  = "ecr-public"
   }
 }
 

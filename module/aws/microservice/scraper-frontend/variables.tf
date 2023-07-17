@@ -69,15 +69,21 @@ variable "microservice" {
         })
       })
       task_definition = object({
-        memory               = number
-        memory_reservation   = optional(number)
-        cpu                  = number
-        env_bucket_name      = string
-        env_file_name        = string
-        repository_privacy   = string
-        repository_alias     = optional(string)
-        repository_name      = string
-        repository_image_tag = string
+        memory             = number
+        memory_reservation = optional(number)
+        cpu                = number
+        env_bucket_name    = string
+        env_file_name      = string
+        repository = object({
+          privacy    = string
+          name       = string
+          image_tag  = string
+          account_id = string
+          region     = string
+          public = optional(object({
+            alias = string
+          }))
+        })
         tmpfs = optional(object({
           ContainerPath : optional(string),
           MountOptions : optional(list(string)),

@@ -12,11 +12,11 @@ FROM ${ALPINE_VARIANT} as builder-alpine
 RUN apk update
 RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
-# rover
-ARG ROVER_VERSION=0.3.3
-RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_linux_amd64.zip \
-    && unzip rover_${ROVER_VERSION}_linux_amd64.zip && mv rover_v${ROVER_VERSION} /usr/local/bin/rover \
-    && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
+# # rover
+# ARG ROVER_VERSION=0.3.3
+# RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_linux_amd64.zip \
+#     && unzip rover_${ROVER_VERSION}_linux_amd64.zip && mv rover_v${ROVER_VERSION} /usr/local/bin/rover \
+#     && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
 
 # terraform
 ARG TERRAFORM_VERSION=1.5.2
@@ -37,31 +37,6 @@ RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v${CLOU
     && chmod +rx /usr/local/bin/cloud-nuke
 
 #---------------------------------
-#    BUILDER ALPINE PYTHON
-#---------------------------------
-FROM ${PYTHON_ALPINE_VARIANT} as builder-alpine-python
-
-ARG AWS_CLI_VERSION=2.9.0
-RUN apk add --no-cache git unzip groff build-base libffi-dev cmake
-RUN git clone --single-branch --depth 1 -b ${AWS_CLI_VERSION} https://github.com/aws/aws-cli.git
-
-WORKDIR /aws-cli
-RUN python -m venv venv
-RUN . venv/bin/activate
-RUN scripts/installers/make-exe
-RUN unzip -q dist/awscli-exe.zip
-RUN aws/install --bin-dir /aws-cli-bin
-RUN /aws-cli-bin/aws --version
-
-# reduce image size: remove autocomplete and examples
-RUN rm -rf \
-    /usr/local/aws-cli/v2/current/dist/aws_completer \
-    /usr/local/aws-cli/v2/current/dist/awscli/data/ac.index \
-    /usr/local/aws-cli/v2/current/dist/awscli/examples
-RUN find /usr/local/aws-cli/v2/current/dist/awscli/data -name completions-1*.json -delete
-RUN find /usr/local/aws-cli/v2/current/dist/awscli/botocore/data -name examples-1.json -delete
-
-#---------------------------------
 #    BUILDER ALPINE GOLANG
 #---------------------------------
 FROM ${GO_ALPINE_VARIANT} as builder-alpine-go
@@ -69,10 +44,10 @@ FROM ${GO_ALPINE_VARIANT} as builder-alpine-go
 RUN apk update
 RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
-# inframap
-RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build \
-    && mv inframap /usr/local/bin/inframap  \
-    && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
+# # inframap
+# RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build \
+#     && mv inframap /usr/local/bin/inframap  \
+#     && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
 
 #-------------------------
 #    RUNNER
@@ -81,7 +56,7 @@ FROM ${VARIANT} as runner
 
 RUN apk update
 # coreutils for docker inspect
-RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils
+RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq
 
 RUN apk add --no-cache shadow sudo
 ARG USERNAME=user
@@ -116,15 +91,15 @@ RUN go install github.com/cweill/gotests/gotests@latest \
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
 RUN cloud-nuke --version
 
-# rover
-RUN sudo apk add -q --no-cache chromium
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
-RUN rover --version
+# # rover
+# RUN sudo apk add -q --no-cache chromium
+# COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
+# RUN rover --version
 
-# inframap
-RUN sudo apk add -q --no-cache graphviz
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
-RUN inframap version
+# # inframap
+# RUN sudo apk add -q --no-cache graphviz
+# COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+# RUN inframap version
 
 # terraform
 COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
@@ -142,6 +117,4 @@ RUN tflint --version
 RUN sudo apk add --no-cache -q github-cli && gh --version
 
 # aws cli
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-python /usr/local/aws-cli/ /usr/local/aws-cli/
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-python /aws-cli-bin/ /usr/local/bin/
-RUN aws --version
+RUN sudo apk add --no-cache -q aws-cli && aws --version

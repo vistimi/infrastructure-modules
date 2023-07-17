@@ -5,10 +5,6 @@ resource "aws_cloudwatch_log_group" "cluster" {
   tags = var.tags
 }
 
-locals {
-  repository_service = var.privacy == "public" ? "ecr-public" : var.privacy == "private" ? "ecr" : null
-}
-
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
@@ -136,13 +132,13 @@ module "ecs" {
         },
         ecr = {
           actions = [
-            "${local.repository_service}:GetAuthorizationToken",
-            "${local.repository_service}:BatchCheckLayerAvailability",
-            "${local.repository_service}:GetDownloadUrlForLayer",
-            "${local.repository_service}:BatchGetImage",
+            "${var.ecr_services[var.task_definition.repository.privacy]}:GetAuthorizationToken",
+            "${var.ecr_services[var.task_definition.repository.privacy]}:BatchCheckLayerAvailability",
+            "${var.ecr_services[var.task_definition.repository.privacy]}:GetDownloadUrlForLayer",
+            "${var.ecr_services[var.task_definition.repository.privacy]}:BatchGetImage",
           ]
           effect    = "Allow"
-          resources = "arn:${local.partition}:${local.repository_service}:${var.task_definition.repository_privacy == "private" ? local.region : ""}:${local.account_id}:repository/${var.task_definition.repository_name}"
+          resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.repository.privacy]}:${var.task_definition.repository.region}:${var.task_definition.repository.account_id}:repository/${var.task_definition.repository.name}"]
         },
         bucket-env = {
           actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
@@ -226,7 +222,7 @@ module "ecs" {
             "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image     = var.task_definition.repository_privacy == "private" ? "${local.account_id}.dkr.ecr.${local.region}.${local.dns_suffix}/${var.task_definition.repository_name}:${var.task_definition.repository_image_tag}" : "public.ecr.aws/${var.task_definition.repository_alias}/${var.task_definition.repository_name}:${var.task_definition.repository_image_tag}"
+          image     = var.task_definition.repository.privacy == "private" ? "${var.task_definition.repository.account_id}.dkr.ecr.${var.task_definition.repository.region}.${local.dns_suffix}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}"
           essential = true
         }
       }

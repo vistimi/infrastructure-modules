@@ -17,7 +17,7 @@ func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"fargate": map[string]any{
 			"os":           "linux",
-			"architecture": "x64",
+			"architecture": "x86_64",
 			"capacity_provider": map[string]map[string]any{
 				keySpot: {
 					"base":   nil, // no preferred instance amount

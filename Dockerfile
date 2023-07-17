@@ -1,4 +1,4 @@
-ARG AWS_ECR_REGISTRY=public.ecr.aws/h4s7f1i8
+ARG AWS_ECR_REGISTRY=496882976578.dkr.ecr.us-west-1.amazonaws.com
 ARG AWS_ECR_REPOSITORY=infrastructure-modules-trunk-bin
 ARG VARIANT=$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY
 
