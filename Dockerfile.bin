@@ -58,7 +58,7 @@ FROM ${VARIANT} as runner
 
 RUN apk update
 # coreutils for docker inspect
-RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq
+RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq github-cli aws-cli
 
 RUN apk add --no-cache shadow sudo
 ARG USERNAME=user
@@ -116,7 +116,7 @@ COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:latest 
 RUN tflint --version
 
 # github cli
-RUN sudo apk add --no-cache -q github-cli && gh --version
+RUN gh --version
 
 # aws cli
-RUN sudo apk add --no-cache -q aws-cli && aws --version
+RUN aws --version
