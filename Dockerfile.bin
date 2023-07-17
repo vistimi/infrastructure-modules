@@ -9,31 +9,33 @@ ARG PYTHON_ALPINE_VARIANT=python:3.10.5-alpine
 #---------------------------------
 FROM ${ALPINE_VARIANT} as builder-alpine
 
+ARG TARGETOS TARGETARCH
+
 RUN apk update
 RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
 # # rover
 # ARG ROVER_VERSION=0.3.3
-# RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_linux_amd64.zip \
-#     && unzip rover_${ROVER_VERSION}_linux_amd64.zip && mv rover_v${ROVER_VERSION} /usr/local/bin/rover \
+# RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_${TARGETOS}_${TARGETARCH}.zip \
+#     && unzip rover_${ROVER_VERSION}_${TARGETOS}_${TARGETARCH}.zip && mv rover_v${ROVER_VERSION} /usr/local/bin/rover \
 #     && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
 
 # terraform
 ARG TERRAFORM_VERSION=1.5.2
-RUN wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
-    && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip && mv terraform /usr/local/bin/terraform \
-    && chmod +rx /usr/local/bin/terraform && rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+RUN wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip \
+    && unzip terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip && mv terraform /usr/local/bin/terraform \
+    && chmod +rx /usr/local/bin/terraform && rm terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip
 
 # terragrunt
 ARG TERRAGRUNT_VERSION=0.48.0
-RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64 \
-    && mv terragrunt_linux_amd64 /usr/local/bin/terragrunt \
+RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_${TARGETOS}_${TARGETARCH} \
+    && mv terragrunt_${TARGETOS}_${TARGETARCH} /usr/local/bin/terragrunt \
     && chmod +rx /usr/local/bin/terragrunt
 
 # cloud-nuke
 ARG CLOUD_NUKE_VERSION=0.31.1
-RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v${CLOUD_NUKE_VERSION}/cloud-nuke_linux_amd64 \
-    && mv cloud-nuke_linux_amd64 /usr/local/bin/cloud-nuke \
+RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v${CLOUD_NUKE_VERSION}/cloud-nuke_${TARGETOS}_${TARGETARCH} \
+    && mv cloud-nuke_${TARGETOS}_${TARGETARCH} /usr/local/bin/cloud-nuke \
     && chmod +rx /usr/local/bin/cloud-nuke
 
 #---------------------------------
