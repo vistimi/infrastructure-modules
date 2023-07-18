@@ -58,22 +58,11 @@ FROM ${VARIANT} as runner
 
 RUN apk update
 # coreutils for docker inspect
-RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq github-cli aws-cli
-
-RUN apk add --no-cache shadow sudo
-ARG USERNAME=user
-ARG USER_UID=1001
-ARG USER_GID=$USER_UID
-RUN addgroup --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    # Add sudo support. Omit if you don't need to install software after connecting.
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-USER $USERNAME
+RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq jq github-cli aws-cli
 
 # Golang setup
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/go/ /usr/local/go/
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /go/ /go/
+COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
+COPY --from=builder-alpine-go /go/ /go/
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 RUN mkdir -p $GOPATH/src $GOPATH/bin && chmod -R 777 $GOPATH
@@ -90,29 +79,29 @@ RUN go install github.com/cweill/gotests/gotests@latest \
     && go install golang.org/x/tools/gopls@latest
 
 # cloud-nuke
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
+COPY --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
 RUN cloud-nuke --version
 
 # # rover
-# RUN sudo apk add -q --no-cache chromium
-# COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
+# RUN apk add -q --no-cache chromium
+# COPY --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
 # RUN rover --version
 
 # # inframap
-# RUN sudo apk add -q --no-cache graphviz
-# COPY --chown=$USERNAME:$USER_GID --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+# RUN apk add -q --no-cache graphviz
+# COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
 # RUN inframap version
 
 # terraform
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
+COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
 RUN terraform --version
 
 # terragrunt
-COPY --chown=$USERNAME:$USER_GID --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
+COPY --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
 RUN terragrunt --version
 
 # tflint
-COPY --chown=$USERNAME:$USER_GID --from=ghcr.io/terraform-linters/tflint:latest /usr/local/bin/tflint /usr/local/bin/tflint
+COPY --from=ghcr.io/terraform-linters/tflint:latest /usr/local/bin/tflint /usr/local/bin/tflint
 RUN tflint --version
 
 # github cli
