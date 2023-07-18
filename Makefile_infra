@@ -53,24 +53,24 @@ destroy-microservice:
 	terragrunt destroy --terragrunt-non-interactive -auto-approve --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -target module.microservice
 output-microservice:
 	$(call check_defined, TERRAGRUNT_CONFIG_PATH)
-	terragrunt output --terragrunt-non-interactive --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -json  microservice
+	terragrunt output --terragrunt-non-interactive --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -json microservice | jq '.ecs.elb.lb_dns_name'
 
 
 clean-cloudwatch:
-	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName'); do echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
+	for alarmName in $(shell aws cloudwatch describe-alarms --query 'MetricAlarms[].AlarmName' | tr -d '[],'); do echo $$alarmName; aws cloudwatch delete-alarms --alarm-names $$alarmName; done;
 clean-task-definition:
-	for taskDefinition in $(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]'); do aws ecs deregister-task-definition --task-definition $$taskDefinition --query 'taskDefinition.taskDefinitionArn'; done;
+	for taskDefinition in $(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]' | tr -d '[],'); do aws ecs deregister-task-definition --task-definition $$taskDefinition --query 'taskDefinition.taskDefinitionArn'; done;
 clean-iam:
 	# roles are attached to policies
 	for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done; \
-	for policyArn in $(shell aws iam list-policies --max-items 200 --no-only-attached --query 'Policies[].Arn'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done;
+	for policyArn in $(shell aws iam list-policies --max-items 200 --no-only-attached --query 'Policies[].Arn' | tr -d '[],'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done;
 clean-ec2:
-	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
+	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId' | tr -d '[],'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
 clean-elb:
-	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
+	for targetGroupArn in $(shell aws elbv2 describe-target-groups --query 'TargetGroups[].TargetGroupArn' | tr -d '[],'); do echo $$targetGroupArn; aws elbv2 delete-target-group --target-group-arn $$targetGroupArn; done;
 clean-ecs:
-	for clusterArn in $(shell aws ecs describe-clusters --query 'clusters[].clusterArn'); do echo $$clusterArn; aws ecs delete-cluster --cluster $$clusterArn; done;
-	for capacityProviderArn in $(shell aws ecs describe-capacity-providers --query 'capacityProviders[].capacityProviderArn'); do aws ecs   delete-capacity-provider --capacity-provider $$capacityProviderArn --query 'capacityProvider.capacityProviderArn'; done;
+	for clusterArn in $(shell aws ecs describe-clusters --query 'clusters[].clusterArn' | tr -d '[],'); do echo $$clusterArn; aws ecs delete-cluster --cluster $$clusterArn; done;
+	for capacityProviderArn in $(shell aws ecs describe-capacity-providers --query 'capacityProviders[].capacityProviderArn' | tr -d '[],'); do aws ecs   delete-capacity-provider --capacity-provider $$capacityProviderArn --query 'capacityProvider.capacityProviderArn'; done;
 
 nuke-region:
 	cloud-nuke aws --region ${AWS_REGION_NAME} --config .gruntwork/cloud-nuke/config.yaml --force;
@@ -81,14 +81,22 @@ nuke-ecs:
 nuke-global:
 	cloud-nuke aws --region global --config .gruntwork/cloud-nuke/config.yaml --force;
 
+USE_DEFAULT ?= false
 aws-auth:
-	$(call check_defined, AWS_PROFILE_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION_NAME)
+	$(call check_defined, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION_NAME)
 	aws --version
-	aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE_NAME}
-	aws configure set aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
-	aws configure set region ${AWS_REGION_NAME} --profile ${AWS_PROFILE_NAME}
-	aws configure set output 'text' --profile ${AWS_PROFILE_NAME}
-	aws configure list
+	if [[ ${USE_DEFAULT} == false ]]; then
+		$(call check_defined, AWS_PROFILE_NAME)
+		aws configure set aws_access_key_id ${AWS_ACCESS_KEY} --profile ${AWS_PROFILE_NAME}
+		aws configure set aws_secret_access_key ${AWS_SECRET_KEY} --profile ${AWS_PROFILE_NAME}
+		aws configure set region ${AWS_REGION_NAME} --profile ${AWS_PROFILE_NAME}
+		aws configure set output 'text' --profile ${AWS_PROFILE_NAME}
+	else
+		aws configure set aws_access_key_id ${AWS_ACCESS_KEY}
+		aws configure set aws_secret_access_key ${AWS_SECRET_KEY}
+		aws configure set region ${AWS_REGION_NAME}
+		aws configure set output 'text'
+	fi
 aws-auth-check:
 	aws configure list
 
