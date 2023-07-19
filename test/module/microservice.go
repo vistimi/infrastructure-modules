@@ -75,7 +75,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	id := RandomID(8)
+	id := util.RandomID(8)
 	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
 	commonName := strings.ToLower(fmt.Sprintf("%s-%s-%s", projectName, serviceName, environment_name))
 	commonTags := map[string]string{
@@ -112,16 +112,6 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 		},
 	}
 	return options, commonName
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-
-func RandomID(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
 }
 
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
