@@ -1,4 +1,4 @@
-package scraper_backend_test
+package microservice_scraper_backend_test
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"github.com/KookaS/infrastructure-modules/test/module"
 )
 
-func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
-	t.Parallel()
+func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
+	// t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 
 	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles

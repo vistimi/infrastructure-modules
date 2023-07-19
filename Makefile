@@ -96,7 +96,7 @@ make prepare-scraper-backend-env:
 		UNSPLASH_PRIVATE_KEY=123 \
 		UNSPLASH_PUBLIC_KEY=123 \
 		PEXELS_PUBLIC_KEY=123 \
-		PACKAGE_NAME=scraper_backend_test \
+		PACKAGE_NAME=microservice_scraper_backend_test \
 
 BRANCH_NAME ?= trunk
 prepare-scraper-frontend:

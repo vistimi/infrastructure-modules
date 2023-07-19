@@ -1,4 +1,4 @@
-package scraper_frontend_test
+package microservice_scraper_frontend_test
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/KookaS/infrastructure-modules/test/module"
 )
 
-func Test_Unit_ScraperFrontend_LB_Fargate(t *testing.T) {
+func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 

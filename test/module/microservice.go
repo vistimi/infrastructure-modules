@@ -76,9 +76,10 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	// global variables
 	id := util.RandomID(8)
-	environment_name := fmt.Sprintf("%s-%s", os.Getenv("ENVIRONMENT_NAME"), id)
-	commonName := strings.ToLower(fmt.Sprintf("%s-%s-%s", projectName, serviceName, environment_name))
+	environment_name := os.Getenv("ENVIRONMENT_NAME")
+	commonName := util.AppendID(id, strings.ToLower(fmt.Sprintf("%s-%s-%s", environment_name, projectName, serviceName)))
 	commonTags := map[string]string{
+		"TestID":      id,
 		"Account":     AccountName,
 		"Region":      AccountRegion,
 		"Project":     projectName,

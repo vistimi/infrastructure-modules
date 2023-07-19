@@ -1,4 +1,4 @@
-package scraper_backend_test
+package microservice_scraper_backend_test
 
 import (
 	"fmt"

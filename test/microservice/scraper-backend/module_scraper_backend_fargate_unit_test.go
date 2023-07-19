@@ -1,4 +1,4 @@
-package scraper_backend_test
+package microservice_scraper_backend_test
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	"github.com/KookaS/infrastructure-modules/test/module"
 )
 
-func Test_Unit_ScraperBackend_LB_Fargate(t *testing.T) {
-	t.Parallel()
+func Test_Unit_Microservice_ScraperBackend_Fargate(t *testing.T) {
+	// t.Parallel()
 	optionsProject, commonName := SetupOptionsProject(t)
 
 	keySpot := "spot"
