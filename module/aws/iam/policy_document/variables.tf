@@ -52,6 +52,18 @@ variable "scopes" {
   default = ["public", "accounts", "microservices"]
 }
 
+variable "requires_mfa" {
+  description = "Whether users requires MFA"
+  type        = bool
+  default     = true
+}
+
+variable "mfa_age" {
+  description = "Max age of valid MFA (in seconds) for roles which require MFA"
+  type        = number
+  default     = 86400
+}
+
 resource "null_resource" "scopes" {
   lifecycle {
     precondition {

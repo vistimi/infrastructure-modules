@@ -28,7 +28,8 @@ const (
 	targetProtocol               = "http"
 	targetProtocolVersion        = "http"
 
-	MicroservicePath = "../../../module/aws/microservice/scraper-frontend"
+	Rootpath         = "../../.."
+	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-frontend"
 )
 
 var (
@@ -67,7 +68,8 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 			"tier":      "public",
 		},
 		"iam": map[string]any{
-			"scope": "microservices",
+			"scope":        "microservices",
+			"requires_mfa": false,
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{

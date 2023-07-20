@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/KookaS/infrastructure-modules/test/util"
@@ -12,7 +13,7 @@ import (
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string, adminNames, devNames, machineNames []string, repositoryName string) {
+func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string, adminNames, devNames, machineNames, resourceNames []string) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
 	defer func() {
@@ -30,47 +31,47 @@ func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string,
 	})
 
 	terratest_structure.RunTestStage(t, "validate", func() {
-		repositoryUserArn := TestUserWithAssume(t, accountRegion, repositoryName, []string{})
-		if repositoryUserArn == nil {
-			t.Fatalf("no repositoryArn for repositoryName: %s", repositoryName)
+
+		typeName := "resource"
+		for _, roleName := range []string{"admin", "poweruser", "readonly"} {
+			name := typeName + "-" + roleName
+			resourceUserArn := TestRole(t, accountRegion, name, []string{})
+			if resourceUserArn == nil {
+				t.Fatalf("no resourceArn for resourceName: %s", name)
+			}
+			fmt.Println(aws.StringValue(resourceUserArn))
 		}
 
-		// machineUserArns := []string{}
-		for _, machineName := range machineNames {
-			machineUserArn := TestUserWithAssume(t, accountRegion, machineName, []string{repositoryName})
-			if machineUserArn == nil {
-				t.Fatalf("no machineArn for machineName: %s", machineName)
+		typeName = "machine"
+		for _, roleName := range []string{"admin", "poweruser", "readonly"} {
+			name := typeName + "-" + roleName
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-readonly"})
+			if resourceUserArn == nil {
+				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
-			// machineUserArns = append(machineUserArns, aws.StringValue(machineUserArn))
+			fmt.Println(aws.StringValue(resourceUserArn))
 		}
 
-		// devUserArns := []string{}
-		for _, devName := range devNames {
-			devUserArn := TestUserWithAssume(t, accountRegion, devName, append([]string{repositoryName}, machineNames...))
-			if devUserArn == nil {
-				t.Fatalf("no devArn for devName: %s", devName)
+		typeName = "dev"
+		for _, roleName := range []string{"admin", "poweruser"} {
+			name := typeName + "-" + roleName
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-readonly", "machine-readonly"})
+			if resourceUserArn == nil {
+				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
-			// devUserArns = append(devUserArns, aws.StringValue(devUserArn))
+			fmt.Println(aws.StringValue(resourceUserArn))
 		}
 
-		// adminUserArns := []string{}
-		for _, adminName := range adminNames {
-			adminUserArn := TestUserWithAssume(t, accountRegion, adminName, append([]string{repositoryName}, append(machineNames, devNames...)...))
-			if adminUserArn == nil {
-				t.Fatalf("no adminArn for adminName: %s", adminName)
+		typeName = "admin"
+		for _, roleName := range []string{"admin", "poweruser"} {
+			name := typeName + "-" + roleName
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-admin", "machine-admin", "dev-admin"})
+			if resourceUserArn == nil {
+				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
-			// adminUserArns = append(adminUserArns, aws.StringValue(adminUserArn))
+			fmt.Println(aws.StringValue(resourceUserArn))
 		}
 	})
-}
-
-func TestUserWithAssume(t *testing.T, accountRegion, userName string, assumeRoleNames []string) *string {
-	roleArn := TestRole(t, accountRegion, userName, assumeRoleNames)
-	if roleArn == nil {
-		t.Fatalf("no roleArn for userName: %s", userName)
-	}
-
-	return TestUser(t, accountRegion, userName)
 }
 
 func TestUser(t *testing.T, accountRegion, userName string) *string {

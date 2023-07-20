@@ -10,15 +10,15 @@ variable "dev_names" {
   nullable    = false
 }
 
-variable "repository_name" {
-  description = "User names with specific roles"
-  type        = string
+variable "resource_names" {
+  description = "List of User names with specific roles for resources used in other accounts"
+  type        = list(string)
   nullable    = false
-  default     = "repositories"
+  default     = ["repositories"]
 }
 
 variable "machine_names" {
-  description = "List of user names with specific roles"
+  description = "List of user names with specific roles for execution"
   type        = list(string)
   nullable    = false
   default     = ["live", "staging"]

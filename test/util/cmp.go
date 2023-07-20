@@ -25,7 +25,7 @@ func Finds(t *testing.T, needles []string, sources []string) {
 		}
 
 		if !found {
-			t.Fatalf("Could not find in regexp\nsource:\n%v\nneedles:\n%v", source, needles)
+			t.Fatalf("Could not find in regexp\nsource:\n%s\nneedles:\n%s", source, needles)
 		}
 	}
 }
@@ -34,6 +34,6 @@ func Find(t *testing.T, needle string, source string) {
 	match, _ := regexp.MatchString(needle, source)
 
 	if !match {
-		t.Fatalf("Could not find in regexp\nsource:\n%v\nneedle:\n%v", source, needle)
+		t.Fatalf("Could not find in regexp\nsource:\n%s\nneedle:\n%s", source, needle)
 	}
 }

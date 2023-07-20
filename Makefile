@@ -5,12 +5,13 @@ MAKEFLAGS += --warn-undefined-variables
 .ONESHELL:
 
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-PATH_REL_AWS=module/aws
-PATH_ABS_AWS=${PATH_ABS_ROOT}/${PATH_REL_AWS}
-PATH_REL_AWS_MICROSERVICE=${PATH_REL_AWS}/microservice
-PATH_ABS_AWS_MICROSERVICE=${PATH_ABS_ROOT}/${PATH_REL_AWS_MICROSERVICE}
-PATH_ABS_AWS_ECR=${PATH_ABS_ROOT}/${PATH_REL_AWS}/container/ecr
-PATH_REL_TEST_MICROSERVICE=test/microservice
+
+PATH_AWS=module/aws
+PATH_AWS_MICROSERVICE=${PATH_AWS}/microservice
+PATH_AWS_IAM=${PATH_AWS}/iam
+PATH_AWS_ECR=${PATH_AWS}/container/ecr
+
+PATH_TEST_MICROSERVICE=test/microservice
 
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
@@ -44,14 +45,11 @@ test: ## Setup the test environment, run the tests and clean the environment
 test-clean-cache:
 	go clean -testcache;
 
-SCRAPER_BACKEND_BRANCH_NAME ?= trunk
-SCRAPER_FRONTEND_BRANCH_NAME ?= trunk
-prepare: ## Setup the test environment
+prepare-terragrunt:
 	make prepare-account-aws
-	make prepare-scraper-backend BRANCH_NAME=${SCRAPER_BACKEND_BRANCH_NAME}
-	make prepare-scraper-frontend BRANCH_NAME=${SCRAPER_FRONTEND_BRANCH_NAME}
+
 prepare-account-aws:
-	cat <<-EOF > ${PATH_ABS_AWS}/aws_account_override.hcl 
+	cat <<-EOF > ${PATH_ABS_ROOT}/${PATH_AWS}/aws_account_override.hcl 
 	locals {
 		aws_account_region="${AWS_REGION_NAME}"
 		aws_account_name="${AWS_PROFILE_NAME}"
@@ -62,14 +60,17 @@ prepare-account-aws:
 	}
 	EOF
 
+prepare-iam-team:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/team
+
 BRANCH_NAME ?= trunk
-prepare-scraper-backend:
+prepare-microservice-scraper-backend:
 	$(eval GIT_NAME=github.com)
 	$(eval ORGANIZATION_NAME=KookaS)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=backend)
 	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
-	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${REPOSITORY_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_TEST_MICROSERVICE}/${REPOSITORY_NAME})
 	$(eval COMMON_NAME="")
 	$(eval CLOUD_HOST=aws)
 	make -f Makefile_infra gh-load-folder \
@@ -78,13 +79,13 @@ prepare-scraper-backend:
 		REPOSITORY_NAME=${REPOSITORY_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-scraper-backend-env \
+	make prepare-microservice-scraper-backend-env \
 		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
-		ENV_FOLDER_PATH=${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME} \
+		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST}
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-make prepare-scraper-backend-env:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+make prepare-microservice-scraper-backend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
 	make -f ${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
@@ -99,24 +100,24 @@ make prepare-scraper-backend-env:
 		PACKAGE_NAME=microservice_scraper_backend_test \
 
 BRANCH_NAME ?= trunk
-prepare-scraper-frontend:
+prepare-microservice-scraper-frontend:
 	$(eval GIT_NAME=github.com)
 	$(eval ORGANIZATION_NAME=KookaS)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=frontend)
 	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
-	$(eval OUTPUT_FOLDER=${PATH_REL_TEST_MICROSERVICE}/${REPOSITORY_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_TEST_MICROSERVICE}/${REPOSITORY_NAME})
 	make -f Makefile_infra gh-load-folder \
 		TERRAGRUNT_CONFIG_PATH=${OUTPUT_FOLDER} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
 		REPOSITORY_NAME=${REPOSITORY_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-scraper-frontend-env \
+	make prepare-microservice-scraper-frontend-env \
 		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
-		ENV_FOLDER_PATH=${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-prepare-scraper-frontend-env:
+		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+prepare-microservice-scraper-frontend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
 	make -f ${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
