@@ -58,10 +58,11 @@ output "users" {
 output "roles" {
   value = {
     for type_name, role in {
-      "resource" = module.resource_role,
-      "machine"  = module.machine_role,
-      "admin"    = module.admin_role,
-      "dev"      = module.dev_role,
+      "resource-mutable"   = module.resource_mutable_role,
+      "resource-immutable" = module.resource_immutable_role,
+      "machine"            = module.machine_role,
+      "admin"              = module.admin_role,
+      "dev"                = module.dev_role,
       } : type_name => {
       admin_iam_role_arn              = role.admin_iam_role_arn
       admin_iam_role_name             = role.admin_iam_role_name
@@ -85,10 +86,11 @@ output "roles" {
 output "groups" {
   value = {
     for type_name, group in {
-      "resource" = module.resource_group,
-      "machine"  = module.machine_group,
-      "admin"    = module.admin_group,
-      "dev"      = module.dev_group,
+      "resource-mutable"   = module.resource_mutable_group,
+      "resource-immutable" = module.resource_immutable_group,
+      "machine"            = module.machine_group,
+      "admin"              = module.admin_group,
+      "dev"                = module.dev_group,
       } : type_name => {
       group_users     = group.group_users
       assumable_roles = group.assumable_roles

@@ -1,25 +1,36 @@
-variable "admin_names" {
+variable "admins" {
   description = "List of user names with specific roles"
-  type        = list(string)
-  nullable    = false
+  type = list(object({
+    name = string
+  }))
+  nullable = false
+  default  = []
 }
 
-variable "dev_names" {
+variable "devs" {
   description = "List of user names with specific roles"
-  type        = list(string)
-  nullable    = false
+  type = list(object({
+    name = string
+  }))
+  nullable = false
+  default  = []
 }
 
-variable "resource_names" {
-  description = "List of User names with specific roles for resources used in other accounts"
-  type        = list(string)
-  nullable    = false
-  default     = ["repositories"]
-}
-
-variable "machine_names" {
+variable "machines" {
   description = "List of user names with specific roles for execution"
-  type        = list(string)
-  nullable    = false
-  default     = ["live", "staging"]
+  type = list(object({
+    name = string
+  }))
+  nullable = false
+  default  = [{ name = "live" }, { name = "staging" }]
+}
+
+variable "resources" {
+  description = "List of User names with specific roles for resources used in other accounts"
+  type = list(object({
+    name    = string
+    mutable = bool
+  }))
+  nullable = false
+  default  = [{ name = "repositories", mutable = false }, { name = "dns", mutable = true }]
 }

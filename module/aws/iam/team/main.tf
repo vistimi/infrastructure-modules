@@ -2,10 +2,10 @@
 
 locals {
   type_name_to_user_names = {
-    "resource" = var.resource_names,
-    "machine"  = var.machine_names,
-    "admin"    = var.admin_names,
-    "dev"      = var.dev_names,
+    resource = [for resource in var.resources : resource.name]
+    machine  = [for machine in var.machines : machine.name]
+    admin    = [for admin in var.admins : admin.name]
+    dev      = [for dev in var.devs : dev.name]
   }
 }
 
@@ -16,7 +16,7 @@ module "resource_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in var.resource_names : name => {} }
+  for_each = { for name in local.type_name_to_user_names.resource : name => {} }
 
   name          = each.key
   force_destroy = false
@@ -32,7 +32,7 @@ module "machine_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in var.machine_names : name => {} }
+  for_each = { for name in local.type_name_to_user_names.machine : name => {} }
 
   name          = each.key
   force_destroy = true
@@ -48,7 +48,7 @@ module "dev_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in var.dev_names : name => {} }
+  for_each = { for name in local.type_name_to_user_names.dev : name => {} }
 
   name          = each.key
   force_destroy = true
@@ -64,7 +64,7 @@ module "admin_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in var.admin_names : name => {} }
+  for_each = { for name in local.type_name_to_user_names.admin : name => {} }
 
   name          = each.key
   force_destroy = true
@@ -142,28 +142,45 @@ module "admin_users" {
 #---------------
 #     Roles
 #---------------
-module "resource_role" {
+module "resource_mutable_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
   trusted_role_arns = ["*"]
 
   create_admin_role = true
-  admin_role_name   = "resource-admin"
+  admin_role_name   = "resource-mutable-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "resource-poweruser"
+  poweruser_role_name   = "resource-mutable-poweruser"
 
   create_readonly_role       = true
   readonly_role_requires_mfa = false
-  readonly_role_name         = "resource-readonly"
+  readonly_role_name         = "resource-mutable-readonly"
+}
+
+module "resource_immutable_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
+  version = "5.28.0"
+
+  trusted_role_arns = ["*"]
+
+  create_admin_role = true
+  admin_role_name   = "resource-immutable-admin"
+
+  create_poweruser_role = true
+  poweruser_role_name   = "resource-immutable-poweruser"
+
+  create_readonly_role       = true
+  readonly_role_requires_mfa = false
+  readonly_role_name         = "resource-immutable-readonly"
 }
 
 module "machine_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_role.readonly_iam_role_arn]
+  trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn]
 
   create_admin_role = true
   admin_role_name   = "machine-admin"
@@ -180,7 +197,7 @@ module "dev_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_role.readonly_iam_role_arn, module.machine_role.readonly_iam_role_arn]
+  trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn, module.machine_role.readonly_iam_role_arn]
 
   create_admin_role = true
   admin_role_name   = "dev-admin"
@@ -196,7 +213,7 @@ module "admin_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_role.admin_iam_role_arn, module.machine_role.admin_iam_role_arn, module.dev_role.admin_iam_role_arn]
+  trusted_role_arns = [module.resource_mutable_role.admin_iam_role_arn, module.resource_immutable_role.admin_iam_role_arn, module.machine_role.admin_iam_role_arn, module.dev_role.admin_iam_role_arn]
 
   create_admin_role = true
   admin_role_name   = "admin-admin"
@@ -212,15 +229,28 @@ module "admin_role" {
 #     Groups
 #---------------
 # set group roles
-module "resource_group" {
+module "resource_mutable_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "resource"
+  name = "resource-mutable"
 
-  assumable_roles = [module.resource_role.poweruser_iam_role_arn]
+  assumable_roles = [module.resource_mutable_role.poweruser_iam_role_arn]
 
-  group_users = [for user in module.resource_users : user.iam_user_name]
+  group_users = [for resource in var.resources : resource.name if resource.mutable]
+
+  tags = {}
+}
+
+module "resource_immutable_group" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
+  version = "5.28.0"
+
+  name = "resource-immutable"
+
+  assumable_roles = [module.resource_immutable_role.poweruser_iam_role_arn]
+
+  group_users = [for resource in var.resources : resource.name if !resource.mutable]
 
   tags = {}
 }
@@ -233,7 +263,7 @@ module "machine_group" {
 
   assumable_roles = [module.machine_role.poweruser_iam_role_arn]
 
-  group_users = [for user in module.machine_users : user.iam_user_name]
+  group_users = local.type_name_to_user_names.machine
 
   tags = {}
 }
@@ -247,7 +277,7 @@ module "dev_group" {
 
   assumable_roles = [module.dev_role.poweruser_iam_role_arn]
 
-  group_users = [for user in module.dev_users : user.iam_user_name]
+  group_users = local.type_name_to_user_names.dev
 
   tags = {}
 }
@@ -261,7 +291,7 @@ module "admin_group" {
 
   assumable_roles = [module.admin_role.admin_iam_role_arn]
 
-  group_users = [for user in module.admin_users : user.iam_user_name]
+  group_users = local.type_name_to_user_names.admin
 
   tags = {}
 }

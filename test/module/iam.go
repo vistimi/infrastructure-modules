@@ -13,18 +13,18 @@ import (
 	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string, adminNames, devNames, machineNames, resourceNames []string) {
+func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string, admins, devs, machines, resources []map[string]any) {
 	options = terraform.WithDefaultRetryableErrors(t, options)
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratest_structure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratest_structure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
 	terratest_structure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)
@@ -32,7 +32,18 @@ func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string,
 
 	terratest_structure.RunTestStage(t, "validate", func() {
 
-		typeName := "resource"
+		// roles
+		typeName := "resource-mutable"
+		for _, roleName := range []string{"admin", "poweruser", "readonly"} {
+			name := typeName + "-" + roleName
+			resourceUserArn := TestRole(t, accountRegion, name, []string{})
+			if resourceUserArn == nil {
+				t.Fatalf("no resourceArn for resourceName: %s", name)
+			}
+			fmt.Println(aws.StringValue(resourceUserArn))
+		}
+
+		typeName = "resource-immutable"
 		for _, roleName := range []string{"admin", "poweruser", "readonly"} {
 			name := typeName + "-" + roleName
 			resourceUserArn := TestRole(t, accountRegion, name, []string{})
@@ -45,7 +56,7 @@ func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string,
 		typeName = "machine"
 		for _, roleName := range []string{"admin", "poweruser", "readonly"} {
 			name := typeName + "-" + roleName
-			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-readonly"})
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-mutable-poweruser", "resource-immutable-readonly"})
 			if resourceUserArn == nil {
 				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
@@ -55,7 +66,7 @@ func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string,
 		typeName = "dev"
 		for _, roleName := range []string{"admin", "poweruser"} {
 			name := typeName + "-" + roleName
-			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-readonly", "machine-readonly"})
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"})
 			if resourceUserArn == nil {
 				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
@@ -65,26 +76,54 @@ func RunTestTeam(t *testing.T, options *terraform.Options, accountRegion string,
 		typeName = "admin"
 		for _, roleName := range []string{"admin", "poweruser"} {
 			name := typeName + "-" + roleName
-			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-admin", "machine-admin", "dev-admin"})
+			resourceUserArn := TestRole(t, accountRegion, name, []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"})
 			if resourceUserArn == nil {
 				t.Fatalf("no resourceArn for resourceName: %s", name)
 			}
 			fmt.Println(aws.StringValue(resourceUserArn))
 		}
+
+		// groups
+		groupName := "resource-mutable"
+		mutableResources := util.Filter(resources, func(resource map[string]any) bool { return resource["mutable"].(bool) })
+		mutableResourcesNames := util.Reduce(mutableResources, func(resource map[string]any) string { return resource["name"].(string) })
+		groupArn := TestGroup(t, accountRegion, groupName, mutableResourcesNames)
+		if groupArn == nil {
+			t.Fatalf("no groupArn for groupName: %s", groupName)
+		}
+		fmt.Println(aws.StringValue(groupArn))
 	})
 }
 
-func TestUser(t *testing.T, accountRegion, userName string) *string {
+// func TestUser(t *testing.T, accountRegion, userName string) *string {
+// 	iamClient, err := terratest_aws.NewIamClientE(t, accountRegion)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	user, err := iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(userName)})
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	return user.User.Arn
+// }
+
+func TestGroup(t *testing.T, accountRegion, groupName string, userNames []string) *string {
 	iamClient, err := terratest_aws.NewIamClientE(t, accountRegion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	user, err := iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(userName)})
+	group, err := iamClient.GetGroup(&iam.GetGroupInput{GroupName: aws.String(groupName)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return user.User.Arn
+
+	for _, user := range group.Users {
+		util.Finds(t, userNames, []string{aws.StringValue(user.UserName)})
+	}
+
+	return group.Group.Arn
 }
 
 func TestRole(t *testing.T, accountRegion, roleName string, assumeRoleNames []string) *string {
