@@ -41,6 +41,15 @@ variable "resources" {
   default  = []
 }
 
+resource "null_resource" "users" {
+  lifecycle {
+    precondition {
+      condition     = length(concat(var.resources, var.machines, var.devs, var.admins)) > 0
+      error_message = "team must have at least one user"
+    }
+  }
+}
+
 variable "external_assume_role_arns" {
   description = "List of roles to have access to that are external to the team scope"
   type        = list(string)

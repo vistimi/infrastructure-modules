@@ -20,8 +20,13 @@ variable "aws" {
       mutable = bool
     }))
     store_secrets = bool
-    tags = map(string)
+    tags          = map(string)
   })
+
+  validation {
+    condition     = length(concat(var.aws.resources, var.aws.machines, var.aws.devs, var.aws.admins)) > 0
+    error_message = "team must have at least one user"
+  }
 }
 
 variable "github" {
