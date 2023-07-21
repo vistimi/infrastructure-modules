@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	Path = "../../../../module/aws/iam/team"
+	PathTeam = "../../../../module/aws/iam/team"
 )
 
 func Test_Unit_IAM_Team(t *testing.T) {
@@ -28,7 +28,7 @@ func Test_Unit_IAM_Team(t *testing.T) {
 	resources := []map[string]any{{"name": "res1-mut", "mutable": true}, {"name": "res2-immut", "mutable": false}}
 
 	options := &terraform.Options{
-		TerraformDir: Path,
+		TerraformDir: PathTeam,
 		Vars: map[string]any{
 			"name": id,
 

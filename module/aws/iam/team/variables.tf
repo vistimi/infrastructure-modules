@@ -28,17 +28,24 @@ variable "machines" {
     name = string
   }))
   nullable = false
-  default  = [{ name = "live" }, { name = "staging" }]
+  default  = []
 }
 
 variable "resources" {
-  description = "List of User names with specific roles for resources used in other accounts"
+  description = "List of User names with specific roles for resources used in other accounts. Mutable is for access to route53 for example, immutable is for ECR access for example. Reource users will need to be closed manually if resources still exists."
   type = list(object({
     name    = string
     mutable = bool
   }))
   nullable = false
-  default  = [{ name = "repositories", mutable = false }, { name = "dns", mutable = true }]
+  default  = []
+}
+
+variable "external_assume_role_arns" {
+  description = "List of roles to have access to that are external to the team scope"
+  type        = list(string)
+  nullable    = false
+  default     = []
 }
 
 variable "store_secrets" {

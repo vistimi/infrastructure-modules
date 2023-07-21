@@ -4,7 +4,8 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  tags = merge(var.tags, { Team = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = data.aws_region.current.name })
+  region_name = data.aws_region.current.name
+  tags        = merge(var.tags, { Team = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
 }
 
 #---------------
@@ -101,7 +102,7 @@ module "secret_manager" {
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
     { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
     { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
-    { key = "AWS_REGION_NAME", value = data.aws_region.current.name },
+    { key = "AWS_REGION_NAME", value = local.region_name },
   ]
 
   tags = merge(local.tags, { Account = each.value.iam_user_name, Role = "" })
@@ -110,6 +111,7 @@ module "secret_manager" {
 #------------------
 #     Accounts
 #------------------
+# TODO:for each account, create a provider and then add alias (resource "aws_iam_account_alias") and mfa
 # module "resource_accounts" {
 #   source = "terraform-aws-modules/iam/aws//modules/iam-account"
 # version = "5.28.0"
@@ -266,7 +268,7 @@ module "resource_mutable_group" {
 
   name = "${var.name}-resource-mutable"
 
-  assumable_roles = [module.resource_mutable_role.poweruser_iam_role_arn]
+  assumable_roles = concat([module.resource_mutable_role.poweruser_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.resource_mutable_users : user.iam_user_name]
 
@@ -279,7 +281,7 @@ module "resource_immutable_group" {
 
   name = "${var.name}-resource-immutable"
 
-  assumable_roles = [module.resource_immutable_role.poweruser_iam_role_arn]
+  assumable_roles = concat([module.resource_immutable_role.poweruser_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.resource_immutable_users : user.iam_user_name]
 
@@ -292,7 +294,7 @@ module "machine_group" {
 
   name = "${var.name}-machine"
 
-  assumable_roles = [module.machine_role.poweruser_iam_role_arn]
+  assumable_roles = concat([module.machine_role.poweruser_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.machine_users : user.iam_user_name]
 
@@ -306,7 +308,7 @@ module "dev_group" {
 
   name = "${var.name}-dev"
 
-  assumable_roles = [module.dev_role.poweruser_iam_role_arn]
+  assumable_roles = concat([module.dev_role.poweruser_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.dev_users : user.iam_user_name]
 
@@ -320,7 +322,7 @@ module "admin_group" {
 
   name = "${var.name}-admin"
 
-  assumable_roles = [module.admin_role.admin_iam_role_arn]
+  assumable_roles = concat([module.admin_role.admin_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.admin_users : user.iam_user_name]
 
