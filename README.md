@@ -27,8 +27,7 @@ REPOSITORIES_AWS_REGION_NAME=***
 REPOSITORIES_AWS_ACCESS_KEY=***
 REPOSITORIES_AWS_SECRET_KEY=***
 
-
-ENVIRONMENT_NAME=local
+GITHUB_OWNER=***
 GITHUB_TOKEN=***GH_TERRA_TOKEN***
 DOMAIN_NAME=your-domain.com
 ```
@@ -44,6 +43,7 @@ Repository access
 
 Repository permissions
   Actions: Read and write
+  Administration: Read and write
   Contents: Read-only
   Environments: Read and write
   Metadata: Read-only
@@ -211,14 +211,14 @@ defer func() {
         // destroy all resources if panic
         terraform.Destroy(t, terraformOptions)
     }
-    terratest_structure.RunTestStage(t, "cleanup_mongodb", func() {
+    terratestStructure.RunTestStage(t, "cleanup_mongodb", func() {
         terraform.Destroy(t, terraformOptions)
     })
 }()
-terratest_structure.RunTestStage(t, "deploy_mongodb", func() {
+terratestStructure.RunTestStage(t, "deploy_mongodb", func() {
     terraform.InitAndApply(t, terraformOptions)
 })
-terratest_structure.RunTestStage(t, "validate_mongodb", func() {
+terratestStructure.RunTestStage(t, "validate_mongodb", func() {
     s3bucketMongodbArn := terraform.Output(t, terraformOptions, "s3_bucket_mongodb_arn")
     s3bucketpicturesArn := terraform.Output(t, terraformOptions, "s3_bucket_pictures_arn")
     assert.Equal(t, fmt.Sprintf("arn:aws:s3:::%s", bucket_name_mongodb), s3bucketMongodbArn)

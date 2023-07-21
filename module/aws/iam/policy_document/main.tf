@@ -56,6 +56,24 @@ data "aws_iam_policy_document" "this" {
         identifiers = ["*"]
       }
 
+      # mfa
+      dynamic "condition" {
+        for_each = var.requires_mfa ? { "${var.scope}" = {} } : {}
+        content {
+          test     = "Bool"
+          variable = "aws:MultiFactorAuthPresent"
+          values   = ["true"]
+        }
+      }
+      dynamic "condition" {
+        for_each = var.requires_mfa ? { "${var.scope}" = {} } : {}
+        content {
+          test     = "NumericLessThan"
+          variable = "aws:MultiFactorAuthAge"
+          values   = [var.mfa_age]
+        }
+      }
+
       # accounts
       dynamic "condition" {
         for_each = contains(["microservices", "accounts"], var.scope) ? { "${var.scope}" = {} } : {}

@@ -117,6 +117,7 @@ gh-list-branches:
 		https://api.github.com/repos/${ORGANIZATION_NAME}/${REPOSITORY_NAME}/branches | jq '.[].name'
 gh-load-folder:
 	$(call check_defined, OVERRIDE_EXTENSION, GITHUB_TOKEN, ORGANIZATION_NAME, REPOSITORY_NAME, BRANCH_NAME, REPOSITORY_CONFIG_PATH_FOLDER, TERRAGRUNT_CONFIG_PATH)
+	make -f Makefile_infra gh-auth-check
 	echo GET Github folder:: ${REPOSITORY_CONFIG_PATH_FOLDER}@${BRANCH_NAME}
 	$(eval filesPath=$(shell curl -s -L \
 		-H "Accept: application/vnd.github+json" \

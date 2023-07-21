@@ -1,4 +1,4 @@
-package scraper_backend_test
+package microservice_scraper_frontend_test
 
 import (
 	"fmt"
@@ -6,22 +6,24 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/test/module"
+	"github.com/KookaS/infrastructure-modules/test"
+	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
+func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 	t.Parallel()
-	optionsProject, commonName := SetupOptionsProject(t)
+	optionsProject, commonName := SetupOptionsRepository(t)
 
 	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles
 	// ECS_ENABLE_TASK_IAM_ROLE=true // Uses IAM roles for tasks for containers with the bridge and default network modes
 	// ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true // Uses IAM roles for tasks for containers with the host network mode
 
-	userDataOnDemand := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", module.ECSReservedMemory)
+	userDataOnDemand := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", testAwsModule.ECSReservedMemory)
 
-	userDataSpot := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nECS_ENABLE_SPOT_INSTANCE_DRAINING=true\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", module.ECSReservedMemory)
+	userDataSpot := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nECS_ENABLE_SPOT_INSTANCE_DRAINING=true\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", testAwsModule.ECSReservedMemory)
 
-	instance := module.T3Small
+	instance := testAwsModule.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
@@ -97,10 +99,13 @@ func Test_Unit_ScraperBackend_LB_EC2(t *testing.T) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"cpu":                instance.Cpu,                                      // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
-		"memory":             instance.MemoryAllowed - module.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
-		"memory_reservation": instance.MemoryAllowed - module.ECSReservedMemory, // memory_reservation <= memory
+		"cpu":                instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
+		"memory":             instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
+		"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
 	})
 
-	module.RunTestMicroservice(t, optionsProject, commonName, MicroservicePath, GithubProject, Endpoints)
+	test.RunTest(t, optionsProject)
+	terratestStructure.RunTestStage(t, "validate", func() {
+		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
+	})
 }

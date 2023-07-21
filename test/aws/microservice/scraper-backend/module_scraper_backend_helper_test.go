@@ -1,22 +1,25 @@
-package scraper_frontend_test
+package microservice_scraper_backend_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"golang.org/x/exp/maps"
 
+	"github.com/KookaS/infrastructure-modules/test/util"
+
+	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	"github.com/KookaS/infrastructure-modules/test/module"
-	"github.com/KookaS/infrastructure-modules/test/util"
+	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
 )
 
 const (
 	projectName = "scraper"
-	serviceName = "frontend"
+	serviceName = "backend"
 
 	listenerHttpPort             = 80
 	listenerHttpProtocol         = "http"
@@ -24,50 +27,102 @@ const (
 	listenerHttpsPort            = 443
 	listenerHttpsProtocol        = "https"
 	listenerHttpsProtocolVersion = "http"
-	targetPort                   = 3000
+	targetPort                   = 8080
 	targetProtocol               = "http"
 	targetProtocolVersion        = "http"
 
-	MicroservicePath = "../../../module/aws/microservice/scraper-frontend"
+	Rootpath         = "../../../.."
+	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-backend"
 )
 
 var (
-	GithubProject = module.GithubProjectInformation{
+	GithubProject = testAwsModule.GithubProjectInformation{
 		Organization:    "KookaS",
-		Repository:      "scraper-frontend",
+		Repository:      "scraper-backend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
 		ImageTag:        "latest",
 	}
 
-	Endpoints = []module.EndpointTest{
+	Endpoints = []testAwsModule.EndpointTest{
 		{
 			Path:                GithubProject.HealthCheckPath,
 			ExpectedStatus:      200,
-			ExpectedBody:        nil,
+			ExpectedBody:        util.Ptr(`"ok"`),
+			MaxRetries:          3,
+			SleepBetweenRetries: 30 * time.Second,
+		},
+		{
+			Path:                "/tags/wanted",
+			ExpectedStatus:      200,
+			ExpectedBody:        util.Ptr(`[]`),
 			MaxRetries:          3,
 			SleepBetweenRetries: 30 * time.Second,
 		},
 	}
 )
 
-func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := module.SetupOptionsMicroservice(t, projectName, serviceName)
+func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
+	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+
+	// override.env
+	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", commonName, MicroservicePath)
+	command := terratestShell.Command{
+		Command: "bash",
+		Args:    []string{"-c", bashCode},
+	}
+	terratestShell.RunCommandAndGetOutput(t, command)
+
+	// yml
+	path, err := filepath.Abs("config_override.yml")
+	if err != nil {
+		t.Error(err)
+	}
+	configYml, err := ReadConfigFile(path)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// yml variables
+	var dynamodb_tables []map[string]any
+	for _, db := range configYml.Databases {
+		dynamodb_tables = append(dynamodb_tables, map[string]any{
+			"name":                 *db.Name,
+			"primary_key_name":     *db.PrimaryKeyName,
+			"primary_key_type":     *db.PrimaryKeyType,
+			"sort_key_name":        *db.SortKeyName,
+			"sort_key_type":        *db.SortKeyType,
+			"predictable_workload": false,
+		})
+	}
+	bucket_picture_name_extension, ok := configYml.Buckets["picture"]
+	if !ok {
+		t.Errorf("config.yml file missing buckets.picture")
+	}
+	bucket_picture_name := fmt.Sprintf("%s-%s", commonName, *bucket_picture_name_extension.Name)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
-		Vars:         map[string]any{},
+		Vars: map[string]any{
+			"dynamodb_tables": dynamodb_tables,
+			"bucket_picture": map[string]any{
+				"name":          bucket_picture_name,
+				"force_destroy": true,
+				"versioning":    false,
+			},
+		},
 	}
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
 		"vpc": map[string]any{
 			"name":      commonName,
-			"cidr_ipv4": "101.0.0.0/16",
+			"cidr_ipv4": "100.0.0.0/16",
 			"tier":      "public",
 		},
 		"iam": map[string]any{
-			"scope": "microservices",
+			"scope":        "microservices",
+			"requires_mfa": false,
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
@@ -96,16 +151,6 @@ func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
 			"image_tag":  GithubProject.ImageTag,
 			"account_id": util.GetEnvVariable("REPOSITORIES_AWS_ACCOUNT_ID"),
 			"region":     util.GetEnvVariable("REPOSITORIES_AWS_REGION_NAME"),
-		},
-		"tmpfs": map[string]any{
-			"ContainerPath": "/run/npm",
-			"Size":          1024,
-		},
-		"environment": []map[string]any{
-			{
-				"name":  "TMPFS_NPM",
-				"value": "/run/npm",
-			},
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
