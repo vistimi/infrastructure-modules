@@ -1,23 +1,25 @@
 package util
 
-func Append(id, name string) string {
-	return id + "-" + name
+func Format(names ...string) (s string) {
+	if len(names) == 0 {
+		return ""
+	}
+	s = names[0]
+	for _, name := range names[1:] {
+		s = s + "-" + name
+	}
+	return
 }
 
-func Appends(id string, names []string) []string {
+func Appends(pre string, names []string) []string {
 	for i, name := range names {
-		names[i] = id + "-" + name
+		names[i] = pre + "-" + name
 	}
 	return names
 }
-
-func Preppend(id, name string) string {
-	return name + "-" + id
-}
-
-func Preppends(id string, names []string) []string {
+func Preppends(names []string, post string) []string {
 	for i, name := range names {
-		names[i] = name + "-" + id
+		names[i] = name + "-" + post
 	}
 	return names
 }

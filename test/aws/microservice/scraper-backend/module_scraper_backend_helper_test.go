@@ -11,10 +11,10 @@ import (
 
 	"github.com/KookaS/infrastructure-modules/test/util"
 
-	terratest_shell "github.com/gruntwork-io/terratest/modules/shell"
+	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	"github.com/KookaS/infrastructure-modules/test/module"
+	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
 )
 
 const (
@@ -31,12 +31,12 @@ const (
 	targetProtocol               = "http"
 	targetProtocolVersion        = "http"
 
-	Rootpath         = "../../.."
+	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-backend"
 )
 
 var (
-	GithubProject = module.GithubProjectInformation{
+	GithubProject = testAwsModule.GithubProjectInformation{
 		Organization:    "KookaS",
 		Repository:      "scraper-backend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
@@ -44,7 +44,7 @@ var (
 		ImageTag:        "latest",
 	}
 
-	Endpoints = []module.EndpointTest{
+	Endpoints = []testAwsModule.EndpointTest{
 		{
 			Path:                GithubProject.HealthCheckPath,
 			ExpectedStatus:      200,
@@ -62,16 +62,16 @@ var (
 	}
 )
 
-func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := module.SetupOptionsMicroservice(t, projectName, serviceName)
+func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
+	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", commonName, MicroservicePath)
-	command := terratest_shell.Command{
+	command := terratestShell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
 	}
-	terratest_shell.RunCommandAndGetOutput(t, command)
+	terratestShell.RunCommandAndGetOutput(t, command)
 
 	// yml
 	path, err := filepath.Abs("config_override.yml")

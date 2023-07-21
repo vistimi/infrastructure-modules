@@ -1,79 +1,110 @@
 # https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 locals {
-  type_name_to_user_names = {
-    resource = [for resource in var.resources : resource.name]
-    machine  = [for machine in var.machines : machine.name]
-    admin    = [for admin in var.admins : admin.name]
-    dev      = [for dev in var.devs : dev.name]
-  }
+  tags = merge(var.tags, { Team = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = data.aws_region.current.name })
 }
 
 #---------------
 #     Users
 #---------------
-module "resource_users" {
+module "resource_mutable_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in local.type_name_to_user_names.resource : name => {} }
+  for_each = { for resource in var.resources : resource.name => { mutable = resource.mutable } if resource.mutable }
 
-  name          = each.key
+  name          = "${var.name}-${each.key}"
   force_destroy = false
 
   create_iam_access_key = true
 
   password_reset_required = false
 
-  tags = {}
+  tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "resource-mutable" })
+}
+
+module "resource_immutable_users" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-user"
+  version = "5.28.0"
+
+  for_each = { for resource in var.resources : resource.name => { mutable = resource.mutable } if !resource.mutable }
+
+  name          = "${var.name}-${each.key}"
+  force_destroy = false
+
+  create_iam_access_key = true
+
+  password_reset_required = false
+
+  tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "resource-immutable" })
 }
 
 module "machine_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in local.type_name_to_user_names.machine : name => {} }
+  for_each = { for machine in var.machines : machine.name => {} }
 
-  name          = each.key
+  name          = "${var.name}-${each.key}"
   force_destroy = true
 
   create_iam_access_key = true
 
   password_reset_required = false
 
-  tags = {}
+  tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "machine" })
 }
 
 module "dev_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in local.type_name_to_user_names.dev : name => {} }
+  for_each = { for dev in var.devs : dev.name => {} }
 
-  name          = each.key
+  name          = "${var.name}-${each.key}"
   force_destroy = true
 
   create_iam_access_key = true
 
   password_reset_required = false
 
-  tags = {}
+  tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "dev" })
 }
 
 module "admin_users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for name in local.type_name_to_user_names.admin : name => {} }
+  for_each = { for admin in var.admins : admin.name => {} }
 
-  name          = each.key
+  name          = "${var.name}-${each.key}"
   force_destroy = true
 
   create_iam_access_key = true
 
   password_reset_required = false
 
-  tags = {}
+  tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "admin" })
+}
+
+module "secret_manager" {
+  source = "../../secret/manager"
+
+  for_each = { for name, user in merge(module.resource_mutable_users, module.resource_immutable_users, module.machine_users, module.dev_users, module.admin_users) : name => user if var.store_secrets }
+
+  names = ["team/${var.name}/user/${each.value.iam_user_name}"]
+  secrets = [
+    { key = "AWS_SECRET_KEY", value = sensitive(each.value.iam_access_key_secret) },
+    { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
+    { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
+    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
+    { key = "AWS_REGION_NAME", value = data.aws_region.current.name },
+  ]
+
+  tags = merge(local.tags, { Account = each.value.iam_user_name, Role = "" })
 }
 
 #------------------
@@ -149,14 +180,14 @@ module "resource_mutable_role" {
   trusted_role_arns = ["*"]
 
   create_admin_role = true
-  admin_role_name   = "resource-mutable-admin"
+  admin_role_name   = "${var.name}-resource-mutable-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "resource-mutable-poweruser"
+  poweruser_role_name   = "${var.name}-resource-mutable-poweruser"
 
   create_readonly_role       = true
   readonly_role_requires_mfa = false
-  readonly_role_name         = "resource-mutable-readonly"
+  readonly_role_name         = "${var.name}-resource-mutable-readonly"
 }
 
 module "resource_immutable_role" {
@@ -166,14 +197,14 @@ module "resource_immutable_role" {
   trusted_role_arns = ["*"]
 
   create_admin_role = true
-  admin_role_name   = "resource-immutable-admin"
+  admin_role_name   = "${var.name}-resource-immutable-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "resource-immutable-poweruser"
+  poweruser_role_name   = "${var.name}-resource-immutable-poweruser"
 
   create_readonly_role       = true
   readonly_role_requires_mfa = false
-  readonly_role_name         = "resource-immutable-readonly"
+  readonly_role_name         = "${var.name}-resource-immutable-readonly"
 }
 
 module "machine_role" {
@@ -183,14 +214,14 @@ module "machine_role" {
   trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn]
 
   create_admin_role = true
-  admin_role_name   = "machine-admin"
+  admin_role_name   = "${var.name}-machine-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "machine-poweruser"
+  poweruser_role_name   = "${var.name}-machine-poweruser"
 
   create_readonly_role       = true
   readonly_role_requires_mfa = false
-  readonly_role_name         = "machine-readonly"
+  readonly_role_name         = "${var.name}-machine-readonly"
 }
 
 module "dev_role" {
@@ -200,13 +231,13 @@ module "dev_role" {
   trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn, module.machine_role.readonly_iam_role_arn]
 
   create_admin_role = true
-  admin_role_name   = "dev-admin"
+  admin_role_name   = "${var.name}-dev-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "dev-poweruser"
+  poweruser_role_name   = "${var.name}-dev-poweruser"
 
   create_readonly_role = false
-  readonly_role_name   = "dev-readonly"
+  readonly_role_name   = "${var.name}-dev-readonly"
 }
 
 module "admin_role" {
@@ -216,13 +247,13 @@ module "admin_role" {
   trusted_role_arns = [module.resource_mutable_role.admin_iam_role_arn, module.resource_immutable_role.admin_iam_role_arn, module.machine_role.admin_iam_role_arn, module.dev_role.admin_iam_role_arn]
 
   create_admin_role = true
-  admin_role_name   = "admin-admin"
+  admin_role_name   = "${var.name}-admin-admin"
 
   create_poweruser_role = true
-  poweruser_role_name   = "admin-poweruser"
+  poweruser_role_name   = "${var.name}-admin-poweruser"
 
   create_readonly_role = false
-  readonly_role_name   = "admin-readonly"
+  readonly_role_name   = "${var.name}-admin-readonly"
 }
 
 #---------------
@@ -233,39 +264,39 @@ module "resource_mutable_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "resource-mutable"
+  name = "${var.name}-resource-mutable"
 
   assumable_roles = [module.resource_mutable_role.poweruser_iam_role_arn]
 
-  group_users = [for resource in var.resources : resource.name if resource.mutable]
+  group_users = [for user in module.resource_mutable_users : user.iam_user_name]
 
-  tags = {}
+  tags = merge(local.tags, { Role = "resource-mutable" })
 }
 
 module "resource_immutable_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "resource-immutable"
+  name = "${var.name}-resource-immutable"
 
   assumable_roles = [module.resource_immutable_role.poweruser_iam_role_arn]
 
-  group_users = [for resource in var.resources : resource.name if !resource.mutable]
+  group_users = [for user in module.resource_immutable_users : user.iam_user_name]
 
-  tags = {}
+  tags = merge(local.tags, { Role = "resource-immutable" })
 }
 
 module "machine_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "machine"
+  name = "${var.name}-machine"
 
   assumable_roles = [module.machine_role.poweruser_iam_role_arn]
 
-  group_users = local.type_name_to_user_names.machine
+  group_users = [for user in module.machine_users : user.iam_user_name]
 
-  tags = {}
+  tags = merge(local.tags, { Role = "machine" })
 }
 
 
@@ -273,13 +304,13 @@ module "dev_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "dev"
+  name = "${var.name}-dev"
 
   assumable_roles = [module.dev_role.poweruser_iam_role_arn]
 
-  group_users = local.type_name_to_user_names.dev
+  group_users = [for user in module.dev_users : user.iam_user_name]
 
-  tags = {}
+  tags = merge(local.tags, { Role = "dev" })
 }
 
 
@@ -287,11 +318,11 @@ module "admin_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
-  name = "admin"
+  name = "${var.name}-admin"
 
   assumable_roles = [module.admin_role.admin_iam_role_arn]
 
-  group_users = local.type_name_to_user_names.admin
+  group_users = [for user in module.admin_users : user.iam_user_name]
 
-  tags = {}
+  tags = merge(local.tags, { Role = "admin" })
 }

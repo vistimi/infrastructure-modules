@@ -7,15 +7,14 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/KookaS/infrastructure-modules/test/util"
 	terratest_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
-	terratest_logger "github.com/gruntwork-io/terratest/modules/logger"
+	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	terratest_structure "github.com/gruntwork-io/terratest/modules/test-structure"
+	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 var (
@@ -76,15 +75,13 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	// global variables
 	id := util.RandomID(8)
-	environment_name := os.Getenv("ENVIRONMENT_NAME")
-	commonName := util.Append(id, strings.ToLower(fmt.Sprintf("%s-%s-%s", environment_name, projectName, serviceName)))
+	commonName := util.Format(id, projectName, serviceName)
 	commonTags := map[string]string{
-		"TestID":      id,
-		"Account":     AccountName,
-		"Region":      AccountRegion,
-		"Project":     projectName,
-		"Service":     serviceName,
-		"Environment": environment_name,
+		"TestID":  id,
+		"Account": AccountName,
+		"Region":  AccountRegion,
+		"Project": projectName,
+		"Service": serviceName,
 	}
 
 	bucketEnvName := fmt.Sprintf("%s-%s", commonName, "env")
@@ -117,7 +114,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	sleep := time.Second * 30
-	terratest_logger.Log(t, fmt.Sprintf("Sleeping before testing endpoints %s...", sleep))
+	terratestLogger.Log(t, fmt.Sprintf("Sleeping before testing endpoints %s...", sleep))
 	time.Sleep(sleep)
 
 	tlsConfig := tls.Config{}
@@ -129,101 +126,85 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 		}
 		for i := 0; i <= endpoint.MaxRetries; i++ {
 			gotStatus, gotBody := terratest_http_helper.HttpGetWithOptions(t, options)
-			terratest_logger.Log(t, fmt.Sprintf(`
+			terratestLogger.Log(t, fmt.Sprintf(`
 			got status:: %d
 			expected status:: %d
 			`, gotStatus, endpoint.ExpectedStatus))
 			if endpoint.ExpectedBody != nil {
-				terratest_logger.Log(t, fmt.Sprintf(`
+				terratestLogger.Log(t, fmt.Sprintf(`
 			got body:: %s
 			expected body:: %s
 			`, gotBody, expectedBody))
 			}
 			if gotStatus == endpoint.ExpectedStatus && (endpoint.ExpectedBody == nil || (endpoint.ExpectedBody != nil && gotBody == expectedBody)) {
-				terratest_logger.Log(t, `'HTTP GET to URL %s' successful`, endpoint.Path)
+				terratestLogger.Log(t, `'HTTP GET to URL %s' successful`, endpoint.Path)
 				return
 			}
 			if i == endpoint.MaxRetries {
 				t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Path, endpoint.MaxRetries)
 			}
-			terratest_logger.Log(t, fmt.Sprintf("Sleeping %s...", endpoint.SleepBetweenRetries))
+			terratestLogger.Log(t, fmt.Sprintf("Sleeping %s...", endpoint.SleepBetweenRetries))
 			time.Sleep(endpoint.SleepBetweenRetries)
 		}
 	}
 }
 
-func RunTestMicroservice(t *testing.T, options *terraform.Options, commonName string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
-	options = terraform.WithDefaultRetryableErrors(t, options)
-
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratest_structure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
-
-	terratest_structure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, options)
-	})
-
-	terratest_structure.RunTestStage(t, "validate_ecs", func() {
+func ValidateMicroservice(t *testing.T, commonName string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
+	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		TestEcs(t, AccountRegion, commonName, commonName, serviceCount)
+		ValidateEcs(t, AccountRegion, commonName, commonName, serviceCount)
+
+		// test Load Balancer HTTP
+		elb := microserviceExtractElb(t, microservicePath)
+		if elb != nil {
+			elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
+			elbDnsUrl = "http://" + elbDnsUrl
+			fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
+
+			// add dns to endpoints
+			endpointsLoadBalancer := []EndpointTest{}
+			for _, endpoint := range endpoints {
+				endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
+					Path:                elbDnsUrl + endpoint.Path,
+					ExpectedStatus:      endpoint.ExpectedStatus,
+					ExpectedBody:        endpoint.ExpectedBody,
+					MaxRetries:          endpoint.MaxRetries,
+					SleepBetweenRetries: endpoint.SleepBetweenRetries,
+				})
+			}
+
+			terratestStructure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
+				TestRestEndpoints(t, endpointsLoadBalancer)
+			})
+		}
+
+		// TODO: add HTTPS if no timeout from ACM
+
+		// test Route53
+		route53 := microserviceExtractRoute53(t, microservicePath)
+		if route53 != nil {
+			zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
+			recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
+			route53DnsUrl := recordSubdomainName + "." + zoneName
+			fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
+
+			// add dns to endpoints
+			endpointsRoute53 := []EndpointTest{}
+			for _, endpoint := range endpoints {
+				endpointsRoute53 = append(endpointsRoute53, EndpointTest{
+					Path:                route53DnsUrl + endpoint.Path,
+					ExpectedStatus:      endpoint.ExpectedStatus,
+					ExpectedBody:        endpoint.ExpectedBody,
+					MaxRetries:          endpoint.MaxRetries,
+					SleepBetweenRetries: endpoint.SleepBetweenRetries,
+				})
+			}
+
+			terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
+				TestRestEndpoints(t, endpointsRoute53)
+			})
+		}
 	})
-
-	// test Load Balancer HTTP
-	elb := microserviceExtractElb(t, microservicePath)
-	if elb != nil {
-		elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
-		elbDnsUrl = "http://" + elbDnsUrl
-		fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
-
-		// add dns to endpoints
-		endpointsLoadBalancer := []EndpointTest{}
-		for _, endpoint := range endpoints {
-			endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
-				Path:                elbDnsUrl + endpoint.Path,
-				ExpectedStatus:      endpoint.ExpectedStatus,
-				ExpectedBody:        endpoint.ExpectedBody,
-				MaxRetries:          endpoint.MaxRetries,
-				SleepBetweenRetries: endpoint.SleepBetweenRetries,
-			})
-		}
-
-		terratest_structure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
-			TestRestEndpoints(t, endpointsLoadBalancer)
-		})
-	}
-
-	// TODO: add HTTPS if no timeout from ACM
-
-	// test Route53
-	route53 := microserviceExtractRoute53(t, microservicePath)
-	if route53 != nil {
-		zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
-		recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
-		route53DnsUrl := recordSubdomainName + "." + zoneName
-		fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
-
-		// add dns to endpoints
-		endpointsRoute53 := []EndpointTest{}
-		for _, endpoint := range endpoints {
-			endpointsRoute53 = append(endpointsRoute53, EndpointTest{
-				Path:                route53DnsUrl + endpoint.Path,
-				ExpectedStatus:      endpoint.ExpectedStatus,
-				ExpectedBody:        endpoint.ExpectedBody,
-				MaxRetries:          endpoint.MaxRetries,
-				SleepBetweenRetries: endpoint.SleepBetweenRetries,
-			})
-		}
-
-		terratest_structure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
-			TestRestEndpoints(t, endpointsRoute53)
-		})
-	}
 }
 
 func microserviceExtractElb(t *testing.T, microservicePath string) any {

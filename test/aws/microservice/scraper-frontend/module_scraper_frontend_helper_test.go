@@ -10,7 +10,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	"github.com/KookaS/infrastructure-modules/test/module"
+	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
 	"github.com/KookaS/infrastructure-modules/test/util"
 )
 
@@ -28,12 +28,12 @@ const (
 	targetProtocol               = "http"
 	targetProtocolVersion        = "http"
 
-	Rootpath         = "../../.."
+	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-frontend"
 )
 
 var (
-	GithubProject = module.GithubProjectInformation{
+	GithubProject = testAwsModule.GithubProjectInformation{
 		Organization:    "KookaS",
 		Repository:      "scraper-frontend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
@@ -41,7 +41,7 @@ var (
 		ImageTag:        "latest",
 	}
 
-	Endpoints = []module.EndpointTest{
+	Endpoints = []testAwsModule.EndpointTest{
 		{
 			Path:                GithubProject.HealthCheckPath,
 			ExpectedStatus:      200,
@@ -52,8 +52,8 @@ var (
 	}
 )
 
-func SetupOptionsProject(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := module.SetupOptionsMicroservice(t, projectName, serviceName)
+func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
+	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
