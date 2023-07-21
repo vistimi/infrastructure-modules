@@ -21,7 +21,7 @@ var (
 	AccountName   = util.GetEnvVariable("AWS_PROFILE_NAME")
 	AccountId     = util.GetEnvVariable("AWS_ACCOUNT_ID")
 	AccountRegion = util.GetEnvVariable("AWS_REGION_NAME")
-	DomainName    = util.GetEnvVariable("DOMAIN_NAME")
+	DomainName    = fmt.Sprintf("%s.%s", util.GetEnvVariable("DOMAIN_NAME"), util.GetEnvVariable("DOMAIN_SUFFIX"))
 )
 
 const (

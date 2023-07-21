@@ -29,7 +29,8 @@ REPOSITORIES_AWS_SECRET_KEY=***
 
 GITHUB_OWNER=***
 GITHUB_TOKEN=***GH_TERRA_TOKEN***
-DOMAIN_NAME=your-domain.com
+DOMAIN_NAME=name
+DOMAIN_SUFFIX=com
 ```
 GITHUB_TOKEN is required for the github cli. Otherwise terratest will print the token in the logs, for login or curl requests, which is not a safe behaviour.
 
