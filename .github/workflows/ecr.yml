@@ -35,7 +35,7 @@ jobs:
   ecr:
     name: ECR
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'repositories' || github.event.repository.default_branch }}
+    environment: ${{ inputs.environment || vars.ECR_ENV_NAME }}
     env:
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
