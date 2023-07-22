@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/KookaS/infrastructure-modules/test"
 	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
 	"github.com/KookaS/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -20,7 +19,7 @@ func Test_Unit_Global_Team(t *testing.T) {
 	// t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
-	id := "test1234" /// util.RandomID(8)
+	id := util.RandomID(8)
 
 	admins := []map[string]any{{"name": "admin1"}}
 	devs := []map[string]any{{"name": "dev1"}}
@@ -48,7 +47,19 @@ func Test_Unit_Global_Team(t *testing.T) {
 		},
 	}
 
-	test.RunTest(t, options)
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
+
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.InitAndApply(t, options)
+	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		testAwsModule.ValidateTeam(t, util.GetEnvVariable("AWS_REGION_NAME"), id, admins, devs, machines, resources)
 	})

@@ -4,8 +4,12 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  region_name = data.aws_region.current.name
-  tags        = merge(var.tags, { Team = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
+  region_name        = data.aws_region.current.name
+  tags               = merge(var.tags, { Team = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
+  pw_length_resource = 20
+  pw_length_machine  = 20
+  pw_length_dev      = 20
+  pw_length_admin    = 20
 }
 
 #---------------
@@ -22,6 +26,7 @@ module "resource_mutable_users" {
 
   create_iam_access_key = true
 
+  password_length         = local.pw_length_resource
   password_reset_required = false
 
   tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "resource-mutable" })
@@ -38,6 +43,7 @@ module "resource_immutable_users" {
 
   create_iam_access_key = true
 
+  password_length         = local.pw_length_resource
   password_reset_required = false
 
   tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "resource-immutable" })
@@ -54,6 +60,7 @@ module "machine_users" {
 
   create_iam_access_key = true
 
+  password_length         = local.pw_length_machine
   password_reset_required = false
 
   tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "machine" })
@@ -70,6 +77,7 @@ module "dev_users" {
 
   create_iam_access_key = true
 
+  password_length         = local.pw_length_dev
   password_reset_required = false
 
   tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "dev" })
@@ -86,11 +94,15 @@ module "admin_users" {
 
   create_iam_access_key = true
 
+  password_length         = local.pw_length_admin
   password_reset_required = false
 
   tags = merge(local.tags, { Account = "${var.name}-${each.key}", Role = "admin" })
 }
 
+#---------------
+#     Secrets
+#---------------
 module "secret_manager" {
   source = "../../secret/manager"
 
@@ -103,6 +115,7 @@ module "secret_manager" {
     { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
     { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
     { key = "AWS_REGION_NAME", value = local.region_name },
+    { key = "Password", value = each.value.iam_user_login_profile_password },
   ]
 
   tags = merge(local.tags, { Account = each.value.iam_user_name, Role = "" })
@@ -111,66 +124,80 @@ module "secret_manager" {
 #------------------
 #     Accounts
 #------------------
-# TODO:for each account, create a provider and then add alias (resource "aws_iam_account_alias") and mfa
-# module "resource_accounts" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-account"
-# version = "5.28.0"
+module "resource_mutable_accounts" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+  version = "5.28.0"
 
-#   for_each = { for name in var.resource_names : name => {} }
+  for_each = { for resource in var.resources : resource.name => { mutable = resource.mutable } if resource.mutable }
 
-#   account_alias = module.resource_users[each.key].iam_user_name
+  account_alias = lower(module.resource_mutable_users[each.key].iam_user_name)
 
-#   minimum_password_length      = 20
-#   require_lowercase_characters = true
-#   require_uppercase_characters = true
-#   require_numbers              = true
-#   require_symbols              = true
-# }
+  minimum_password_length      = local.pw_length_resource
+  require_lowercase_characters = true
+  require_uppercase_characters = true
+  require_numbers              = true
+  require_symbols              = true
+}
 
-# module "machine_accounts" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-account"
-# version = "5.28.0"
+module "resource_immutable_accounts" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+  version = "5.28.0"
 
-#   for_each = { for name in var.machine_names : name => {} }
+  for_each = { for resource in var.resources : resource.name => { mutable = resource.mutable } if !resource.mutable }
 
-#   account_alias = module.machine_users[each.key].iam_user_unique_id
+  account_alias = lower(module.resource_immutable_users[each.key].iam_user_name)
 
-#   minimum_password_length      = 20
-#   require_lowercase_characters = true
-#   require_uppercase_characters = true
-#   require_numbers              = true
-#   require_symbols              = true
-# }
+  minimum_password_length      = local.pw_length_resource
+  require_lowercase_characters = true
+  require_uppercase_characters = true
+  require_numbers              = true
+  require_symbols              = true
+}
 
-# module "dev_accounts" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-account"
-# version = "5.28.0"
+module "machine_accounts" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+  version = "5.28.0"
 
-#   for_each = { for name in var.dev_names : name => {} }
+  for_each = { for machine in var.machines : machine.name => {} }
 
-#   account_alias = module.dev_users[each.key].iam_user_unique_id
+  account_alias = lower(module.machine_users[each.key].iam_user_name)
 
-#   minimum_password_length      = 20
-#   require_lowercase_characters = true
-#   require_uppercase_characters = true
-#   require_numbers              = true
-#   require_symbols              = true
-# }
+  minimum_password_length      = local.pw_length_machine
+  require_lowercase_characters = true
+  require_uppercase_characters = true
+  require_numbers              = true
+  require_symbols              = true
+}
 
-# module "admin_accounts" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-account"
-# version = "5.28.0"
+module "dev_accounts" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+  version = "5.28.0"
 
-#   for_each = { for name in var.admin_names : name => {} }
+  for_each = { for dev in var.devs : dev.name => {} }
 
-#   account_alias = module.admin_users[each.key].iam_user_unique_id
+  account_alias = lower(module.dev_users[each.key].iam_user_name)
 
-#   minimum_password_length      = 20
-#   require_lowercase_characters = true
-#   require_uppercase_characters = true
-#   require_numbers              = true
-#   require_symbols              = true
-# }
+  minimum_password_length      = local.pw_length_dev
+  require_lowercase_characters = true
+  require_uppercase_characters = true
+  require_numbers              = true
+  require_symbols              = true
+}
+
+module "admin_accounts" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+  version = "5.28.0"
+
+  for_each = { for admin in var.admins : admin.name => {} }
+
+  account_alias = lower(module.admin_users[each.key].iam_user_unique_id)
+
+  minimum_password_length      = local.pw_length_admin
+  require_lowercase_characters = true
+  require_uppercase_characters = true
+  require_numbers              = true
+  require_symbols              = true
+}
 
 #---------------
 #     Roles
@@ -178,6 +205,8 @@ module "secret_manager" {
 module "resource_mutable_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
+
+  for_each = length([for resource in var.resources : resource.name if resource.mutable]) > 0 ? { "${var.name}" = {} } : {}
 
   trusted_role_arns = ["*"]
 
@@ -196,6 +225,8 @@ module "resource_immutable_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
+  for_each = length([for resource in var.resources : resource.name if !resource.mutable]) > 0 ? { "${var.name}" = {} } : {}
+
   trusted_role_arns = ["*"]
 
   create_admin_role = true
@@ -213,7 +244,9 @@ module "machine_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn]
+  for_each = length([for machine in var.machines : machine.name]) > 0 ? { "${var.name}" = {} } : {}
+
+  trusted_role_arns = concat(try([module.resource_mutable_role[each.key].poweruser_iam_role_arn], []), try([module.resource_immutable_role[each.key].readonly_iam_role_arn], []))
 
   create_admin_role = true
   admin_role_name   = "${var.name}-machine-admin"
@@ -230,7 +263,9 @@ module "dev_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_mutable_role.poweruser_iam_role_arn, module.resource_immutable_role.readonly_iam_role_arn, module.machine_role.readonly_iam_role_arn]
+  for_each = length([for dev in var.devs : dev.name]) > 0 ? { "${var.name}" = {} } : {}
+
+  trusted_role_arns = concat(try([module.resource_mutable_role[each.key].poweruser_iam_role_arn], []), try([module.resource_immutable_role[each.key].readonly_iam_role_arn], []), try([module.machine_role[each.key].readonly_iam_role_arn], []))
 
   create_admin_role = true
   admin_role_name   = "${var.name}-dev-admin"
@@ -246,7 +281,9 @@ module "admin_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
   version = "5.28.0"
 
-  trusted_role_arns = [module.resource_mutable_role.admin_iam_role_arn, module.resource_immutable_role.admin_iam_role_arn, module.machine_role.admin_iam_role_arn, module.dev_role.admin_iam_role_arn]
+  for_each = length([for admin in var.admins : admin.name]) > 0 ? { "${var.name}" = {} } : {}
+
+  trusted_role_arns = concat(try([module.resource_mutable_role[each.key].admin_iam_role_arn], []), try([module.resource_immutable_role[each.key].admin_iam_role_arn], []), try([module.machine_role[each.key].admin_iam_role_arn], []), try([module.dev_role[each.key].admin_iam_role_arn], []))
 
   create_admin_role = true
   admin_role_name   = "${var.name}-admin-admin"
@@ -266,9 +303,11 @@ module "resource_mutable_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
+  for_each = length([for resource in var.resources : resource.name if resource.mutable]) > 0 ? { "${var.name}" = {} } : {}
+
   name = "${var.name}-resource-mutable"
 
-  assumable_roles = concat([module.resource_mutable_role.poweruser_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(try([module.resource_mutable_role[each.key].poweruser_iam_role_arn], []), var.external_assume_role_arns)
 
   group_users = [for user in module.resource_mutable_users : user.iam_user_name]
 
@@ -279,9 +318,11 @@ module "resource_immutable_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
+  for_each = length([for resource in var.resources : resource.name if !resource.mutable]) > 0 ? { "${var.name}" = {} } : {}
+
   name = "${var.name}-resource-immutable"
 
-  assumable_roles = concat([module.resource_immutable_role.poweruser_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(try([module.resource_immutable_role[each.key].poweruser_iam_role_arn], []), var.external_assume_role_arns)
 
   group_users = [for user in module.resource_immutable_users : user.iam_user_name]
 
@@ -292,9 +333,11 @@ module "machine_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
+  for_each = length([for machine in var.machines : machine.name]) > 0 ? { "${var.name}" = {} } : {}
+
   name = "${var.name}-machine"
 
-  assumable_roles = concat([module.machine_role.poweruser_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(try([module.machine_role[each.key].poweruser_iam_role_arn], []), var.external_assume_role_arns)
 
   group_users = [for user in module.machine_users : user.iam_user_name]
 
@@ -306,9 +349,11 @@ module "dev_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
+  for_each = length([for dev in var.devs : dev.name]) > 0 ? { "${var.name}" = {} } : {}
+
   name = "${var.name}-dev"
 
-  assumable_roles = concat([module.dev_role.poweruser_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(try([module.dev_role[each.key].poweruser_iam_role_arn], []), var.external_assume_role_arns)
 
   group_users = [for user in module.dev_users : user.iam_user_name]
 
@@ -320,9 +365,11 @@ module "admin_group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
+  for_each = length([for admin in var.admins : admin.name]) > 0 ? { "${var.name}" = {} } : {}
+
   name = "${var.name}-admin"
 
-  assumable_roles = concat([module.admin_role.admin_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(try([module.admin_role[each.key].admin_iam_role_arn], []), var.external_assume_role_arns)
 
   group_users = [for user in module.admin_users : user.iam_user_name]
 

@@ -40,34 +40,26 @@ output "secret_manager" {
   value = module.secret_manager
 }
 
-# output "accounts" {
-#   value = {
-#     for type_name, accounts in {
-#       "resource" = module.resource_accounts,
-#       "machine"  = module.machine_accounts,
-#       "dev"      = module.dev_accounts,
-#       "admin"    = module.admin_accounts,
-#       } : type_name => {
-#       for user_name in local.type_name_to_user_names[type_name] : user_name => {
-#         caller_identity_account_id                   = accounts[user_name].caller_identity_account_id
-#         caller_identity_arn                          = accounts[user_name].caller_identity_arn
-#         caller_identity_user_id                      = accounts[user_name].caller_identity_user_id
-#         iam_account_password_policy_expire_passwords = accounts[user_name].iam_account_password_policy_expire_passwords
-#       }
-#     }
-#   }
-#   sensitive = true
-# }
+output "accounts" {
+  value = {
+    for user_name, account in merge(module.resource_mutable_accounts, module.resource_immutable_accounts, module.machine_accounts, module.dev_accounts, module.admin_accounts) : user_name => {
+      caller_identity_account_id                   = account.caller_identity_account_id
+      caller_identity_arn                          = account.caller_identity_arn
+      caller_identity_user_id                      = account.caller_identity_user_id
+      iam_account_password_policy_expire_passwords = account.iam_account_password_policy_expire_passwords
+    }
+  }
+}
 
 output "roles" {
   value = {
-    for type_name, role in {
-      "resource-mutable"   = module.resource_mutable_role,
-      "resource-immutable" = module.resource_immutable_role,
-      "machine"            = module.machine_role,
-      "dev"                = module.dev_role,
-      "admin"              = module.admin_role,
-      } : type_name => {
+    for type_name, role in merge(
+      try({ "resource-mutable" = module.resource_mutable_role[var.name] }, {}),
+      try({ "resource-immutable" = module.resource_immutable_role[var.name] }, {}),
+      try({ "machine" = module.machine_role[var.name] }, {}),
+      try({ "dev" = module.dev_role[var.name] }, {}),
+      try({ "admin" = module.admin_role[var.name] }, {})
+      ) : type_name => {
       admin_iam_role_arn              = role.admin_iam_role_arn
       admin_iam_role_name             = role.admin_iam_role_name
       admin_iam_role_path             = role.admin_iam_role_path
@@ -89,13 +81,13 @@ output "roles" {
 
 output "groups" {
   value = {
-    for type_name, group in {
-      "resource-mutable"   = module.resource_mutable_group,
-      "resource-immutable" = module.resource_immutable_group,
-      "machine"            = module.machine_group,
-      "dev"                = module.dev_group,
-      "admin"              = module.admin_group,
-      } : type_name => {
+    for type_name, group in merge(
+      try({ "resource-mutable" = module.resource_mutable_group[var.name] }, {}),
+      try({ "resource-immutable" = module.resource_immutable_group[var.name] }, {}),
+      try({ "machine" = module.machine_group[var.name] }, {}),
+      try({ "dev" = module.dev_group[var.name] }, {}),
+      try({ "admin" = module.admin_group[var.name] }, {})
+      ) : type_name => {
       group_users     = group.group_users
       assumable_roles = group.assumable_roles
       policy_arn      = group.policy_arn

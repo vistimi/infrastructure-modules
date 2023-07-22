@@ -55,7 +55,7 @@ variable "scopes" {
 variable "requires_mfa" {
   description = "Whether users requires MFA"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "mfa_age" {

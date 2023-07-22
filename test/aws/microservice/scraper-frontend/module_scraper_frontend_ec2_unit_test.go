@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/test"
 	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
@@ -104,7 +104,19 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 		"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
 	})
 
-	test.RunTest(t, optionsProject)
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, optionsProject)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, optionsProject)
+	// 	})
+	// }()
+
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.InitAndApply(t, optionsProject)
+	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
 	})
