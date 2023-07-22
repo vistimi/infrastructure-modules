@@ -7,7 +7,6 @@ on:
         type: environment
         description: "Github environment name"
         required: false
-        default: repositories
       event_name:
         type: choice
         description: "Type of action event name"
@@ -39,9 +38,6 @@ jobs:
     env:
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
-      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-      AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
-      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       ECR_REGISTRY_PRIVATE_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION_NAME }}.amazonaws.com
       ECR_REGISTRY_PUBLIC_URI: public.ecr.aws
     steps:
@@ -88,13 +84,20 @@ jobs:
           echo ECR_REGISTRY_URI=$ECR_REGISTRY_URI
           echo ECR_REGISTRY_URI=$ECR_REGISTRY_URI >> $GITHUB_ENV
 
-      - name: Setup AWS CLI
-        run: |
-          aws --version
-          aws configure set aws_access_key_id $AWS_ACCESS_KEY
-          aws configure set aws_secret_access_key $AWS_SECRET_KEY
-          aws configure set region $AWS_REGION_NAME
-          aws configure list
+      # - name: Setup AWS CLI
+      #   run: |
+      #     aws --version
+      #     aws configure set aws_access_key_id ${{ vars.AWS_ACCESS_KEY }}
+      #     aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_KEY }}
+      #     aws configure set region ${{ vars.AWS_REGION_NAME }}
+      #     aws configure list
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ vars.AWS_REGION_NAME }}
 
       - name: Login to ${{ vars.CONTAINER_REGISTRY_PRIVACY }} ECR
         uses: docker/login-action@v2
