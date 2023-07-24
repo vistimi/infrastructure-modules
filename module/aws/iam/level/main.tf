@@ -1,63 +1,166 @@
-# https://registry.terraform.io/modules/terraform-aws-modules/iam/aws/latest
-
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
   region_name = data.aws_region.current.name
-  tags        = merge(var.tags, { RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
+  tags        = merge(var.tags, { title(var.level_key) = var.level_value, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
+  name        = join("-", concat([for level in var.levels : level.value], [var.level_value]))
 }
 
-module "level_user" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-user"
-  version = "5.28.0"
+data "aws_iam_policy_document" "level" {
+  for_each = length(var.statements) > 0 ? { var.level_key = {} } : {}
 
-  name          = var.name
-  force_destroy = false
+  dynamic "statement" {
+    for_each = var.statements
 
-  create_iam_access_key = true
-
-  password_reset_required = false
-
-  tags = merge(local.tags, { Account = var.name })
+    content {
+      sid       = statement.value.sid
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
 }
 
-module "secret_manager" {
-  source = "../../secret/manager"
+module "iam_policy_level" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-policy"
 
-  names = ["team/${var.name}/user/${module.level_user.iam_user_name}"]
-  secrets = [
-    { key = "AWS_SECRET_KEY", value = sensitive(module.level_user.iam_access_key_secret) },
-    { key = "AWS_ACCESS_KEY", value = module.level_user.iam_access_key_id },
-    { key = "AWS_ACCOUNT_ID", value = module.level_user.iam_user_unique_id },
-    { key = "AWS_PROFILE_NAME", value = module.level_user.iam_user_name },
-    { key = "AWS_REGION_NAME", value = local.region_name },
-  ]
+  for_each = length(var.statements) > 0 ? { var.level_key = {} } : {}
 
-  tags = merge(local.tags, { Account = module.level_user.iam_user_name })
+  name        = local.name
+  path        = "/"
+  description = "Group policy"
+
+  policy = data.aws_iam_policy_document.level[each.key].json
+
+  tags = local.tags
 }
 
-# TODO: add mfa
 
-module "level_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-roles"
-  version = "5.28.0"
+module "resource_mutable" {
+  source = "../group"
 
-  trusted_role_arns = ["*"]
+  for_each = { for key, group in var.groups : key => group if key == "resource-mutable" }
 
-  create_admin_role = true
-  admin_role_name   = "${var.name}-admin"
+  group_key = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+  force_destroy = each.value.force_destroy
+  admin         = true
+  poweruser     = true
+  readonly      = false
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
+
+  external_assume_role_arns = concat(var.external_assume_role_arns, [for policy in module.iam_policy_level : policy.arn])
+  store_secrets             = var.store_secrets
+
+  tags = var.tags
 }
 
-module "level_group" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
-  version = "5.28.0"
+module "resource_immutable" {
+  source = "../group"
 
-  name = var.name
+  for_each = { for key, group in var.groups : key => group if key == "resource-immutable" }
 
-  assumable_roles = [module.level_role.admin_iam_role_arn]
+  group_key = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
 
-  group_users = module.level_user.iam_user_name
+  force_destroy = each.value.force_destroy
+  admin         = true
+  poweruser     = true
+  readonly      = true
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
 
-  tags = merge(local.tags, { Role = "admin" })
+  external_assume_role_arns = concat(var.external_assume_role_arns, [for policy in module.iam_policy_level : policy.arn])
+  store_secrets             = var.store_secrets
+
+  tags = var.tags
+}
+
+module "machine" {
+  source = "../group"
+
+  for_each = { for key, group in var.groups : key => group if key == "machine" }
+
+  group_key = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+  force_destroy = each.value.force_destroy
+  admin         = true
+  poweruser     = true
+  readonly      = false
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
+
+  external_assume_role_arns = concat(
+    var.external_assume_role_arns,
+    [for policy in module.iam_policy_level : policy.arn],
+    [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
+    [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
+  )
+  store_secrets = var.store_secrets
+
+  tags = var.tags
+}
+
+
+module "dev" {
+  source = "../group"
+
+  for_each = { for key, group in var.groups : key => group if key == "dev" }
+
+  group_key = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+  force_destroy = each.value.force_destroy
+  admin         = true
+  poweruser     = true
+  readonly      = false
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
+
+  external_assume_role_arns = concat(
+    var.external_assume_role_arns,
+    [for policy in module.iam_policy_level : policy.arn],
+    [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
+    [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
+  )
+  store_secrets = var.store_secrets
+
+  tags = var.tags
+}
+
+module "admin" {
+  source = "../group"
+
+  for_each = { for key, group in var.groups : key => group if key == "admin" }
+
+  group_key = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+  force_destroy = each.value.force_destroy
+  admin         = true
+  poweruser     = false
+  readonly      = false
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
+
+  external_assume_role_arns = concat(
+    var.external_assume_role_arns,
+    [for policy in module.iam_policy_level : policy.arn],
+    [for group in module.resource_mutable : group.role.admin_iam_role_arn],
+    [for group in module.resource_immutable : group.role.admin_iam_role_arn],
+    [for group in module.machine : group.role.admin_iam_role_arn],
+    [for group in module.dev : group.role.admin_iam_role_arn]
+  )
+  store_secrets = var.store_secrets
+
+  tags = var.tags
 }

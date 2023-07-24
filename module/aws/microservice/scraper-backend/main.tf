@@ -13,9 +13,9 @@ module "microservice" {
 
 locals {
   iam = {
-    scope               = var.microservice.iam.scope
-    account_ids         = var.microservice.iam.account_ids
-    vpc_ids             = var.microservice.iam.vpc_ids
+    scope       = var.microservice.iam.scope
+    account_ids = var.microservice.iam.account_ids
+    vpc_ids     = var.microservice.iam.vpc_ids
   }
   tags = merge(var.tags, { VpcId = "${module.microservice.vpc.vpc.id}" })
 }

@@ -13,7 +13,7 @@ module "vpc" {
 }
 
 locals {
-  tags                = merge(var.tags, { VpcId = "${module.vpc.vpc.id}" })
+  tags = merge(var.tags, { VpcId = "${module.vpc.vpc.id}" })
 }
 
 # ------------
@@ -57,9 +57,9 @@ module "bucket_env" {
     enable = true
   }
   iam = {
-    scope               = var.iam.scope
-    account_ids         = var.iam.account_ids
-    vpc_ids             = var.iam.vpc_ids
+    scope       = var.iam.scope
+    account_ids = var.iam.account_ids
+    vpc_ids     = var.iam.vpc_ids
   }
 
   tags = local.tags

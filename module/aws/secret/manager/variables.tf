@@ -1,12 +1,7 @@
-variable "names" {
+variable "name" {
   description = "Environment name"
-  type        = list(string)
+  type        = string
   nullable    = false
-
-  validation {
-    condition     = length(var.names) > 0
-    error_message = "names should not be empty"
-  }
 }
 
 variable "secrets" {
@@ -15,9 +10,9 @@ variable "secrets" {
     key   = string
     value = string
   }))
-  nullable  = false
-  default   = []
-#   sensitive = true
+  nullable = false
+  default  = []
+  #   sensitive = true
 }
 
 variable "tags" {

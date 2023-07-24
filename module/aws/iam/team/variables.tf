@@ -4,49 +4,44 @@ variable "name" {
   nullable    = false
 }
 
-variable "admins" {
-  description = "List of user names with specific roles"
-  type = list(object({
-    name = string
-  }))
-  nullable = false
-  default  = []
-}
+variable "groups" {
+  type = object({
+    groups = list(object({
+      name = string
+      group = object({
+        force_destroy = optional(bool)
+        admin         = bool
+        poweruser     = bool
+        readonly      = bool
+        pw_length     = optional(number)
+        users = list(object({
+          name = string
+          statements = optional(list(object({
+            sid       = optional(string)
+            actions   = list(string)
+            effect    = optional(string)
+            resources = list(string)
+          })))
+        }))
+        statements = optional(list(object({
+          sid       = optional(string)
+          actions   = list(string)
+          effect    = optional(string)
+          resources = list(string)
+        })))
+      })
+    }))
+    statements = optional(list(object({
+      sid       = optional(string)
+      actions   = list(string)
+      effect    = optional(string)
+      resources = list(string)
+    })), [])
+  })
 
-variable "devs" {
-  description = "List of user names with specific roles"
-  type = list(object({
-    name = string
-  }))
-  nullable = false
-  default  = []
-}
-
-variable "machines" {
-  description = "List of user names with specific roles for execution"
-  type = list(object({
-    name = string
-  }))
-  nullable = false
-  default  = []
-}
-
-variable "resources" {
-  description = "List of User names with specific roles for resources used in other accounts. Mutable is for access to route53 for example, immutable is for ECR access for example. Reource users will need to be closed manually if resources still exists."
-  type = list(object({
-    name    = string
-    mutable = bool
-  }))
-  nullable = false
-  default  = []
-}
-
-resource "null_resource" "users" {
-  lifecycle {
-    precondition {
-      condition     = length(concat(var.resources, var.machines, var.devs, var.admins)) > 0
-      error_message = "team must have at least one user"
-    }
+  validation {
+    condition     = length(concat(var.resource.users, var.machine.users, var.dev.users, var.admin.users)) > 0
+    error_message = "team must have at least one user"
   }
 }
 

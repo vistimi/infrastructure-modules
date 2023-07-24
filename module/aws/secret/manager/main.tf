@@ -1,14 +1,12 @@
-resource "aws_secretsmanager_secret" "these" {
-  for_each = { for name in var.names : name => {} }
+resource "aws_secretsmanager_secret" "this" {
 
-  name = each.key
+  name = var.name
 
   tags = var.tags
 }
 
-resource "aws_secretsmanager_secret_version" "these" {
-  for_each = { for name in var.names : name => {} }
+resource "aws_secretsmanager_secret_version" "this" {
 
-  secret_id     = aws_secretsmanager_secret.these[each.key].id
+  secret_id     = aws_secretsmanager_secret.this.id
   secret_string = jsonencode({ for secret in var.secrets : secret.key => sensitive(secret.value) })
 }
