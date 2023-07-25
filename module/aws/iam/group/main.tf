@@ -9,51 +9,53 @@ locals {
   name        = join("-", concat([for level in var.levels : level.value], [var.group_key]))
 }
 
-# FIXME: cannot use arn of policy because derived at runtime
-# data "aws_iam_policy_document" "users" {
-#   for_each = { for user in var.users : user.name => user.statements }
+data "aws_iam_policy_document" "users" {
+  for_each = { for user in var.users : user.name => user.statements if length(user.statements) > 0 }
 
-#   dynamic "statement" {
-#     for_each = each.value
+  dynamic "statement" {
+    for_each = each.value
 
-#     content {
-#       sid       = statement.value.sid
-#       actions   = statement.value.actions
-#       resources = statement.value.resources
-#       effect    = statement.value.effect
-#     }
-#   }
-# }
+    content {
+      sid       = statement.value.sid
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+    }
+  }
+}
 
-# module "iam_policy_users" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-policy"
+resource "aws_iam_policy" "users" {
+  for_each = { for user_name, policy_document_user in data.aws_iam_policy_document.users : user_name => policy_document_user }
 
-#   for_each = { for user in var.users : user.name => {} }
+  name        = "${local.name}-${each.key}-user-scope"
+  path        = "/"
+  description = "User policy"
 
-#   name        = "${local.name}-${each.key}"
-#   path        = "/"
-#   description = "Group policy"
+  policy = each.value.json
 
-#   policy = each.value.json
+  tags = local.tags
+}
 
-#   tags = local.tags
-# }
+resource "aws_iam_user_policy_attachment" "test-attach" {
+  for_each = { for user_name, policy_user in aws_iam_policy.users : user_name => policy_user }
+
+  user       = module.users[each.key].iam_user_name
+  policy_arn = each.value.arn
+}
 
 module "users" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  for_each = { for user in var.users : join("-", [local.name, user.name]) => {} }
+  for_each = { for user in var.users : user.name => {} }
 
-  name          = each.key
+  name          = join("-", [local.name, each.key])
   force_destroy = var.force_destroy
 
   create_iam_access_key = true
 
   password_length         = var.pw_length
   password_reset_required = false
-
-  # policy_arns = [each.value.arn]
 
   tags = local.tags
 }
@@ -138,29 +140,32 @@ data "aws_iam_policy_document" "group" {
   }
 }
 
-module "iam_policy" {
-  source = "terraform-aws-modules/iam/aws//modules/iam-policy"
-
-  count = length(var.statements) > 0 ? 1 : 0
-
-  name        = local.name
-  path        = "/"
-  description = "Group policy"
-
-  policy = data.aws_iam_policy_document.group[count.index].json
-
-  tags = local.tags
-}
-
 module "group" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
   version = "5.28.0"
 
   name = local.name
 
-  assumable_roles = concat([module.group_role.poweruser_iam_role_arn], var.external_assume_role_arns, [for policy in module.iam_policy : policy.arn])
+  assumable_roles = concat([module.group_role.poweruser_iam_role_arn], var.external_assume_role_arns)
 
   group_users = [for user in module.users : user.iam_user_name]
 
   tags = local.tags
+}
+
+module "group_policy" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-group-with-policies"
+
+  count = length(var.statements) > 0 ? 1 : 0
+
+  name = module.group.group_name
+
+  create_group = false
+
+  custom_group_policies = [
+    {
+      name   = "${local.name}-group-scope"
+      policy = data.aws_iam_policy_document.group[count.index].json
+    },
+  ]
 }

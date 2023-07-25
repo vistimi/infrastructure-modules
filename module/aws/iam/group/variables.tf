@@ -43,6 +43,12 @@ variable "pw_length" {
 variable "users" {
   type = list(object({
     name = string
+    statements = optional(list(object({
+      sid       = optional(string)
+      actions   = list(string)
+      effect    = optional(string)
+      resources = list(string)
+    })), [])
   }))
   default = []
 
@@ -51,13 +57,6 @@ variable "users" {
     error_message = "group must have at least one user"
   }
 }
-
-# statements = optional(list(object({
-#   sid       = optional(string)
-#   actions   = list(string)
-#   effect    = optional(string)
-#   resources = list(string)
-# })), [])
 
 variable "statements" {
   type = list(object({
@@ -71,7 +70,7 @@ variable "statements" {
 }
 
 variable "external_assume_role_arns" {
-  description = "List of roles to have access to that are external to the team scope"
+  description = "List of roles external to the group"
   type        = list(string)
   nullable    = false
   default     = []

@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	pathGroup = "../../../../module/aws/iam/group"
+	pathGroup = "../../../module/aws/iam/group"
 )
 
 func Test_Unit_IAM_Group(t *testing.T) {
 	// t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
-	teamName := "team" + util.RandomID(4)
+	teamName := "team12345" // + util.RandomID(4)
 	roleKey := "dev"
 	admin := true
 	poweruser := true
@@ -28,14 +28,14 @@ func Test_Unit_IAM_Group(t *testing.T) {
 	externalAssumeRoleArns := []string{}
 	users := []map[string]any{{
 		"name": "user1",
-		// "statements": []map[string]any{
-		// 	{
-		// 		"sid":       "user1Statement",
-		// 		"actions":   []string{"ecr:*"},
-		// 		"effect":    "Allow",
-		// 		"resources": []string{"*"},
-		// 	},
-		// },
+		"statements": []map[string]any{
+			{
+				"sid":       "user1Statement",
+				"actions":   []string{"ec2:*"},
+				"effect":    "Allow",
+				"resources": []string{"*"},
+			},
+		},
 	}}
 
 	options := &terraform.Options{
@@ -59,7 +59,7 @@ func Test_Unit_IAM_Group(t *testing.T) {
 			"statements": []map[string]any{
 				{
 					"sid":       "groupStatement",
-					"actions":   []string{"ec2:*"},
+					"actions":   []string{"ecr:*"},
 					"effect":    "Allow",
 					"resources": []string{"*"},
 				},

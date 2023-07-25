@@ -43,7 +43,7 @@ test: ## Setup the test environment, run the tests and clean the environment
 	# go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
 test-clean-cache:
-	go clean -testcache;
+	go clean -testcache
 
 prepare-terragrunt:
 	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}

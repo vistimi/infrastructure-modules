@@ -35,6 +35,12 @@ variable "groups" {
     pw_length     = optional(number)
     users = list(object({
       name = string
+      statements = optional(list(object({
+        sid       = optional(string)
+        actions   = list(string)
+        effect    = optional(string)
+        resources = list(string)
+      })))
     }))
     statements = optional(list(object({
       sid       = optional(string)
@@ -55,16 +61,10 @@ variable "groups" {
   }
 
   validation {
-    condition     = alltrue([for key, group in var.groups : contains(["admin", "dev", "machine", "resource_mutable", "resource_immutable"], key)])
-    error_message = "group keys must be in [admin, dev, machine, resource_mutable, resource_immutable], got ${jsonencode(keys(var.groups))}"
+    condition     = alltrue([for key, group in var.groups : contains(["admin", "dev", "machine", "resource-mutable", "resource-immutable"], key)])
+    error_message = "group keys must be in [admin, dev, machine, resource-mutable, resource-immutable], got ${jsonencode(keys(var.groups))}"
   }
 }
-# statements = optional(list(object({
-#   sid       = optional(string)
-#   actions   = list(string)
-#   effect    = optional(string)
-#   resources = list(string)
-# })))
 
 variable "statements" {
   type = list(object({
