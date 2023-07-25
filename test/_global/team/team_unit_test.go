@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	Path = "../../../module/_global/team"
+	path = "../../../module/_global/team"
 )
 
 func Test_Unit_Global_Team(t *testing.T) {
@@ -27,7 +27,7 @@ func Test_Unit_Global_Team(t *testing.T) {
 	resources := []map[string]any{{"name": "res1-mut", "mutable": true}, {"name": "res2-immut", "mutable": false}}
 
 	options := &terraform.Options{
-		TerraformDir: Path,
+		TerraformDir: path,
 		Vars: map[string]any{
 			"name": id,
 

@@ -1,20 +1,16 @@
 output "secrets" {
   value = {
-    for name, secret in aws_secretsmanager_secret.these : name => {
-      id       = secret.id
-      arn      = secret.arn
-      replica  = secret.replica
-      tags_all = secret.tags_all
-    }
+    id       = aws_secretsmanager_secret.this.id
+    arn      = aws_secretsmanager_secret.this.arn
+    replica  = aws_secretsmanager_secret.this.replica
+    tags_all = aws_secretsmanager_secret.this.tags_all
   }
 }
 
 output "versions" {
   value = {
-    for name, version in aws_secretsmanager_secret_version.these : name => {
-      id         = version.id
-      arn        = version.arn
-      version_id = version.version_id
-    }
+    id         = aws_secretsmanager_secret_version.this.id
+    arn        = aws_secretsmanager_secret_version.this.arn
+    version_id = aws_secretsmanager_secret_version.this.version_id
   }
 }

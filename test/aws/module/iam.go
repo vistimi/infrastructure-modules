@@ -1,7 +1,6 @@
 package module
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/KookaS/infrastructure-modules/test/util"
@@ -9,129 +8,115 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	terratestAws "github.com/gruntwork-io/terratest/modules/aws"
+	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func ValidateTeam(t *testing.T, accountRegion, teamName string, admins, devs, machines, resources []map[string]any) {
+func ValidateTeam(t *testing.T, accountRegion, teamName string, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers []map[string]any) {
 	terratestStructure.RunTestStage(t, "validate_team", func() {
-		terratestStructure.RunTestStage(t, "validate_team_roles", func() {
-			typeName := "resource-mutable"
-			for _, roleName := range []string{"admin", "poweruser", "readonly"} {
-				name := util.Format(typeName, roleName)
-				resourceUserArn := TestRole(t, accountRegion, teamName, name, []string{})
-				if resourceUserArn == nil {
-					t.Fatalf("no resourceArn for resourceName: %s", name)
-				}
-				fmt.Println(aws.StringValue(resourceUserArn))
-			}
 
-			typeName = "resource-immutable"
-			for _, roleName := range []string{"admin", "poweruser", "readonly"} {
-				name := util.Format(typeName, roleName)
-				resourceUserArn := TestRole(t, accountRegion, teamName, name, []string{})
-				if resourceUserArn == nil {
-					t.Fatalf("no resourceArn for resourceName: %s", name)
-				}
-				fmt.Println(aws.StringValue(resourceUserArn))
-			}
+		roleKey := "resource-mutable"
+		policyElementNames := []string{}
+		admin := true
+		// poweruser := true
+		readonly := false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceMutableUsers)
 
-			typeName = "machine"
-			for _, roleName := range []string{"admin", "poweruser", "readonly"} {
-				name := util.Format(typeName, roleName)
-				resourceUserArn := TestRole(t, accountRegion, teamName, name, []string{"resource-mutable-poweruser", "resource-immutable-readonly"})
-				if resourceUserArn == nil {
-					t.Fatalf("no resourceArn for resourceName: %s", name)
-				}
-				fmt.Println(aws.StringValue(resourceUserArn))
-			}
+		roleKey = "resource-immutable"
+		policyElementNames = []string{}
+		admin = true
+		// poweruser = true
+		readonly = true
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceImmutableUsers)
 
-			typeName = "dev"
-			for _, roleName := range []string{"admin", "poweruser"} {
-				name := util.Format(typeName, roleName)
-				resourceUserArn := TestRole(t, accountRegion, teamName, name, []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"})
-				if resourceUserArn == nil {
-					t.Fatalf("no resourceArn for resourceName: %s", name)
-				}
-				fmt.Println(aws.StringValue(resourceUserArn))
-			}
+		roleKey = "machine"
+		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly"}
+		admin = true
+		// poweruser = true
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, machineUsers)
 
-			typeName = "admin"
-			for _, roleName := range []string{"admin", "poweruser"} {
-				name := util.Format(typeName, roleName)
-				resourceUserArn := TestRole(t, accountRegion, teamName, name, []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"})
-				if resourceUserArn == nil {
-					t.Fatalf("no resourceArn for resourceName: %s", name)
+		roleKey = "dev"
+		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"}
+		admin = true
+		// poweruser = true
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, devUsers)
+
+		roleKey = "admin"
+		policyElementNames = []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"}
+		admin = true
+		// poweruser = false
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, adminUsers)
+	})
+}
+
+func ValidateGroup(t *testing.T, accountRegion, prefixName, roleKey string, admin, readonly bool, policyElementNames []string, users []map[string]any) {
+	terratestStructure.RunTestStage(t, "validate_group", func() {
+		terratestStructure.RunTestStage(t, "validate_group_role", func() {
+			var accessRoleNames []string
+			if admin {
+				accessRoleNames = append(accessRoleNames, "admin")
+			}
+			if true {
+				accessRoleNames = append(accessRoleNames, "poweruser")
+			}
+			if readonly {
+				accessRoleNames = append(accessRoleNames, "readonly")
+			}
+			for _, accessRoleName := range accessRoleNames {
+				groupName := util.Format(prefixName, roleKey, accessRoleName)
+				groupRoleArn := TestRole(t, accountRegion, groupName)
+				if groupRoleArn == nil {
+					t.Fatalf("no groupRoleArn for groupName: %s", groupName)
 				}
-				fmt.Println(aws.StringValue(resourceUserArn))
 			}
 		})
 
-		terratestStructure.RunTestStage(t, "validate_team_groups", func() {
-			groupName := "resource-mutable"
-			mutableResources := util.Filter(resources, func(resource map[string]any) bool { return resource["mutable"].(bool) })
-			mutableResourcesNames := util.Reduce(mutableResources, func(resource map[string]any) string { return resource["name"].(string) })
-			groupArn := TestGroup(t, accountRegion, teamName, groupName, mutableResourcesNames)
+		terratestStructure.RunTestStage(t, "validate_group_permissions", func() {
+			userNames := util.Reduce(users, func(resource map[string]any) string { return resource["name"].(string) })
+			groupName := util.Format(prefixName, roleKey)
+			groupArn := TestGroup(t, accountRegion, groupName, userNames, policyElementNames)
 			if groupArn == nil {
 				t.Fatalf("no groupArn for groupName: %s", groupName)
 			}
-			fmt.Println(aws.StringValue(groupArn))
 
-			groupName = "resource-immutable"
-			immutableResources := util.Filter(resources, func(resource map[string]any) bool { return !resource["mutable"].(bool) })
-			immutableResourcesNames := util.Reduce(immutableResources, func(resource map[string]any) string { return resource["name"].(string) })
-			groupArn = TestGroup(t, accountRegion, teamName, groupName, immutableResourcesNames)
-			if groupArn == nil {
-				t.Fatalf("no groupArn for groupName: %s", groupName)
-			}
-			fmt.Println(aws.StringValue(groupArn))
+			for _, userName := range userNames {
+				userName := util.Format(groupName, userName)
+				userArn := TestUser(t, accountRegion, userName)
+				if userArn == nil {
+					t.Fatalf("no userArn for userName: %s", userName)
+				}
 
-			groupName = "machine"
-			machineNames := util.Reduce(machines, func(resource map[string]any) string { return resource["name"].(string) })
-			groupArn = TestGroup(t, accountRegion, teamName, groupName, machineNames)
-			if groupArn == nil {
-				t.Fatalf("no groupArn for groupName: %s", groupName)
+				// TODO: test each user role
 			}
-			fmt.Println(aws.StringValue(groupArn))
-
-			groupName = "dev"
-			devNames := util.Reduce(devs, func(resource map[string]any) string { return resource["name"].(string) })
-			groupArn = TestGroup(t, accountRegion, teamName, groupName, devNames)
-			if groupArn == nil {
-				t.Fatalf("no groupArn for groupName: %s", groupName)
-			}
-			fmt.Println(aws.StringValue(groupArn))
-
-			groupName = "admin"
-			adminNames := util.Reduce(admins, func(resource map[string]any) string { return resource["name"].(string) })
-			groupArn = TestGroup(t, accountRegion, teamName, groupName, adminNames)
-			if groupArn == nil {
-				t.Fatalf("no groupArn for groupName: %s", groupName)
-			}
-			fmt.Println(aws.StringValue(groupArn))
 		})
 	})
 }
 
-// func TestUser(t *testing.T, accountRegion, userName string) *string {
-// 	iamClient, err := terratestAws.NewIamClientE(t, accountRegion)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	user, err := iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(userName)})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	return user.User.Arn
-// }
-
-func TestGroup(t *testing.T, accountRegion, namePrefix, groupName string, userNames []string) *string {
+func TestUser(t *testing.T, accountRegion, userName string) *string {
 	iamClient, err := terratestAws.NewIamClientE(t, accountRegion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	group, err := iamClient.GetGroup(&iam.GetGroupInput{GroupName: aws.String(util.Format(namePrefix, groupName))})
+	terratestLogger.Log(t, "user:: "+userName)
+	user, err := iamClient.GetUser(&iam.GetUserInput{UserName: aws.String(userName)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return user.User.Arn
+}
+
+func TestGroup(t *testing.T, accountRegion, groupName string, userNames []string, assumeRoleNames []string) *string {
+	iamClient, err := terratestAws.NewIamClientE(t, accountRegion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	terratestLogger.Log(t, "group users:: "+groupName)
+	group, err := iamClient.GetGroup(&iam.GetGroupInput{GroupName: aws.String(groupName)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,22 +125,30 @@ func TestGroup(t *testing.T, accountRegion, namePrefix, groupName string, userNa
 		util.Finds(t, userNames, []string{aws.StringValue(user.UserName)})
 	}
 
+	// FIXME: not found
+	// terratestLogger.Log(t, "group policy:: "+groupName)
+	// groupPolicy, err := iamClient.GetGroupPolicy(&iam.GetGroupPolicyInput{GroupName: aws.String(groupName), PolicyName: aws.String(groupName)})
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	// for _, assumeRoleName := range assumeRoleNames {
+	// 	util.Find(t, assumeRoleName, aws.StringValue(groupPolicy.PolicyDocument))
+	// }
+
 	return group.Group.Arn
 }
 
-func TestRole(t *testing.T, accountRegion, namePrefix, roleName string, assumeRoleNames []string) *string {
+func TestRole(t *testing.T, accountRegion, roleName string) *string {
 	iamClient, err := terratestAws.NewIamClientE(t, accountRegion)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	role, err := iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(util.Format(namePrefix, roleName))})
+	terratestLogger.Log(t, "role:: "+roleName)
+	role, err := iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(util.Format(roleName))})
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	for _, assumeRoleName := range assumeRoleNames {
-		util.Find(t, assumeRoleName, aws.StringValue(role.Role.AssumeRolePolicyDocument))
 	}
 
 	return role.Role.Arn

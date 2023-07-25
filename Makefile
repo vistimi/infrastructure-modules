@@ -43,7 +43,7 @@ test: ## Setup the test environment, run the tests and clean the environment
 	# go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
 test-clean-cache:
-	go clean -testcache;
+	go clean -testcache
 
 prepare-terragrunt:
 	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}
@@ -63,10 +63,10 @@ prepare-account-aws:
 prepare-global-team:
 	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/team
 
-prepare-aws-iam-organization:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/organization
-prepare-aws-iam-team:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/team
+prepare-aws-iam-level:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level
+prepare-aws-iam-group:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/group
 
 BRANCH_NAME ?= trunk
 prepare-aws-microservice-scraper-backend:
