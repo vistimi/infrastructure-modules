@@ -31,8 +31,9 @@ variable "levels" {
 
 variable "groups" {
   type = map(object({
-    force_destroy = optional(bool)
-    pw_length     = optional(number)
+    force_destroy                     = optional(bool)
+    attach_iam_self_management_policy = optional(bool)
+    pw_length                         = optional(number)
     users = list(object({
       name = string
       statements = optional(list(object({
@@ -40,6 +41,11 @@ variable "groups" {
         actions   = list(string)
         effect    = optional(string)
         resources = list(string)
+        conditions = optional(list(object({
+          test     = string
+          variable = string
+          values   = list(string)
+        })), [])
       })))
     }))
     statements = optional(list(object({
@@ -47,6 +53,11 @@ variable "groups" {
       actions   = list(string)
       effect    = optional(string)
       resources = list(string)
+      conditions = optional(list(object({
+        test     = string
+        variable = string
+        values   = list(string)
+      })), [])
     })))
   }))
 
@@ -72,6 +83,11 @@ variable "statements" {
     actions   = list(string)
     effect    = optional(string)
     resources = list(string)
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
   }))
   nullable = false
   default  = []

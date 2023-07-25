@@ -18,48 +18,48 @@ func ValidateTeam(t *testing.T, accountRegion, teamName string, adminUsers, devU
 		roleKey := "resource-mutable"
 		policyElementNames := []string{}
 		admin := true
-		poweruser := true
+		// poweruser := true
 		readonly := false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, poweruser, readonly, policyElementNames, resourceMutableUsers)
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceMutableUsers)
 
 		roleKey = "resource-immutable"
 		policyElementNames = []string{}
 		admin = true
-		poweruser = true
+		// poweruser = true
 		readonly = true
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, poweruser, readonly, policyElementNames, resourceImmutableUsers)
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceImmutableUsers)
 
 		roleKey = "machine"
 		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly"}
 		admin = true
-		poweruser = true
-		readonly = false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, poweruser, readonly, policyElementNames, machineUsers)
-
-		// roleKey = "dev"
-		// policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"}
-		// admin = true
 		// poweruser = true
-		// readonly = false
-		// ValidateGroup(t, accountRegion, teamName, roleKey, admin, poweruser, readonly, policyElementNames, devUsers)
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, machineUsers)
 
-		// roleKey = "admin"
-		// policyElementNames = []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"}
-		// admin = true
+		roleKey = "dev"
+		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"}
+		admin = true
+		// poweruser = true
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, devUsers)
+
+		roleKey = "admin"
+		policyElementNames = []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"}
+		admin = true
 		// poweruser = false
-		// readonly = false
-		// ValidateGroup(t, accountRegion, teamName, roleKey, admin, poweruser, readonly, policyElementNames, adminUsers)
+		readonly = false
+		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, adminUsers)
 	})
 }
 
-func ValidateGroup(t *testing.T, accountRegion, prefixName, roleKey string, admin, poweruser, readonly bool, policyElementNames []string, users []map[string]any) {
+func ValidateGroup(t *testing.T, accountRegion, prefixName, roleKey string, admin, readonly bool, policyElementNames []string, users []map[string]any) {
 	terratestStructure.RunTestStage(t, "validate_group", func() {
 		terratestStructure.RunTestStage(t, "validate_group_role", func() {
 			var accessRoleNames []string
 			if admin {
 				accessRoleNames = append(accessRoleNames, "admin")
 			}
-			if poweruser {
+			if true {
 				accessRoleNames = append(accessRoleNames, "poweruser")
 			}
 			if readonly {

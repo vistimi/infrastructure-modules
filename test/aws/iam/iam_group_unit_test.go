@@ -22,7 +22,7 @@ func Test_Unit_IAM_Group(t *testing.T) {
 	teamName := "team12345" // + util.RandomID(4)
 	roleKey := "dev"
 	admin := true
-	poweruser := true
+	// poweruser := true
 	readonly := true
 	externalAssumeRoleNames := []string{}
 	externalAssumeRoleArns := []string{}
@@ -52,10 +52,10 @@ func Test_Unit_IAM_Group(t *testing.T) {
 
 			"force_destroy": true,
 			"admin":         admin,
-			"poweruser":     poweruser,
-			"readonly":      readonly,
-			"pw_length":     20,
-			"users":         users,
+			// "poweruser":     poweruser,
+			"readonly":  readonly,
+			"pw_length": 20,
+			"users":     users,
 			"statements": []map[string]any{
 				{
 					"sid":       "groupStatement",
@@ -85,6 +85,6 @@ func Test_Unit_IAM_Group(t *testing.T) {
 		terraform.InitAndApply(t, options)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
-		testAwsModule.ValidateGroup(t, util.GetEnvVariable("AWS_REGION_NAME"), teamName, roleKey, admin, poweruser, readonly, externalAssumeRoleNames, users)
+		testAwsModule.ValidateGroup(t, util.GetEnvVariable("AWS_REGION_NAME"), teamName, roleKey, admin, readonly, externalAssumeRoleNames, users)
 	})
 }

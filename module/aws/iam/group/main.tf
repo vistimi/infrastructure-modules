@@ -20,6 +20,15 @@ data "aws_iam_policy_document" "users" {
       actions   = statement.value.actions
       resources = statement.value.resources
       effect    = statement.value.effect
+
+      dynamic "condition" {
+        for_each = statement.value.conditions
+        content {
+          test     = condition.value.test
+          variable = condition.value.variable
+          values   = condition.value.values
+        }
+      }
     }
   }
 }
@@ -60,7 +69,12 @@ module "users" {
   tags = local.tags
 }
 
-// TODO: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_virtual_mfa_device
+# # need to use AWS 
+# resource "aws_iam_virtual_mfa_device" "this" {
+#   virtual_mfa_device_name = "device"
+#   # path                    = "/"
+#   tags = var.tags
+# }
 
 #---------------
 #     Secrets
@@ -113,7 +127,7 @@ module "group_role" {
   create_admin_role = var.admin
   admin_role_name   = join("-", [local.name, "admin"])
 
-  create_poweruser_role = var.poweruser
+  create_poweruser_role = true //var.poweruser
   poweruser_role_name   = join("-", [local.name, "poweruser"])
 
   create_readonly_role       = var.readonly
@@ -136,6 +150,15 @@ data "aws_iam_policy_document" "group" {
       actions   = statement.value.actions
       resources = statement.value.resources
       effect    = statement.value.effect
+
+      dynamic "condition" {
+        for_each = statement.value.conditions
+        content {
+          test     = condition.value.test
+          variable = condition.value.variable
+          values   = condition.value.values
+        }
+      }
     }
   }
 }
@@ -146,7 +169,7 @@ module "group" {
 
   name = local.name
 
-  assumable_roles = concat([module.group_role.poweruser_iam_role_arn], var.external_assume_role_arns)
+  assumable_roles = concat(compact([module.group_role.poweruser_iam_role_arn]), var.external_assume_role_arns)
 
   group_users = [for user in module.users : user.iam_user_name]
 
@@ -159,6 +182,8 @@ module "group_policy" {
   count = length(var.statements) > 0 ? 1 : 0
 
   name = module.group.group_name
+
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
 
   create_group = false
 

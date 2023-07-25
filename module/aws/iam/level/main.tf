@@ -7,42 +7,51 @@ locals {
   name        = join("-", concat([for level in var.levels : level.value], [var.level_value]))
 }
 
-# data "aws_iam_policy_document" "level" {
+data "aws_iam_policy_document" "level" {
 
-#   count = length(var.statements) > 0 ? 1 : 0
+  count = length(var.statements) > 0 ? 1 : 0
 
-#   dynamic "statement" {
-#     for_each = var.statements
+  dynamic "statement" {
+    for_each = var.statements
 
-#     content {
-#       sid       = statement.value.sid
-#       actions   = statement.value.actions
-#       resources = statement.value.resources
-#       effect    = statement.value.effect
-#     }
-#   }
-# }
+    content {
+      sid       = statement.value.sid
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
 
-# module "iam_policy_level" {
-#   source = "terraform-aws-modules/iam/aws//modules/iam-policy"
+      dynamic "condition" {
+        for_each = statement.value.conditions
+        content {
+          test     = condition.value.test
+          variable = condition.value.variable
+          values   = condition.value.values
+        }
+      }
+    }
+  }
+}
 
-#   count = length(var.statements) > 0 ? 1 : 0
+module "iam_policy_level" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-policy"
 
-#   name        = "${local.name}-level-scope"
-#   path        = "/"
-#   description = "Group policy"
+  count = length(var.statements) > 0 ? 1 : 0
 
-#   policy = data.aws_iam_policy_document.level[count.index].json
+  name        = "${local.name}-level-scope"
+  path        = "/"
+  description = "Group policy"
 
-#   tags = local.tags
-# }
+  policy = data.aws_iam_policy_document.level[count.index].json
 
-# resource "aws_iam_group_policy_attachment" "external" {
-#   for_each = { for key, group in merge(module.resource_mutable, module.resource_immutable, module.machine, module.dev, module.admin) : key => group if length(module.iam_policy_level) == 1 }
+  tags = local.tags
+}
 
-#   group      = each.value.group.group_name
-#   policy_arn = module.iam_policy_level[0].arn
-# }
+resource "aws_iam_group_policy_attachment" "external" {
+  for_each = { for key, group in merge(module.resource_mutable, module.resource_immutable, module.machine, module.dev, module.admin) : key => group if length(module.iam_policy_level) == 1 }
+
+  group      = each.value.group.group_name
+  policy_arn = module.iam_policy_level[0].arn
+}
 
 module "resource_mutable" {
   source = "../group"
@@ -54,11 +63,12 @@ module "resource_mutable" {
 
   force_destroy = each.value.force_destroy
   admin         = true
-  poweruser     = true
-  readonly      = false
-  pw_length     = each.value.pw_length
-  users         = each.value.users
-  statements    = each.value.statements
+  # poweruser     = true
+  readonly                          = false
+  pw_length                         = each.value.pw_length
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  users                             = each.value.users
+  statements                        = each.value.statements
 
   external_assume_role_arns = var.external_assume_role_arns
   store_secrets             = var.store_secrets
@@ -76,11 +86,12 @@ module "resource_immutable" {
 
   force_destroy = each.value.force_destroy
   admin         = true
-  poweruser     = true
-  readonly      = true
-  pw_length     = each.value.pw_length
-  users         = each.value.users
-  statements    = each.value.statements
+  # poweruser     = true
+  readonly                          = true
+  pw_length                         = each.value.pw_length
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  users                             = each.value.users
+  statements                        = each.value.statements
 
   external_assume_role_arns = var.external_assume_role_arns
   store_secrets             = var.store_secrets
@@ -98,11 +109,12 @@ module "machine" {
 
   force_destroy = each.value.force_destroy
   admin         = true
-  poweruser     = true
-  readonly      = false
-  pw_length     = each.value.pw_length
-  users         = each.value.users
-  statements    = each.value.statements
+  # poweruser     = true
+  readonly                          = false
+  pw_length                         = each.value.pw_length
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  users                             = each.value.users
+  statements                        = each.value.statements
 
   external_assume_role_arns = concat(
     var.external_assume_role_arns,
@@ -114,7 +126,6 @@ module "machine" {
   tags = var.tags
 }
 
-
 module "dev" {
   source = "../group"
 
@@ -125,11 +136,12 @@ module "dev" {
 
   force_destroy = each.value.force_destroy
   admin         = true
-  poweruser     = true
-  readonly      = false
-  pw_length     = each.value.pw_length
-  users         = each.value.users
-  statements    = each.value.statements
+  # poweruser     = true
+  readonly                          = false
+  pw_length                         = each.value.pw_length
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  users                             = each.value.users
+  statements                        = each.value.statements
 
   external_assume_role_arns = concat(
     var.external_assume_role_arns,
@@ -151,20 +163,20 @@ module "admin" {
 
   force_destroy = each.value.force_destroy
   admin         = true
-  poweruser     = false
-  readonly      = false
-  pw_length     = each.value.pw_length
-  users         = each.value.users
-  statements    = each.value.statements
+  # poweruser     = false
+  readonly                          = false
+  pw_length                         = each.value.pw_length
+  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  users                             = each.value.users
+  statements                        = each.value.statements
 
-  # external_assume_role_arns = concat(
-  #   # var.external_assume_role_arns,
-  #   # [for group in module.resource_mutable : group.role.admin_iam_role_arn],
-  #   # [for group in module.resource_immutable : group.role.admin_iam_role_arn],
-  #   # [for group in module.machine : group.role.admin_iam_role_arn],
-  #   # [for group in module.dev : group.role.admin_iam_role_arn]
-  #   ["*"]
-  # )
+  external_assume_role_arns = concat(
+    var.external_assume_role_arns,
+    [for group in module.resource_mutable : group.role.admin_iam_role_arn],
+    [for group in module.resource_immutable : group.role.admin_iam_role_arn],
+    [for group in module.machine : group.role.admin_iam_role_arn],
+    [for group in module.dev : group.role.admin_iam_role_arn]
+  )
   store_secrets = var.store_secrets
 
   tags = var.tags

@@ -13,6 +13,13 @@ variable "group_key" {
   nullable    = false
 }
 
+variable "attach_iam_self_management_policy" {
+  description = "Create self management policy of all resources with mfa"
+  type        = bool
+  nullable    = false
+  default     = false
+}
+
 variable "force_destroy" {
   type     = bool
   nullable = false
@@ -24,10 +31,10 @@ variable "admin" {
   nullable = false
 }
 
-variable "poweruser" {
-  type     = bool
-  nullable = false
-}
+# variable "poweruser" {
+#   type     = bool
+#   nullable = false
+# }
 
 variable "readonly" {
   type     = bool
@@ -48,6 +55,11 @@ variable "users" {
       actions   = list(string)
       effect    = optional(string)
       resources = list(string)
+      conditions = optional(list(object({
+        test     = string
+        variable = string
+        values   = list(string)
+      })), [])
     })), [])
   }))
   default = []
@@ -64,6 +76,11 @@ variable "statements" {
     actions   = list(string)
     effect    = optional(string)
     resources = list(string)
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
   }))
   nullable = false
   default  = []
