@@ -19,7 +19,7 @@ func Test_Unit_IAM_Group(t *testing.T) {
 	// t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
-	teamName := "team12345" // + util.RandomID(4)
+	teamName := "team" + util.RandomID(4)
 	roleKey := "dev"
 	admin := true
 	// poweruser := true

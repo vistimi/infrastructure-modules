@@ -42,7 +42,7 @@ test: ## Setup the test environment, run the tests and clean the environment
 	# # p1 will not mix the logs when multiple tests are used
 	# go test -timeout 30m -p 1 -v -cover ./...; \
 	make clean;
-test-clean-cache:
+test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:

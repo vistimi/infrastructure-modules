@@ -45,29 +45,42 @@ resource "aws_iam_policy" "users" {
   tags = local.tags
 }
 
-resource "aws_iam_user_policy_attachment" "test-attach" {
+resource "aws_iam_user_policy_attachment" "users" {
   for_each = { for user_name, policy_user in aws_iam_policy.users : user_name => policy_user }
 
-  user       = module.users[each.key].iam_user_name
+  user       = module.users[each.key].user.iam_user_name
   policy_arn = each.value.arn
 }
 
 module "users" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-user"
-  version = "5.28.0"
+  source = "../user"
 
   for_each = { for user in var.users : user.name => {} }
 
-  name          = join("-", [local.name, each.key])
-  force_destroy = var.force_destroy
-
-  create_iam_access_key = true
-
-  password_length         = var.pw_length
-  password_reset_required = false
+  name          = each.key
+  levels        = concat(var.levels, [{ key = "group", value = var.group_key }])
+  pw_length     = var.pw_length
+  store_secrets = var.store_secrets
 
   tags = local.tags
 }
+
+# module "users" {
+#   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
+#   version = "5.28.0"
+
+#   for_each = { for user in var.users : user.name => {} }
+
+#   name          = join("-", [local.name, each.key])
+#   force_destroy = var.force_destroy
+
+#   create_iam_access_key = true
+
+#   password_length         = var.pw_length
+#   password_reset_required = false
+
+#   tags = local.tags
+# }
 
 # # need to use AWS 
 # resource "aws_iam_virtual_mfa_device" "this" {
@@ -76,45 +89,46 @@ module "users" {
 #   tags = var.tags
 # }
 
-#---------------
-#     Secrets
-#---------------
-module "secret_manager" {
-  source = "../../secret/manager"
+# #---------------
+# #     Secrets
+# #---------------
+# module "secret_manager" {
+#   source = "../../secret/manager"
 
-  for_each = { for key, user in module.users : key => user if var.store_secrets }
+#   for_each = { for key, user in module.users : key => user if var.store_secrets }
 
-  name = join("/", concat([for level in var.levels : "${level.key}/${level.value}"], ["group/${var.group_key}", "user/${each.value.iam_user_name}"]))
-  secrets = [
-    { key = "AWS_SECRET_KEY", value = sensitive(each.value.iam_access_key_secret) },
-    { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
-    { key = "AWS_REGION_NAME", value = local.region_name },
-    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
-    { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
-    { key = "AWS_PROFILE_ALIAS", value = each.value.iam_user_name },
-    { key = "AWS_ACCOUNT_PASSWORD", value = each.value.iam_user_login_profile_password },
-  ]
+#   name = join("/", concat([for level in var.levels : "${level.key}/${level.value}"], ["group/${var.group_key}", "user/${each.value.iam_user_name}"]))
+#   secrets = [
+#     { key = "AWS_SECRET_KEY", value = sensitive(each.value.iam_access_key_secret) },
+#     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
+#     { key = "AWS_REGION_NAME", value = local.region_name },
+#     { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
+#     { key = "AWS_USER_ID", value = each.value.iam_user_unique_id },
+#     { key = "AWS_ACCOUNT_ID", value = module.accounts[each.key].caller_identity_account_id },
+#     { key = "AWS_PROFILE_ALIAS", value = each.value.iam_user_name },
+#     { key = "AWS_ACCOUNT_PASSWORD", value = each.value.iam_user_login_profile_password },
+#   ]
 
-  tags = merge(local.tags, { Account = each.value.iam_user_name })
-}
+#   tags = merge(local.tags, { AccountName = each.value.iam_user_name })
+# }
 
-#------------------
-#     Accounts
-#------------------
-module "accounts" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-account"
-  version = "5.28.0"
+# #------------------
+# #     Accounts
+# #------------------
+# module "accounts" {
+#   source  = "terraform-aws-modules/iam/aws//modules/iam-account"
+#   version = "5.28.0"
 
-  for_each = { for key, user in module.users : key => user }
+#   for_each = { for key, user in module.users : key => user }
 
-  account_alias = lower(each.value.iam_user_name)
+#   account_alias = lower(each.value.iam_user_name)
 
-  minimum_password_length      = var.pw_length
-  require_lowercase_characters = true
-  require_uppercase_characters = true
-  require_numbers              = true
-  require_symbols              = true
-}
+#   minimum_password_length      = var.pw_length
+#   require_lowercase_characters = true
+#   require_uppercase_characters = true
+#   require_numbers              = true
+#   require_symbols              = true
+# }
 
 #---------------
 #     Roles
@@ -172,7 +186,7 @@ module "group" {
 
   assumable_roles = concat(compact([module.group_role.poweruser_iam_role_arn]), var.external_assume_role_arns)
 
-  group_users = [for user in module.users : user.iam_user_name]
+  group_users = [for user in module.users : user.user.iam_user_name]
 
   tags = local.tags
 }

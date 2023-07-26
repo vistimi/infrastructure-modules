@@ -1,26 +1,62 @@
+# output "users" {
+#   value = {
+#     for user_name, user in module.users : user_name => {
+#       iam_user_name                                 = user.iam_user_name
+#       iam_user_arn                                  = user.iam_user_arn
+#       iam_user_unique_id                            = user.iam_user_unique_id
+#       iam_user_login_profile_key_fingerprint        = user.iam_user_login_profile_key_fingerprint
+#       iam_user_login_profile_encrypted_password     = user.iam_user_login_profile_encrypted_password
+#       iam_access_key_id                             = user.iam_access_key_id
+#       iam_access_key_key_fingerprint                = user.iam_access_key_key_fingerprint
+#       iam_access_key_encrypted_secret               = user.iam_access_key_encrypted_secret
+#       iam_access_key_encrypted_ses_smtp_password_v4 = user.iam_access_key_encrypted_ses_smtp_password_v4
+#       iam_access_key_status                         = user.iam_access_key_status
+#       pgp_key                                       = user.pgp_key
+#       keybase_password_decrypt_command              = user.keybase_password_decrypt_command
+#       keybase_password_pgp_message                  = user.keybase_password_pgp_message
+#       keybase_secret_key_decrypt_command            = user.keybase_secret_key_decrypt_command
+#       keybase_secret_key_pgp_message                = user.keybase_secret_key_pgp_message
+#       keybase_ses_smtp_password_v4_decrypt_command  = user.keybase_ses_smtp_password_v4_decrypt_command
+#       keybase_ses_smtp_password_v4_pgp_message      = user.keybase_ses_smtp_password_v4_pgp_message
+#       iam_user_ssh_key_ssh_public_key_id            = user.iam_user_ssh_key_ssh_public_key_id
+#       iam_user_ssh_key_fingerprint                  = user.iam_user_ssh_key_fingerprint
+#       policy_arns                                   = user.policy_arns
+#     }
+#   }
+# }
+
+# output "users_sensitive" {
+#   value = {
+#     for user_name, user in module.users : user_name => {
+#       iam_user_login_profile_password     = sensitive(user.iam_user_login_profile_password)
+#       iam_access_key_secret               = sensitive(user.iam_access_key_secret)
+#       iam_access_key_ses_smtp_password_v4 = sensitive(user.iam_access_key_ses_smtp_password_v4)
+#     }
+#   }
+#   sensitive = true
+# }
+
+# output "secret_manager" {
+#   value = module.secret_manager
+# }
+
+# output "accounts" {
+#   value = {
+#     for user_name, account in module.accounts : user_name => {
+#       caller_identity_account_id                   = account.caller_identity_account_id
+#       caller_identity_arn                          = account.caller_identity_arn
+#       caller_identity_user_id                      = account.caller_identity_user_id
+#       iam_account_password_policy_expire_passwords = account.iam_account_password_policy_expire_passwords
+#     }
+#   }
+# }
+
 output "users" {
   value = {
     for user_name, user in module.users : user_name => {
-      iam_user_name                                 = user.iam_user_name
-      iam_user_arn                                  = user.iam_user_arn
-      iam_user_unique_id                            = user.iam_user_unique_id
-      iam_user_login_profile_key_fingerprint        = user.iam_user_login_profile_key_fingerprint
-      iam_user_login_profile_encrypted_password     = user.iam_user_login_profile_encrypted_password
-      iam_access_key_id                             = user.iam_access_key_id
-      iam_access_key_key_fingerprint                = user.iam_access_key_key_fingerprint
-      iam_access_key_encrypted_secret               = user.iam_access_key_encrypted_secret
-      iam_access_key_encrypted_ses_smtp_password_v4 = user.iam_access_key_encrypted_ses_smtp_password_v4
-      iam_access_key_status                         = user.iam_access_key_status
-      pgp_key                                       = user.pgp_key
-      keybase_password_decrypt_command              = user.keybase_password_decrypt_command
-      keybase_password_pgp_message                  = user.keybase_password_pgp_message
-      keybase_secret_key_decrypt_command            = user.keybase_secret_key_decrypt_command
-      keybase_secret_key_pgp_message                = user.keybase_secret_key_pgp_message
-      keybase_ses_smtp_password_v4_decrypt_command  = user.keybase_ses_smtp_password_v4_decrypt_command
-      keybase_ses_smtp_password_v4_pgp_message      = user.keybase_ses_smtp_password_v4_pgp_message
-      iam_user_ssh_key_ssh_public_key_id            = user.iam_user_ssh_key_ssh_public_key_id
-      iam_user_ssh_key_fingerprint                  = user.iam_user_ssh_key_fingerprint
-      policy_arns                                   = user.policy_arns
+      user = user.user
+      # account        = user.account
+      secret_manager = user.secret_manager
     }
   }
 }
@@ -28,27 +64,10 @@ output "users" {
 output "users_sensitive" {
   value = {
     for user_name, user in module.users : user_name => {
-      iam_user_login_profile_password     = sensitive(user.iam_user_login_profile_password)
-      iam_access_key_secret               = sensitive(user.iam_access_key_secret)
-      iam_access_key_ses_smtp_password_v4 = sensitive(user.iam_access_key_ses_smtp_password_v4)
+      user_sensitive = sensitive(user.user_sensitive)
     }
   }
   sensitive = true
-}
-
-output "secret_manager" {
-  value = module.secret_manager
-}
-
-output "accounts" {
-  value = {
-    for user_name, account in module.accounts : user_name => {
-      caller_identity_account_id                   = account.caller_identity_account_id
-      caller_identity_arn                          = account.caller_identity_arn
-      caller_identity_user_id                      = account.caller_identity_user_id
-      iam_account_password_policy_expire_passwords = account.iam_account_password_policy_expire_passwords
-    }
-  }
 }
 
 output "role" {
