@@ -133,6 +133,6 @@ func Test_Unit_IAM_Level(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		prefixName := util.Format(orgName, teamName)
-		testAwsModule.ValidateTeam(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers)
+		testAwsModule.ValidateLevel(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers)
 	})
 }

@@ -60,8 +60,8 @@ prepare-account-aws:
 	}
 	EOF
 
-prepare-global-team:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/team
+prepare-global-level:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
 prepare-aws-iam-level:
 	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level

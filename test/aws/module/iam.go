@@ -12,8 +12,8 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func ValidateTeam(t *testing.T, accountRegion, teamName string, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers []map[string]any) {
-	terratestStructure.RunTestStage(t, "validate_team", func() {
+func ValidateLevel(t *testing.T, accountRegion, teamName string, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers []map[string]any) {
+	terratestStructure.RunTestStage(t, "validate_level", func() {
 
 		roleKey := "resource-mutable"
 		policyElementNames := []string{}

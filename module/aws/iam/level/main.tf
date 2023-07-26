@@ -66,7 +66,7 @@ module "resource_mutable" {
   # poweruser     = true
   readonly                          = false
   pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
   users                             = each.value.users
   statements                        = each.value.statements
 
@@ -89,7 +89,7 @@ module "resource_immutable" {
   # poweruser     = true
   readonly                          = true
   pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
   users                             = each.value.users
   statements                        = each.value.statements
 
@@ -112,7 +112,7 @@ module "machine" {
   # poweruser     = true
   readonly                          = false
   pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
   users                             = each.value.users
   statements                        = each.value.statements
 
@@ -139,7 +139,7 @@ module "dev" {
   # poweruser     = true
   readonly                          = false
   pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
   users                             = each.value.users
   statements                        = each.value.statements
 
@@ -166,7 +166,7 @@ module "admin" {
   # poweruser     = false
   readonly                          = false
   pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
   users                             = each.value.users
   statements                        = each.value.statements
 

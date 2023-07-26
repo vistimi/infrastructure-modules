@@ -43,7 +43,6 @@ provider "aws" {
 }
 provider "github" {
   version = "~> 5.0"
-  # owner = "${get_env("GITHUB_OWNER")}"
   token = "${get_env("GITHUB_TOKEN")}"
 }
 EOF
