@@ -88,9 +88,10 @@ module "secret_manager" {
   secrets = [
     { key = "AWS_SECRET_KEY", value = sensitive(each.value.iam_access_key_secret) },
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
-    { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
-    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
     { key = "AWS_REGION_NAME", value = local.region_name },
+    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
+    { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
+    { key = "AWS_PROFILE_ALIAS", value = each.value.iam_user_name },
     { key = "AWS_ACCOUNT_PASSWORD", value = each.value.iam_user_login_profile_password },
   ]
 
