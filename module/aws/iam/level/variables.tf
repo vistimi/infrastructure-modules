@@ -13,7 +13,6 @@ variable "level_value" {
   description = "Level type"
   type        = string
   nullable    = false
-  default     = []
 }
 
 variable "levels" {
@@ -22,7 +21,8 @@ variable "levels" {
     key   = string
     value = string
   }))
-  default = []
+  nullable = false
+  default  = []
 
   validation {
     condition     = alltrue([for level in var.levels : contains(["organization", "team"], level.key)])
