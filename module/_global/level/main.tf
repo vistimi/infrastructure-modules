@@ -19,11 +19,9 @@ module "github_environments" {
   source = "../../github/environments"
 
   for_each = merge([
-    for group_key, groups in module.aws_level.groups : merge(
-      {
-        for user_name, user in groups.users : user_name => user if var.github.store_environment
-      }
-    )
+    for group_key, groups in module.aws_level.groups : merge({
+      for user_name, user in groups.users : user_name => user if var.github.store_environment
+    })
   ]...)
 
   name             = each.value.iam_user_name

@@ -14,7 +14,7 @@ const (
 	pathLevel = "../../module/_global/level"
 )
 
-func Test_Unit_Level(t *testing.T) {
+func Test_Unit_Global_Level(t *testing.T) {
 	// t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
