@@ -9,6 +9,7 @@ locals {
   name        = join("-", concat([for level in var.levels : level.value], [var.group_key]))
 }
 
+# TODO: add accounts with subusers (run with provider in another run)
 module "users" {
   source = "../user"
 

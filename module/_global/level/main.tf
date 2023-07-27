@@ -28,7 +28,7 @@ module "github_environments" {
   repository_names = var.github.repository_names
   variables = [
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
-    { key = "AWS_ACCOUNT_ID", value = each.value.iam_user_unique_id },
+    { key = "AWS_ACCOUNT_ID", value = each.value.caller_identity_account_id },
     { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
     { key = "AWS_REGION_NAME", value = data.aws_region.current.name },
   ]
