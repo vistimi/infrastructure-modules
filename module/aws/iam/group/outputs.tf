@@ -54,21 +54,20 @@
 output "users" {
   value = {
     for user_name, user in module.users : user_name => {
-      user = user.user
-      # account        = user.account
+      user           = user.user
       secret_manager = user.secret_manager
     }
   }
 }
 
-output "users_sensitive" {
-  value = {
-    for user_name, user in module.users : user_name => {
-      user_sensitive = sensitive(user.user_sensitive)
-    }
-  }
-  sensitive = true
-}
+# output "users_sensitive" {
+#   value = {
+#     for user_name, user in module.users : user_name => {
+#       user_sensitive = sensitive(user.user_sensitive)
+#     }
+#   }
+#   sensitive = true
+# }
 
 output "role" {
   value = {
