@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
 	"github.com/KookaS/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
@@ -134,11 +135,11 @@ func Test_Unit_Global_Level(t *testing.T) {
 		})
 	}()
 
-	// terratestStructure.RunTestStage(t, "deploy", func() {
-	// 	terraform.InitAndApply(t, options)
-	// })
-	// terratestStructure.RunTestStage(t, "validate", func() {
-	// 	prefixName := util.Format(orgName, teamName)
-	// 	testAwsModule.ValidateLevel(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers)
-	// })
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.InitAndApply(t, options)
+	})
+	terratestStructure.RunTestStage(t, "validate", func() {
+		prefixName := util.Format(orgName, teamName)
+		testAwsModule.ValidateLevel(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers)
+	})
 }
