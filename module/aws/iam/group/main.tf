@@ -5,8 +5,8 @@ data "aws_caller_identity" "current" {}
 
 locals {
   region_name = data.aws_region.current.name
-  tags        = merge(var.tags, { Group = var.group_key, Role = var.group_key, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
-  name        = join("-", concat([for level in var.levels : level.value], [var.group_key]))
+  tags        = merge(var.tags, { Group = var.name, Role = var.name, RootAccountId = data.aws_caller_identity.current.account_id, RootAccountArn = data.aws_caller_identity.current.arn, Region = local.region_name })
+  name        = join("-", concat([for level in var.levels : level.value], [var.name]))
 }
 
 # TODO: add accounts with subusers (run with provider in another run)
@@ -16,7 +16,7 @@ module "users" {
   for_each = { for user in var.users : user.name => user }
 
   name          = each.key
-  levels        = concat(var.levels, [{ key = "group", value = var.group_key }])
+  levels        = concat(var.levels, [{ key = "group", value = var.name }])
   statements    = each.value.statements
   pw_length     = var.pw_length
   store_secrets = var.store_secrets
@@ -33,13 +33,13 @@ module "group_role" {
 
   trusted_role_arns = ["*"]
 
-  create_admin_role = var.admin
+  create_admin_role = var.create_admin_role
   admin_role_name   = join("-", [local.name, "admin"])
 
-  create_poweruser_role = true //var.poweruser
+  create_poweruser_role = var.create_poweruser_role
   poweruser_role_name   = join("-", [local.name, "poweruser"])
 
-  create_readonly_role       = var.readonly
+  create_readonly_role       = var.create_readonly_role
   readonly_role_requires_mfa = false
   readonly_role_name         = join("-", [local.name, "readonly"])
 }
@@ -53,7 +53,15 @@ module "group" {
 
   name = local.name
 
-  assumable_roles = concat(compact([module.group_role.poweruser_iam_role_arn]), var.external_assume_role_arns)
+  assumable_roles = concat(
+    {
+      admin     = [module.group_role.admin_iam_role_arn]
+      poweruser = [module.group_role.poweruser_iam_role_arn]
+      readonly  = [module.group_role.readonly_iam_role_arn]
+      null      = []
+    }[var.attach_role_name],
+    var.external_assume_role_arns
+  )
 
   group_users = [for user in module.users : user.user.iam_user_name]
 
@@ -92,7 +100,7 @@ module "group_policy" {
 
   name = module.group.group_name
 
-  attach_iam_self_management_policy = var.attach_iam_self_management_policy
+  attach_iam_self_management_policy = false
 
   create_group = false
 

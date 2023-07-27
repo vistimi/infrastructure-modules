@@ -34,7 +34,6 @@ fmt: ## Format all files
 
 aws-auth:
 	make -f Makefile_infra aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
-	# make -f Makefile_infra aws-auth AWS_PROFILE_NAME=${REPOSITORIES_AWS_PROFILE_NAME} AWS_REGION_NAME=${REPOSITORIES_AWS_REGION_NAME} AWS_ACCESS_KEY=${REPOSITORIES_AWS_ACCESS_KEY} AWS_SECRET_KEY=${REPOSITORIES_AWS_SECRET_KEY}
 	aws configure list
 
 test: ## Setup the test environment, run the tests and clean the environment

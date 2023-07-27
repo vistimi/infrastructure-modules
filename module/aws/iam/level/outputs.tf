@@ -1,10 +1,18 @@
 output "groups" {
   value = {
-    for group_key, group in merge(module.admin, module.dev, module.machine, module.resource_mutable, module.resource_immutable) : group_key => {
-      users           = group.users
-      users_sensitive = sensitive(group.users_sensitive)
-      role            = group.role
-      group           = group.group
+    for group_name, group in module.groups : group_name => {
+      users = group.users
+      role  = group.role
+      group = group.group
     }
   }
+}
+
+output "groups_sensitive" {
+  value = {
+    for group_name, group in module.groups : group_name => {
+      users = sensitive(group.users_sensitive)
+    }
+  }
+  sensitive = true
 }

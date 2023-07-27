@@ -32,11 +32,26 @@ func Test_Unit_IAM_Level(t *testing.T) {
 			"resources": []string{"*"},
 		},
 	}
-	adminUsers := []map[string]any{{"name": "ad1", "statements": userStatements}}
-	devUsers := []map[string]any{{"name": "dev1", "statements": userStatements}}
-	machineUsers := []map[string]any{{"name": "machine1", "statements": userStatements}}
-	resourceMutableUsers := []map[string]any{{"name": "res1-mut", "statements": userStatements}}
-	resourceImmutableUsers := []map[string]any{{"name": "res2-immut", "statements": userStatements}}
+	groups := []testAwsModule.GroupInfo{
+		{
+			Name:                "admin",
+			Users:               []map[string]any{{"name": "ad1", "statements": userStatements}},
+			ExternalAssumeRoles: []string{},
+			CreateAdminRole:     true,
+			CreatePoweruserRole: false,
+			CreateReadonlyRole:  false,
+			AttachRoleName:      "admin",
+		},
+		{
+			Name:                "dev",
+			Users:               []map[string]any{{"name": "dev1", "statements": userStatements}},
+			ExternalAssumeRoles: []string{},
+			CreateAdminRole:     false,
+			CreatePoweruserRole: true,
+			CreateReadonlyRole:  false,
+			AttachRoleName:      "poweruser",
+		},
+	}
 
 	groupStatements := []map[string]any{
 		{
@@ -45,6 +60,20 @@ func Test_Unit_IAM_Level(t *testing.T) {
 			"effect":    "Allow",
 			"resources": []string{"*"},
 		},
+	}
+
+	groupsOptions := map[string]any{}
+	for _, group := range groups {
+		groupsOptions[group.Name] = map[string]any{
+			"force_destroy":         true,
+			"create_admin_role":     group.CreateAdminRole,
+			"create_poweruser_role": group.CreatePoweruserRole,
+			"create_readonly_role":  group.CreateReadonlyRole,
+			"attach_role_name":      group.AttachRoleName,
+			"pw_length":             20,
+			"users":                 group.Users,
+			"statements":            groupStatements,
+		}
 	}
 
 	levelStatements := []map[string]any{
@@ -77,38 +106,7 @@ func Test_Unit_IAM_Level(t *testing.T) {
 				},
 			},
 
-			"groups": map[string]any{
-				"admin": map[string]any{
-					"force_destroy": true,
-					"pw_length":     20,
-					"users":         adminUsers,
-					"statements":    groupStatements,
-				},
-				"dev": map[string]any{
-					"force_destroy": true,
-					"pw_length":     20,
-					"users":         devUsers,
-					"statements":    groupStatements,
-				},
-				"machine": map[string]any{
-					"force_destroy": true,
-					"pw_length":     20,
-					"users":         machineUsers,
-					"statements":    groupStatements,
-				},
-				"resource-mutable": map[string]any{
-					"force_destroy": true,
-					"pw_length":     20,
-					"users":         resourceMutableUsers,
-					"statements":    groupStatements,
-				},
-				"resource-immutable": map[string]any{
-					"force_destroy": true,
-					"pw_length":     20,
-					"users":         resourceImmutableUsers,
-					"statements":    groupStatements,
-				},
-			},
+			"groups": groupsOptions,
 
 			"statements": levelStatements,
 
@@ -133,6 +131,6 @@ func Test_Unit_IAM_Level(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		prefixName := util.Format(orgName, teamName)
-		testAwsModule.ValidateLevel(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers)
+		testAwsModule.ValidateLevel(t, util.GetEnvVariable("AWS_REGION_NAME"), prefixName, groups...)
 	})
 }

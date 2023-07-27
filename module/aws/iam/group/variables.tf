@@ -7,18 +7,18 @@ variable "levels" {
   default = []
 }
 
-variable "group_key" {
+variable "name" {
   description = "Group name, e.g. admin, dev..."
   type        = string
   nullable    = false
 }
 
-variable "attach_iam_self_management_policy" {
-  description = "Create self management policy of all resources with mfa"
-  type        = bool
-  nullable    = false
-  default     = false
-}
+# variable "attach_iam_self_management_policy" {
+#   description = "Create self management policy of all resources with mfa"
+#   type        = bool
+#   nullable    = false
+#   default     = false
+# }
 
 variable "force_destroy" {
   type     = bool
@@ -26,19 +26,49 @@ variable "force_destroy" {
   default  = false
 }
 
-variable "admin" {
+variable "create_admin_role" {
   type     = bool
   nullable = false
+  default  = false
 }
 
-# variable "poweruser" {
-#   type     = bool
-#   nullable = false
-# }
-
-variable "readonly" {
+variable "create_poweruser_role" {
   type     = bool
   nullable = false
+  default  = false
+}
+
+variable "create_readonly_role" {
+  type     = bool
+  nullable = false
+  default  = false
+}
+
+variable "attach_role_name" {
+  type    = string
+  default = null
+
+  validation {
+    condition     = contains(["admin", "poweruser", "readonly", null], var.attach_role_name)
+    error_message = "attach role name must be in [admin, poweruser, readonly] or null"
+  }
+}
+
+resource "null_resource" "role_attachement" {
+  lifecycle {
+    precondition {
+      condition     = var.attach_role_name == "admin" ? var.create_admin_role : true
+      error_message = "to attach the admin role, it must be created"
+    }
+    precondition {
+      condition     = var.attach_role_name == "poweruser" ? var.create_poweruser_role : true
+      error_message = "to attach the poweruser role, it must be created"
+    }
+    precondition {
+      condition     = var.attach_role_name == "readonly" ? var.create_readonly_role : true
+      error_message = "to attach the readonly role, it must be created"
+    }
+  }
 }
 
 variable "pw_length" {

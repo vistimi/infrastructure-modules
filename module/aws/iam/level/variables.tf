@@ -31,9 +31,12 @@ variable "levels" {
 
 variable "groups" {
   type = map(object({
-    force_destroy                     = optional(bool)
-    attach_iam_self_management_policy = optional(bool)
-    pw_length                         = optional(number)
+    force_destroy         = optional(bool)
+    create_admin_role     = optional(bool)
+    create_poweruser_role = optional(bool)
+    create_readonly_role  = optional(bool)
+    attach_role_name      = optional(string)
+    pw_length             = optional(number)
     users = list(object({
       name = string
       statements = optional(list(object({
@@ -63,18 +66,18 @@ variable "groups" {
 
   validation {
     condition     = length([for key, group in var.groups : key]) > 0
-    error_message = "team must have at least one group"
+    error_message = "level must have at least one group"
   }
 
   validation {
     condition     = length(flatten([for key, group in var.groups : [for user in group.users : user.name]])) > 0
-    error_message = "team must have at least one user"
+    error_message = "level must have at least one user"
   }
 
-  validation {
-    condition     = alltrue([for key, group in var.groups : contains(["admin", "dev", "machine", "resource-mutable", "resource-immutable"], key)])
-    error_message = "group keys must be in [admin, dev, machine, resource-mutable, resource-immutable], got ${jsonencode(keys(var.groups))}"
-  }
+  # validation {
+  #   condition     = alltrue([for key, group in var.groups : contains(["admin", "dev", "machine", "resource-mutable", "resource-immutable"], key)])
+  #   error_message = "group keys must be in [admin, dev, machine, resource-mutable, resource-immutable], got ${jsonencode(keys(var.groups))}"
+  # }
 }
 
 variable "statements" {

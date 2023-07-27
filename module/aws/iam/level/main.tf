@@ -47,137 +47,161 @@ module "iam_policy_level" {
 }
 
 resource "aws_iam_group_policy_attachment" "external" {
-  for_each = { for key, group in merge(module.resource_mutable, module.resource_immutable, module.machine, module.dev, module.admin) : key => group if length(module.iam_policy_level) == 1 }
+  # for_each = { for key, group in merge(module.resource_mutable, module.resource_immutable, module.machine, module.dev, module.admin) : key => group if length(module.iam_policy_level) == 1 }
+  for_each = { for key, group in module.groups : key => group if length(module.iam_policy_level) == 1 }
 
   group      = each.value.group.group_name
   policy_arn = module.iam_policy_level[0].arn
 }
 
-module "resource_mutable" {
+# module "resource_mutable" {
+#   source = "../group"
+
+#   for_each = { for key, group in var.groups : key => group if key == "resource-mutable" }
+
+#   group_name = each.key
+#   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+#   force_destroy = each.value.force_destroy
+#   admin         = true
+#   # poweruser     = true
+#   readonly                          = false
+#   pw_length                         = each.value.pw_length
+#   attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
+#   users                             = each.value.users
+#   statements                        = each.value.statements
+
+#   external_assume_role_arns = var.external_assume_role_arns
+#   store_secrets             = var.store_secrets
+
+#   tags = var.tags
+# }
+
+# module "resource_immutable" {
+#   source = "../group"
+
+#   for_each = { for key, group in var.groups : key => group if key == "resource-immutable" }
+
+#   group_name = each.key
+#   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+#   force_destroy = each.value.force_destroy
+#   admin         = true
+#   # poweruser     = true
+#   readonly                          = true
+#   pw_length                         = each.value.pw_length
+#   attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
+#   users                             = each.value.users
+#   statements                        = each.value.statements
+
+#   external_assume_role_arns = var.external_assume_role_arns
+#   store_secrets             = var.store_secrets
+
+#   tags = var.tags
+# }
+
+# module "machine" {
+#   source = "../group"
+
+#   for_each = { for key, group in var.groups : key => group if key == "machine" }
+
+#   group_name = each.key
+#   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+#   force_destroy = each.value.force_destroy
+#   admin         = true
+#   # poweruser     = true
+#   readonly                          = false
+#   pw_length                         = each.value.pw_length
+#   attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
+#   users                             = each.value.users
+#   statements                        = each.value.statements
+
+#   external_assume_role_arns = concat(
+#     var.external_assume_role_arns,
+#     [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
+#     [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
+#   )
+#   store_secrets = var.store_secrets
+
+#   tags = var.tags
+# }
+
+# module "dev" {
+#   source = "../group"
+
+#   for_each = { for key, group in var.groups : key => group if key == "dev" }
+
+#   group_name = each.key
+#   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+#   force_destroy = each.value.force_destroy
+#   admin         = true
+#   # poweruser     = true
+#   readonly                          = false
+#   pw_length                         = each.value.pw_length
+#   attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
+#   users                             = each.value.users
+#   statements                        = each.value.statements
+
+#   external_assume_role_arns = concat(
+#     var.external_assume_role_arns,
+#     [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
+#     [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
+#   )
+#   store_secrets = var.store_secrets
+
+#   tags = var.tags
+# }
+
+# module "admin" {
+#   source = "../group"
+
+#   for_each = { for key, group in var.groups : key => group if key == "admin" }
+
+#   group_name = each.key
+#   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+#   force_destroy = each.value.force_destroy
+#   admin         = true
+#   # poweruser     = false
+#   readonly                          = false
+#   pw_length                         = each.value.pw_length
+#   attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
+#   users                             = each.value.users
+#   statements                        = each.value.statements
+
+#   external_assume_role_arns = concat(
+#     var.external_assume_role_arns,
+#     [for group in module.resource_mutable : group.role.admin_iam_role_arn],
+#     [for group in module.resource_immutable : group.role.admin_iam_role_arn],
+#     [for group in module.machine : group.role.admin_iam_role_arn],
+#     [for group in module.dev : group.role.admin_iam_role_arn]
+#   )
+#   store_secrets = var.store_secrets
+
+#   tags = var.tags
+# }
+
+module "groups" {
   source = "../group"
 
-  for_each = { for key, group in var.groups : key => group if key == "resource-mutable" }
+  for_each = { for key, group in var.groups : key => group }
 
-  group_key = each.key
+  name = each.key
   levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
 
-  force_destroy = each.value.force_destroy
-  admin         = true
-  # poweruser     = true
-  readonly                          = false
-  pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
-  users                             = each.value.users
-  statements                        = each.value.statements
+  force_destroy         = each.value.force_destroy
+  create_admin_role     = each.value.create_admin_role
+  create_poweruser_role = each.value.create_poweruser_role
+  create_readonly_role  = each.value.create_readonly_role
+  attach_role_name      = each.value.attach_role_name
+  pw_length             = each.value.pw_length
+  users                 = each.value.users
+  statements            = each.value.statements
 
   external_assume_role_arns = var.external_assume_role_arns
   store_secrets             = var.store_secrets
-
-  tags = var.tags
-}
-
-module "resource_immutable" {
-  source = "../group"
-
-  for_each = { for key, group in var.groups : key => group if key == "resource-immutable" }
-
-  group_key = each.key
-  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
-
-  force_destroy = each.value.force_destroy
-  admin         = true
-  # poweruser     = true
-  readonly                          = true
-  pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
-  users                             = each.value.users
-  statements                        = each.value.statements
-
-  external_assume_role_arns = var.external_assume_role_arns
-  store_secrets             = var.store_secrets
-
-  tags = var.tags
-}
-
-module "machine" {
-  source = "../group"
-
-  for_each = { for key, group in var.groups : key => group if key == "machine" }
-
-  group_key = each.key
-  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
-
-  force_destroy = each.value.force_destroy
-  admin         = true
-  # poweruser     = true
-  readonly                          = false
-  pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
-  users                             = each.value.users
-  statements                        = each.value.statements
-
-  external_assume_role_arns = concat(
-    var.external_assume_role_arns,
-    [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
-    [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
-  )
-  store_secrets = var.store_secrets
-
-  tags = var.tags
-}
-
-module "dev" {
-  source = "../group"
-
-  for_each = { for key, group in var.groups : key => group if key == "dev" }
-
-  group_key = each.key
-  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
-
-  force_destroy = each.value.force_destroy
-  admin         = true
-  # poweruser     = true
-  readonly                          = false
-  pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
-  users                             = each.value.users
-  statements                        = each.value.statements
-
-  external_assume_role_arns = concat(
-    var.external_assume_role_arns,
-    [for group in module.resource_mutable : group.role.poweruser_iam_role_arn],
-    [for group in module.resource_immutable : group.role.readonly_iam_role_arn]
-  )
-  store_secrets = var.store_secrets
-
-  tags = var.tags
-}
-
-module "admin" {
-  source = "../group"
-
-  for_each = { for key, group in var.groups : key => group if key == "admin" }
-
-  group_key = each.key
-  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
-
-  force_destroy = each.value.force_destroy
-  admin         = true
-  # poweruser     = false
-  readonly                          = false
-  pw_length                         = each.value.pw_length
-  attach_iam_self_management_policy = each.value.attach_iam_self_management_policy
-  users                             = each.value.users
-  statements                        = each.value.statements
-
-  external_assume_role_arns = concat(
-    var.external_assume_role_arns,
-    [for group in module.resource_mutable : group.role.admin_iam_role_arn],
-    [for group in module.resource_immutable : group.role.admin_iam_role_arn],
-    [for group in module.machine : group.role.admin_iam_role_arn],
-    [for group in module.dev : group.role.admin_iam_role_arn]
-  )
-  store_secrets = var.store_secrets
 
   tags = var.tags
 }

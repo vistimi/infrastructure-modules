@@ -12,61 +12,31 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func ValidateLevel(t *testing.T, accountRegion, teamName string, adminUsers, devUsers, machineUsers, resourceMutableUsers, resourceImmutableUsers []map[string]any) {
+type GroupInfo struct {
+	Name                string
+	Users               []map[string]any
+	ExternalAssumeRoles []string
+	CreateAdminRole     bool
+	CreatePoweruserRole bool
+	CreateReadonlyRole  bool
+	AttachRoleName      string
+}
+
+func ValidateLevel(t *testing.T, accountRegion, prefixName string, groups ...GroupInfo) {
 	terratestStructure.RunTestStage(t, "validate_level", func() {
-
-		roleKey := "resource-mutable"
-		policyElementNames := []string{}
-		admin := true
-		// poweruser := true
-		readonly := false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceMutableUsers)
-
-		roleKey = "resource-immutable"
-		policyElementNames = []string{}
-		admin = true
-		// poweruser = true
-		readonly = true
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, resourceImmutableUsers)
-
-		roleKey = "machine"
-		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly"}
-		admin = true
-		// poweruser = true
-		readonly = false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, machineUsers)
-
-		roleKey = "dev"
-		policyElementNames = []string{"resource-mutable-poweruser", "resource-immutable-readonly", "machine-readonly"}
-		admin = true
-		// poweruser = true
-		readonly = false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, devUsers)
-
-		roleKey = "admin"
-		policyElementNames = []string{"resource-mutable-admin", "resource-immutable-admin", "machine-admin", "dev-admin"}
-		admin = true
-		// poweruser = false
-		readonly = false
-		ValidateGroup(t, accountRegion, teamName, roleKey, admin, readonly, policyElementNames, adminUsers)
+		for _, group := range groups {
+			ValidateGroup(t, accountRegion, prefixName, group)
+		}
 	})
 }
 
-func ValidateGroup(t *testing.T, accountRegion, prefixName, roleKey string, admin, readonly bool, policyElementNames []string, users []map[string]any) {
+func ValidateGroup(t *testing.T, accountRegion, prefixName string, group GroupInfo) {
 	terratestStructure.RunTestStage(t, "validate_group", func() {
 		terratestStructure.RunTestStage(t, "validate_group_role", func() {
-			var accessRoleNames []string
-			if admin {
-				accessRoleNames = append(accessRoleNames, "admin")
-			}
-			if true {
-				accessRoleNames = append(accessRoleNames, "poweruser")
-			}
-			if readonly {
-				accessRoleNames = append(accessRoleNames, "readonly")
-			}
+			accessRoleNames := append(group.ExternalAssumeRoles, group.AttachRoleName)
+
 			for _, accessRoleName := range accessRoleNames {
-				groupName := util.Format(prefixName, roleKey, accessRoleName)
+				groupName := util.Format(prefixName, group.Name, accessRoleName)
 				groupRoleArn := TestRole(t, accountRegion, groupName)
 				if groupRoleArn == nil {
 					t.Fatalf("no groupRoleArn for groupName: %s", groupName)
@@ -75,9 +45,9 @@ func ValidateGroup(t *testing.T, accountRegion, prefixName, roleKey string, admi
 		})
 
 		terratestStructure.RunTestStage(t, "validate_group_permissions", func() {
-			userNames := util.Reduce(users, func(resource map[string]any) string { return resource["name"].(string) })
-			groupName := util.Format(prefixName, roleKey)
-			groupArn := TestGroup(t, accountRegion, groupName, userNames, policyElementNames)
+			userNames := util.Reduce(group.Users, func(resource map[string]any) string { return resource["name"].(string) })
+			groupName := util.Format(prefixName, group.Name)
+			groupArn := TestGroup(t, accountRegion, groupName, userNames)
 			if groupArn == nil {
 				t.Fatalf("no groupArn for groupName: %s", groupName)
 			}
@@ -109,7 +79,7 @@ func TestUser(t *testing.T, accountRegion, userName string) *string {
 	return user.User.Arn
 }
 
-func TestGroup(t *testing.T, accountRegion, groupName string, userNames []string, assumeRoleNames []string) *string {
+func TestGroup(t *testing.T, accountRegion, groupName string, userNames []string) *string {
 	iamClient, err := terratestAws.NewIamClientE(t, accountRegion)
 	if err != nil {
 		t.Fatal(err)

@@ -112,7 +112,7 @@ module "secret_manager" {
     { key = "AWS_PROFILE_NAME", value = each.value.user.iam_user_name },
     { key = "AWS_USER_ID", value = each.value.user.iam_user_unique_id },
     { key = "AWS_ACCOUNT_ID", value = local.account_id },
-    { key = "AWS_PROFILE_ALIAS", value = each.value.user.iam_user_name },
+    # { key = "AWS_PROFILE_ALIAS", value = each.value.user.iam_user_name },
     { key = "AWS_ACCOUNT_PASSWORD", value = each.value.user.iam_user_login_profile_password },
   ]
 

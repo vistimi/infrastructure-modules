@@ -63,7 +63,7 @@ output "users" {
 output "users_sensitive" {
   value = {
     for user_name, user in module.users : user_name => {
-      user_sensitive = sensitive(user.user_sensitive)
+      user = sensitive(user.user_sensitive)
     }
   }
   sensitive = true

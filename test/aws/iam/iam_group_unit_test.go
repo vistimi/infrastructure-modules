@@ -20,28 +20,39 @@ func Test_Unit_IAM_Group(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	teamName := "team" + util.RandomID(4)
-	roleKey := "dev"
-	admin := true
-	// poweruser := true
-	readonly := true
-	externalAssumeRoleNames := []string{}
-	externalAssumeRoleArns := []string{}
-	users := []map[string]any{{
-		"name": "user1",
-		"statements": []map[string]any{
-			{
-				"sid":       "user1Statement",
-				"actions":   []string{"ec2:*"},
-				"effect":    "Allow",
-				"resources": []string{"*"},
+	group := testAwsModule.GroupInfo{
+		Name: "dev",
+		Users: []map[string]any{{
+			"name": "user1",
+			"statements": []map[string]any{
+				{
+					"sid":       "user1Statement",
+					"actions":   []string{"ec2:*"},
+					"effect":    "Allow",
+					"resources": []string{"*"},
+				},
 			},
+		}},
+		ExternalAssumeRoles: []string{},
+		CreateAdminRole:     true,
+		CreatePoweruserRole: true,
+		CreateReadonlyRole:  true,
+		AttachRoleName:      "poweruser",
+	}
+
+	groupStatements := []map[string]any{
+		{
+			"sid":       "groupStatement",
+			"actions":   []string{"ecr:*"},
+			"effect":    "Allow",
+			"resources": []string{"*"},
 		},
-	}}
+	}
 
 	options := &terraform.Options{
 		TerraformDir: pathGroup,
 		Vars: map[string]any{
-			"group_key": roleKey,
+			"group_name": group.Name,
 
 			"levels": []map[string]any{
 				{
@@ -50,22 +61,14 @@ func Test_Unit_IAM_Group(t *testing.T) {
 				},
 			},
 
-			"force_destroy": true,
-			"admin":         admin,
-			// "poweruser":     poweruser,
-			"readonly":  readonly,
-			"pw_length": 20,
-			"users":     users,
-			"statements": []map[string]any{
-				{
-					"sid":       "groupStatement",
-					"actions":   []string{"ecr:*"},
-					"effect":    "Allow",
-					"resources": []string{"*"},
-				},
-			},
-
-			"external_assume_role_arns": externalAssumeRoleArns,
+			"create_admin_role":         group.CreateAdminRole,
+			"create_poweruser_role":     group.CreatePoweruserRole,
+			"create_readonly_role":      group.CreateReadonlyRole,
+			"attach_role_name":          group.AttachRoleName,
+			"pw_length":                 20,
+			"users":                     group.Users,
+			"statements":                groupStatements,
+			"external_assume_role_arns": group.ExternalAssumeRoles,
 			"store_secrets":             false,
 			"tags":                      map[string]any{},
 		},
@@ -85,6 +88,6 @@ func Test_Unit_IAM_Group(t *testing.T) {
 		terraform.InitAndApply(t, options)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
-		testAwsModule.ValidateGroup(t, util.GetEnvVariable("AWS_REGION_NAME"), teamName, roleKey, admin, readonly, externalAssumeRoleNames, users)
+		testAwsModule.ValidateGroup(t, util.GetEnvVariable("AWS_REGION_NAME"), teamName, group)
 	})
 }

@@ -7,9 +7,12 @@ variable "aws" {
       value = string
     })))
     groups = map(object({
-      force_destroy                     = optional(bool)
-      attach_iam_self_management_policy = optional(bool)
-      pw_length                         = optional(number)
+      force_destroy         = optional(bool)
+      create_admin_role     = optional(bool)
+      create_poweruser_role = optional(bool)
+      create_readonly_role  = optional(bool)
+      attach_role_name      = optional(string)
+      pw_length             = optional(number)
       users = list(object({
         name = string
         statements = optional(list(object({
