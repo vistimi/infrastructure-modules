@@ -16,7 +16,7 @@ module "users" {
 
   name          = each.key
   levels        = concat(var.levels, [{ key = "group", value = var.group_key }])
-  statements = each.value.statements
+  statements    = each.value.statements
   pw_length     = var.pw_length
   store_secrets = var.store_secrets
 
@@ -46,6 +46,19 @@ module "group_role" {
 #---------------
 #     Groups
 #---------------
+module "group" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
+  version = "5.28.0"
+
+  name = local.name
+
+  assumable_roles = concat(compact([module.group_role.poweruser_iam_role_arn]), var.external_assume_role_arns)
+
+  group_users = [for user in module.users : user.user.iam_user_name]
+
+  tags = local.tags
+}
+
 data "aws_iam_policy_document" "group" {
 
   count = length(var.statements) > 0 ? 1 : 0
@@ -69,19 +82,6 @@ data "aws_iam_policy_document" "group" {
       }
     }
   }
-}
-
-module "group" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-group-with-assumable-roles-policy"
-  version = "5.28.0"
-
-  name = local.name
-
-  assumable_roles = concat(compact([module.group_role.poweruser_iam_role_arn]), var.external_assume_role_arns)
-
-  group_users = [for user in module.users : user.user.iam_user_name]
-
-  tags = local.tags
 }
 
 module "group_policy" {

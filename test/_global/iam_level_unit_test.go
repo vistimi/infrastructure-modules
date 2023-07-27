@@ -34,7 +34,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 	}
 	adminUsers := []map[string]any{{"name": "ad1", "statements": userStatements}}
 	devUsers := []map[string]any{{"name": "dev1", "statements": userStatements}}
-	machineUsers := []map[string]any{{"name": "machine1", "statements": userStatements}}
+	machineUsers := []map[string]any{{"name": "machine1"}} // without statements for testing
 	resourceMutableUsers := []map[string]any{{"name": "res1-mut", "statements": userStatements}}
 	resourceImmutableUsers := []map[string]any{{"name": "res2-immut", "statements": userStatements}}
 

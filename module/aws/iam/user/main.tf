@@ -21,6 +21,9 @@ module "user" {
 }
 
 data "aws_iam_policy_document" "user" {
+
+  count = length(var.statements) > 0 ? 1 : 0
+
   dynamic "statement" {
     for_each = var.statements
 
@@ -43,18 +46,24 @@ data "aws_iam_policy_document" "user" {
 }
 
 resource "aws_iam_policy" "user" {
+
+  count = length(var.statements) > 0 ? 1 : 0
+
   name        = "${local.name}-user-scope"
   path        = "/"
   description = "User policy"
 
-  policy = data.aws_iam_policy_document.user.json
+  policy = data.aws_iam_policy_document.user[count.index].json
 
   tags = local.tags
 }
 
 resource "aws_iam_user_policy_attachment" "users" {
+
+  count = length(var.statements) > 0 ? 1 : 0
+
   user       = module.user.iam_user_name
-  policy_arn = aws_iam_policy.user.arn
+  policy_arn = aws_iam_policy.user[count.index].arn
 }
 
 # # need to use AWS 
