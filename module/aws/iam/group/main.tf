@@ -9,56 +9,14 @@ locals {
   name        = join("-", concat([for level in var.levels : level.value], [var.group_key]))
 }
 
-data "aws_iam_policy_document" "users" {
-  for_each = { for user in var.users : user.name => user.statements if length(user.statements) > 0 }
-
-  dynamic "statement" {
-    for_each = each.value
-
-    content {
-      sid       = statement.value.sid
-      actions   = statement.value.actions
-      resources = statement.value.resources
-      effect    = statement.value.effect
-
-      dynamic "condition" {
-        for_each = statement.value.conditions
-        content {
-          test     = condition.value.test
-          variable = condition.value.variable
-          values   = condition.value.values
-        }
-      }
-    }
-  }
-}
-
-resource "aws_iam_policy" "users" {
-  for_each = { for user_name, policy_document_user in data.aws_iam_policy_document.users : user_name => policy_document_user }
-
-  name        = "${local.name}-${each.key}-user-scope"
-  path        = "/"
-  description = "User policy"
-
-  policy = each.value.json
-
-  tags = local.tags
-}
-
-resource "aws_iam_user_policy_attachment" "users" {
-  for_each = { for user_name, policy_user in aws_iam_policy.users : user_name => policy_user }
-
-  user       = module.users[each.key].user.iam_user_name
-  policy_arn = each.value.arn
-}
-
 module "users" {
   source = "../user"
 
-  for_each = { for user in var.users : user.name => {} }
+  for_each = { for user in var.users : user.name => user }
 
   name          = each.key
   levels        = concat(var.levels, [{ key = "group", value = var.group_key }])
+  statements = each.value.statements
   pw_length     = var.pw_length
   store_secrets = var.store_secrets
 

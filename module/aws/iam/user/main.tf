@@ -2,14 +2,14 @@ data "aws_region" "current" {}
 
 locals {
   region_name = data.aws_region.current.name
-  name        = join("-", [for level in var.levels : level.value])
+  name        = join("-", concat([for level in var.levels : level.value], [var.name]))
 }
 
 module "user" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  name          = join("-", [local.name, var.name])
+  name          = local.name
   force_destroy = var.force_destroy
 
   create_iam_access_key = true
@@ -18,6 +18,43 @@ module "user" {
   password_reset_required = false
 
   tags = var.tags
+}
+
+data "aws_iam_policy_document" "user" {
+  dynamic "statement" {
+    for_each = var.statements
+
+    content {
+      sid       = statement.value.sid
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+
+      dynamic "condition" {
+        for_each = statement.value.conditions
+        content {
+          test     = condition.value.test
+          variable = condition.value.variable
+          values   = condition.value.values
+        }
+      }
+    }
+  }
+}
+
+resource "aws_iam_policy" "user" {
+  name        = "${local.name}-user-scope"
+  path        = "/"
+  description = "User policy"
+
+  policy = data.aws_iam_policy_document.user.json
+
+  tags = local.tags
+}
+
+resource "aws_iam_user_policy_attachment" "users" {
+  user       = module.user.iam_user_name
+  policy_arn = aws_iam_policy.user.arn
 }
 
 # # need to use AWS 

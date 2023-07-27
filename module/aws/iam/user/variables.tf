@@ -24,6 +24,23 @@ variable "pw_length" {
   default  = 20
 }
 
+variable "statements" {
+  type = list(object({
+    sid       = optional(string)
+    actions   = list(string)
+    effect    = optional(string)
+    resources = list(string)
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }))
+  nullable = false
+  default  = []
+}
+
+
 variable "store_secrets" {
   description = "Store the environment on aws secret manager"
   type        = bool
