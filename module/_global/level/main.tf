@@ -1,4 +1,10 @@
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
+locals {
+  region_name = data.aws_region.current.name
+  account_id  = data.aws_caller_identity.current.account_id
+}
 
 module "aws_level" {
   source = "../../aws/iam/level"
@@ -28,9 +34,9 @@ module "github_environments" {
   repository_names = var.github.repository_names
   variables = [
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
-    { key = "AWS_ACCOUNT_ID", value = each.value.caller_identity_account_id },
+    { key = "AWS_ACCOUNT_ID", value = local.account_id },
     { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
-    { key = "AWS_REGION_NAME", value = data.aws_region.current.name },
+    { key = "AWS_REGION_NAME", value = local.region_name },
   ]
   secrets = [
     { key = "AWS_SECRET_KEY", value = merge([

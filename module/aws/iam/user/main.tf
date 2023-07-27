@@ -92,7 +92,7 @@ resource "aws_iam_user_policy_attachment" "users" {
 # }
 
 locals {
-  tags = merge(var.tags, { AccountName = var.name, AccountId = module.account.caller_identity_account_id })
+  tags = merge(var.tags, { AccountName = var.name, AccountId = local.account_id })
 }
 
 #---------------
@@ -111,7 +111,7 @@ module "secret_manager" {
     { key = "AWS_REGION_NAME", value = local.region_name },
     { key = "AWS_PROFILE_NAME", value = each.value.user.iam_user_name },
     { key = "AWS_USER_ID", value = each.value.user.iam_user_unique_id },
-    { key = "AWS_ACCOUNT_ID", value = each.value.account.caller_identity_account_id },
+    { key = "AWS_ACCOUNT_ID", value = local.account_id },
     { key = "AWS_PROFILE_ALIAS", value = each.value.user.iam_user_name },
     { key = "AWS_ACCOUNT_PASSWORD", value = each.value.user.iam_user_login_profile_password },
   ]
