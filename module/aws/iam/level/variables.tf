@@ -13,6 +13,7 @@ variable "level_value" {
   description = "Level type"
   type        = string
   nullable    = false
+  default     = []
 }
 
 variable "levels" {
