@@ -9,7 +9,6 @@ variable "aws" {
       create_admin_role     = optional(bool)
       create_poweruser_role = optional(bool)
       create_readonly_role  = optional(bool)
-      attach_role_name      = optional(string)
       pw_length             = optional(number)
       users = list(object({
         name = string

@@ -54,13 +54,8 @@ module "group" {
   name = local.name
 
   assumable_roles = concat(
-    {
-      admin     = [module.group_role.admin_iam_role_arn]
-      poweruser = [module.group_role.poweruser_iam_role_arn]
-      readonly  = [module.group_role.readonly_iam_role_arn]
-      null      = []
-    }[var.attach_role_name],
-    var.external_assume_role_arns
+    var.external_assume_role_arns,
+    compact([module.group_role.admin_iam_role_arn, module.group_role.poweruser_iam_role_arn, module.group_role.readonly_iam_role_arn])
   )
 
   group_users = [for user in module.users : user.user.iam_user_name]

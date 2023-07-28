@@ -69,7 +69,6 @@ func Test_Unit_Global_Level(t *testing.T) {
 			"create_admin_role":     group.CreateAdminRole,
 			"create_poweruser_role": group.CreatePoweruserRole,
 			"create_readonly_role":  group.CreateReadonlyRole,
-			"attach_role_name":      group.AttachRoleName,
 			"pw_length":             20,
 			"users":                 group.Users,
 			"statements":            groupStatements,

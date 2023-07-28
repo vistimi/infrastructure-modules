@@ -65,7 +65,6 @@ module "groups" {
   create_admin_role     = each.value.create_admin_role
   create_poweruser_role = each.value.create_poweruser_role
   create_readonly_role  = each.value.create_readonly_role
-  attach_role_name      = each.value.attach_role_name
   pw_length             = each.value.pw_length
   users                 = each.value.users
   statements            = each.value.statements
