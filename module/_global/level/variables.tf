@@ -64,7 +64,11 @@ variable "aws" {
 
 variable "github" {
   type = object({
-    repository_names  = list(string)
+    repository_names = list(string)
+    docker_action = object({
+      key   = string
+      value = string
+    })
     store_environment = bool
   })
 

@@ -21,6 +21,14 @@ module "aws_level" {
   tags = var.aws.tags
 }
 
+resource "github_actions_variable" "example_variable" {
+  for_each = { for repository_name in var.github.repository_names : repository_name => {} }
+
+  repository    = each.key
+  variable_name = var.github.docker_action.key
+  value         = var.github.docker_action.value
+}
+
 module "github_environments" {
   source = "../../github/environments"
 

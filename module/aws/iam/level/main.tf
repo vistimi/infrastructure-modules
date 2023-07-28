@@ -54,6 +54,29 @@ resource "aws_iam_group_policy_attachment" "external" {
   policy_arn = module.iam_policy_level[0].arn
 }
 
+module "groups" {
+  source = "../group"
+
+  for_each = { for key, group in var.groups : key => group }
+
+  name = each.key
+  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
+
+  force_destroy         = each.value.force_destroy
+  create_admin_role     = each.value.create_admin_role
+  create_poweruser_role = each.value.create_poweruser_role
+  create_readonly_role  = each.value.create_readonly_role
+  attach_role_name      = each.value.attach_role_name
+  pw_length             = each.value.pw_length
+  users                 = each.value.users
+  statements            = each.value.statements
+
+  external_assume_role_arns = var.external_assume_role_arns
+  store_secrets             = var.store_secrets
+
+  tags = var.tags
+}
+
 # module "resource_mutable" {
 #   source = "../group"
 
@@ -182,26 +205,3 @@ resource "aws_iam_group_policy_attachment" "external" {
 
 #   tags = var.tags
 # }
-
-module "groups" {
-  source = "../group"
-
-  for_each = { for key, group in var.groups : key => group }
-
-  name = each.key
-  levels    = concat(var.levels, [{ key = var.level_key, value = var.level_value }])
-
-  force_destroy         = each.value.force_destroy
-  create_admin_role     = each.value.create_admin_role
-  create_poweruser_role = each.value.create_poweruser_role
-  create_readonly_role  = each.value.create_readonly_role
-  attach_role_name      = each.value.attach_role_name
-  pw_length             = each.value.pw_length
-  users                 = each.value.users
-  statements            = each.value.statements
-
-  external_assume_role_arns = var.external_assume_role_arns
-  store_secrets             = var.store_secrets
-
-  tags = var.tags
-}
