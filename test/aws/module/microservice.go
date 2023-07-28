@@ -34,6 +34,7 @@ type EC2Instance struct {
 	Cpu           int
 	Memory        int
 	MemoryAllowed int
+	Architecture  string
 }
 
 var (
@@ -43,12 +44,14 @@ var (
 		Cpu:           2048,
 		Memory:        2048,
 		MemoryAllowed: 1801, // TODO: double check under infra of cluster + ECSReservedMemory
+		Architecture:  "x86_64",
 	}
 	T3Medium = EC2Instance{
 		Name:          "t3.medium",
 		Cpu:           2048,
 		Memory:        4096,
 		MemoryAllowed: 3828,
+		Architecture:  "x86_64",
 	}
 )
 
