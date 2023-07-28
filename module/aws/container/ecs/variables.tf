@@ -309,8 +309,8 @@ resource "null_resource" "ec2_architecture" {
   lifecycle {
     precondition {
       // TODO: add support for mac
-      condition = each.value.architecture == "x64" ? contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
-        each.value.architecture == "amd64" ? contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
+      condition = each.value.architecture == "x86_64" ? contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
+        each.value.architecture == "arm_64" ? contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
           each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
             each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (
               false
@@ -347,8 +347,8 @@ resource "null_resource" "ec2_os" {
     }
 
     precondition {
-      condition     = each.value.os == "linux" ? contains(["x64", "arm64", "gpu", "inf"], each.value.architecture) : false
-      error_message = "EC2 architecture must for one of linux:[x64, arm64, gpu, inf]"
+      condition     = each.value.os == "linux" ? contains(["x86_64", "arm_64", "gpu", "inf"], each.value.architecture) : false
+      error_message = "EC2 architecture must for one of linux:[x86_64, arm_64, gpu, inf]"
     }
   }
 }
@@ -359,12 +359,12 @@ variable "ami_ssm_name" {
   type        = map(string)
 
   default = {
-    amazon-linux-2-x64      = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-    amazon-linux-2-arm64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
-    amazon-linux-2-gpu      = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
-    amazon-linux-2-inf      = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
-    amazon-linux-2023-x64   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
-    amazon-linux-2023-arm64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
+    amazon-linux-2-x86_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    amazon-linux-2-arm_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
+    amazon-linux-2-gpu       = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
+    amazon-linux-2-inf       = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
+    amazon-linux-2023-x86_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+    amazon-linux-2023-arm_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
     # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
     amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
   }

@@ -103,7 +103,7 @@ module "secret_manager" {
   for_each = var.store_secrets ? { "${var.name}" = { user = module.user } } : {}
   # account = module.account
 
-  name = join("/", concat([for level in var.levels : "${level.key}/${level.value}"], ["user/${each.value.user.iam_user_name}"]))
+  name = join("//", concat([for level in var.levels : "${level.key}/${level.value}"], ["user/${each.value.user.iam_user_name}"]))
   secrets = [
     { key = "AWS_SECRET_KEY", value = sensitive(each.value.user.iam_access_key_secret) },
     { key = "AWS_ACCESS_KEY", value = each.value.user.iam_access_key_id },

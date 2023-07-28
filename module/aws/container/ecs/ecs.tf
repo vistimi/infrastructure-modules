@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_cloudwatch_log_group" "cluster" {
-  name              = "/${var.log.prefix}/${var.name}"
+  name              = join("/", [var.log.prefix, var.name])
   retention_in_days = var.log.retention_days
 
   tags = var.tags
