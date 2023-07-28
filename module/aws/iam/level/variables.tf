@@ -1,20 +1,3 @@
-variable "level_key" {
-  description = "Level name"
-  type        = string
-  nullable    = false
-
-  validation {
-    condition     = contains(["organization", "team"], var.level_key)
-    error_message = "level must be in [organization, team], got ${var.level_key}"
-  }
-}
-
-variable "level_value" {
-  description = "Level type"
-  type        = string
-  nullable    = false
-}
-
 variable "levels" {
   description = "Levels of hierarchy before this level, order matters!"
   type = list(object({
@@ -74,11 +57,6 @@ variable "groups" {
     condition     = length(flatten([for key, group in var.groups : [for user in group.users : user.name]])) > 0
     error_message = "level must have at least one user"
   }
-
-  # validation {
-  #   condition     = alltrue([for key, group in var.groups : contains(["admin", "dev", "machine", "resource-mutable", "resource-immutable"], key)])
-  #   error_message = "group keys must be in [admin, dev, machine, resource-mutable, resource-immutable], got ${jsonencode(keys(var.groups))}"
-  # }
 }
 
 variable "statements" {

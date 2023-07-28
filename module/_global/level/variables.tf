@@ -1,7 +1,5 @@
 variable "aws" {
   type = object({
-    level_key   = string
-    level_value = string
     levels = optional(list(object({
       key   = string
       value = string

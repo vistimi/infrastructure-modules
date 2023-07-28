@@ -9,8 +9,6 @@ locals {
 module "aws_level" {
   source = "../../aws/iam/level"
 
-  level_key                 = var.aws.level_key
-  level_value               = var.aws.level_value
   levels                    = var.aws.levels
   groups                    = var.aws.groups
   statements                = var.aws.statements
