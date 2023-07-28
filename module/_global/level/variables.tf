@@ -66,7 +66,7 @@ variable "github" {
   type = object({
     repositories = list(object({
       owner = string
-      name = string
+      name  = string
     }))
     docker_action = object({
       key   = string
@@ -76,7 +76,7 @@ variable "github" {
   })
 
   validation {
-    condition     = var.github.store_environment ? length(var.github.repository_names) > 0 : true
-    error_message = "if store github is true, github repository names should not be empty"
+    condition     = var.github.store_environment ? length(var.github.repositories) > 0 : true
+    error_message = "if store github is true, github repositories should not be empty"
   }
 }
