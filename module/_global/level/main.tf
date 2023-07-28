@@ -22,7 +22,7 @@ module "aws_level" {
 }
 
 resource "github_actions_variable" "example_variable" {
-  for_each = { for repository_name in var.github.repository_names : repository_name => {} }
+  for_each = { for repository in var.github.repositories : repository.name => {} }
 
   repository    = each.key
   variable_name = var.github.docker_action.key
@@ -39,11 +39,11 @@ module "github_environments" {
   ]...)
 
   name             = each.value.iam_user_name
-  repository_names = var.github.repository_names
+  repository_names = [for repository in var.github.repositories : join("/", [repository.owner, repository.name])]
   variables = [
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
     { key = "AWS_ACCOUNT_ID", value = local.account_id },
-    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
+    # { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
     { key = "AWS_REGION_NAME", value = local.region_name },
   ]
   secrets = [
