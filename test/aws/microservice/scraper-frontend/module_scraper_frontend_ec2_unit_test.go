@@ -104,15 +104,15 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 		"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
 	})
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, optionsProject)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, optionsProject)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, optionsProject)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, optionsProject)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, optionsProject)

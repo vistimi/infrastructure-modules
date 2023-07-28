@@ -46,15 +46,15 @@ func Test_Unit_Microservice_ScraperBackend_Fargate(t *testing.T) {
 		"memory": 2048,
 	})
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, optionsProject)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, optionsProject)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, optionsProject)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, optionsProject)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, optionsProject)

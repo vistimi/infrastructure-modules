@@ -33,12 +33,15 @@ module "group_role" {
 
   trusted_role_arns = ["*"]
 
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AdministratorAccess.html
   create_admin_role = var.create_admin_role
   admin_role_name   = join("-", [local.name, "admin"])
 
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/PowerUserAccess.html
   create_poweruser_role = var.create_poweruser_role
   poweruser_role_name   = join("-", [local.name, "poweruser"])
 
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/ReadOnlyAccess.html
   create_readonly_role       = var.create_readonly_role
   readonly_role_requires_mfa = false
   readonly_role_name         = join("-", [local.name, "readonly"])
@@ -95,6 +98,7 @@ module "group_policy" {
 
   name = module.group.group_name
 
+  # https://github.com/terraform-aws-modules/terraform-aws-iam/blob/master/modules/iam-group-with-policies/policies.tf
   attach_iam_self_management_policy = false
 
   create_group = false

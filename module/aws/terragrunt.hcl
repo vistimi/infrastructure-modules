@@ -7,7 +7,6 @@ locals {
   aws_account_region              = local.aws_account_vars.locals.aws_account_region
   repositories_aws_account_id     = local.aws_account_vars.locals.repositories_aws_account_id
   repositories_aws_account_region = local.aws_account_vars.locals.repositories_aws_account_region
-  repositories_aws_account_name   = local.aws_account_vars.locals.repositories_aws_account_name
 }
 
 # Generate version block

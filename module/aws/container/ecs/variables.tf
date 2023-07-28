@@ -139,8 +139,8 @@ variable "task_definition" {
       privacy    = string
       name       = string
       image_tag  = string
-      account_id = string
-      region     = optional(string, "us-east-1")
+      account_id = optional(string)
+      region     = optional(string)
       public = optional(object({
         alias = string
       }))

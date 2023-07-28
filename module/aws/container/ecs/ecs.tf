@@ -1,3 +1,8 @@
+locals {
+  repository_account_id  = try(var.task_definition.repository.account_id, local.account_id)
+  repository_region_name = var.task_definition.repository.privacy == "private" ? try(var.task_definition.repository.region, local.region_name) : "us-east-1"
+}
+
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/${var.log.prefix}/${var.name}"
   retention_in_days = var.log.retention_days
@@ -79,7 +84,7 @@ module "ecs" {
 
       load_balancer = {
         service = {
-          target_group_arn = module.elb.target_group_arns[0] // one LB per target group
+          target_group_arn = one(module.elb.target_group_arns[*]) // one LB per target group
           container_name   = var.name
           container_port   = var.traffic.target.port
         }
@@ -132,13 +137,15 @@ module "ecs" {
         },
         ecr = {
           actions = [
-            "${var.ecr_services[var.task_definition.repository.privacy]}:GetAuthorizationToken",
-            "${var.ecr_services[var.task_definition.repository.privacy]}:BatchCheckLayerAvailability",
-            "${var.ecr_services[var.task_definition.repository.privacy]}:GetDownloadUrlForLayer",
-            "${var.ecr_services[var.task_definition.repository.privacy]}:BatchGetImage",
+            "ecr:GetAuthorizationToken",
+            "ecr:BatchCheckLayerAvailability",
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:BatchGetImage",
+            "ecr-public:GetAuthorizationToken",
+            "ecr-public:BatchCheckLayerAvailability",
           ]
           effect    = "Allow"
-          resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.repository.privacy]}:${var.task_definition.repository.region}:${var.task_definition.repository.account_id}:repository/${var.task_definition.repository.name}"]
+          resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.repository.privacy]}:${local.repository_region_name}:${local.repository_account_id}:repository/${var.task_definition.repository.name}"]
         },
         bucket-env = {
           actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
@@ -156,7 +163,7 @@ module "ecs" {
             "logs:PutLogEvents",
           ]
           effect    = "Allow"
-          resources = ["arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
+          resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
         },
       }
 
@@ -176,7 +183,7 @@ module "ecs" {
             "logs:PutLogEvents",
           ]
           effect    = "Allow"
-          resources = ["arn:${local.partition}:logs:${local.region}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}:log-stream:*"],
+          resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}:log-stream:*"],
         },
       }
 
@@ -222,7 +229,7 @@ module "ecs" {
             "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image     = var.task_definition.repository.privacy == "private" ? "${var.task_definition.repository.account_id}.dkr.ecr.${var.task_definition.repository.region}.${local.dns_suffix}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}"
+          image     = var.task_definition.repository.privacy == "private" ? "${local.repository_account_id}.dkr.ecr.${local.repository_region_name}.${local.dns_suffix}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}"
           essential = true
         }
       }

@@ -54,7 +54,6 @@ prepare-account-aws:
 		aws_account_name="${AWS_PROFILE_NAME}"
 		aws_account_id="${AWS_ACCOUNT_ID}"
 		repositories_aws_account_region="${REPOSITORIES_AWS_REGION_NAME}"
-		repositories_aws_account_name="${REPOSITORIES_AWS_PROFILE_NAME}"
 		repositories_aws_account_id="${REPOSITORIES_AWS_ACCOUNT_ID}"
 	}
 	EOF

@@ -301,7 +301,7 @@ resource "aws_autoscaling_attachment" "ecs" {
     if var.service.deployment_type == "ec2"
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
-  lb_target_group_arn    = module.elb.target_group_arns[0] # works only with one tg
+  lb_target_group_arn    = one(module.elb.target_group_arns[*])
 }
 
 # group notification

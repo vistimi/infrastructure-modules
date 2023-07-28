@@ -50,7 +50,7 @@ resource "aws_iam_group_policy_attachment" "external" {
   for_each = { for key, group in module.groups : key => group if length(module.iam_policy_level) == 1 }
 
   group      = each.value.group.group_name
-  policy_arn = module.iam_policy_level[0].arn
+  policy_arn = one(module.iam_policy_level[*].arn)
 }
 
 module "groups" {

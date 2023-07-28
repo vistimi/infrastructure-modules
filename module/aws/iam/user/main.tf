@@ -4,14 +4,13 @@ data "aws_caller_identity" "current" {}
 locals {
   region_name = data.aws_region.current.name
   account_id  = data.aws_caller_identity.current.account_id
-  name        = join("-", concat([for level in var.levels : level.value], [var.name]))
 }
 
 module "user" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-user"
   version = "5.28.0"
 
-  name          = local.name
+  name          = var.name
   force_destroy = var.force_destroy
 
   create_iam_access_key = true
@@ -51,7 +50,7 @@ resource "aws_iam_policy" "user" {
 
   count = length(var.statements) > 0 ? 1 : 0
 
-  name        = "${local.name}-user-scope"
+  name        = "${var.name}-user-scope"
   path        = "/"
   description = "User policy"
 
