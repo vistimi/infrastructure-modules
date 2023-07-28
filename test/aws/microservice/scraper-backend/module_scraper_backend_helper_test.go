@@ -146,11 +146,8 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"env_file_name": envKey,
 		"repository": map[string]any{
-			"privacy":    "private",
-			"name":       strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
-			"image_tag":  GithubProject.ImageTag,
-			"account_id": util.GetEnvVariable("REPOSITORIES_AWS_ACCOUNT_ID"),
-			"region":     util.GetEnvVariable("REPOSITORIES_AWS_REGION_NAME"),
+			"privacy": "private",
+			"name":    strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{

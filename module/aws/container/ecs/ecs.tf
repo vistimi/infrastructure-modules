@@ -1,6 +1,7 @@
 locals {
-  repository_account_id  = try(var.task_definition.repository.account_id, local.account_id)
-  repository_region_name = var.task_definition.repository.privacy == "private" ? try(var.task_definition.repository.region, local.region_name) : "us-east-1"
+  repository_account_id  = coalesce(var.task_definition.repository.account_id, local.account_id)
+  repository_region_name = var.task_definition.repository.privacy == "private" ? coalesce(var.task_definition.repository.region_name, local.region_name) : "us-east-1"
+  repository_image_tag   = coalesce(var.task_definition.repository.image_tag, "latest")
 }
 
 resource "aws_cloudwatch_log_group" "cluster" {
@@ -229,7 +230,7 @@ module "ecs" {
             "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image     = var.task_definition.repository.privacy == "private" ? "${local.repository_account_id}.dkr.ecr.${local.repository_region_name}.${local.dns_suffix}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${var.task_definition.repository.image_tag}"
+          image     = var.task_definition.repository.privacy == "private" ? "${local.repository_account_id}.dkr.ecr.${local.repository_region_name}.${local.dns_suffix}/${var.task_definition.repository.name}:${local.repository_image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${local.repository_image_tag}"
           essential = true
         }
       }

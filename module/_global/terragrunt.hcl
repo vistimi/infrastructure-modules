@@ -2,11 +2,9 @@
 # TERRAGRUNT CONFIGURATION BLOCKS
 # ---------------------------------------------------------------------------------------------------------------------
 locals {
-  aws_account_vars                = read_terragrunt_config(find_in_parent_folders("aws_account_override.hcl"))
-  aws_account_id                  = local.aws_account_vars.locals.aws_account_id
-  aws_account_region              = local.aws_account_vars.locals.aws_account_region
-  repositories_aws_account_id     = local.aws_account_vars.locals.repositories_aws_account_id
-  repositories_aws_account_region = local.aws_account_vars.locals.repositories_aws_account_region
+  aws_account_vars   = read_terragrunt_config(find_in_parent_folders("aws_account_override.hcl"))
+  aws_account_id     = local.aws_account_vars.locals.aws_account_id
+  aws_account_region = local.aws_account_vars.locals.aws_account_region
 }
 
 # Generate version block
@@ -26,7 +24,6 @@ terraform {
 EOF
 }
 
-# TODO: add non root role arn
 generate "provider" {
   path      = "provider_override.tf"
   if_exists = "overwrite_terragrunt"
@@ -34,11 +31,6 @@ generate "provider" {
 provider "aws" {
   region = "${local.aws_account_region}"
   allowed_account_ids = ["${local.aws_account_id}"]
-  # profile = "KookaS"
-  # assume_role {
-  #   role_arn = "arn:aws:iam::401582117818:role/OrganizationAccountAccessRole"
-  #   session_name = "terraform"
-  # }
 }
 provider "github" {
   version = "~> 5.0"

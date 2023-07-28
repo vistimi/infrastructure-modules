@@ -136,11 +136,11 @@ variable "task_definition" {
     env_bucket_name    = string
     env_file_name      = string
     repository = object({
-      privacy    = string
-      name       = string
-      image_tag  = string
-      account_id = optional(string)
-      region     = optional(string)
+      privacy     = string
+      name        = string
+      image_tag   = optional(string)
+      account_id  = optional(string)
+      region_name = optional(string)
       public = optional(object({
         alias = string
       }))
