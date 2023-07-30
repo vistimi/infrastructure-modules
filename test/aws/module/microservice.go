@@ -98,7 +98,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 				"ecs": map[string]any{
 					"log": map[string]any{
 						"retention_days": 1,
-						"prefix":         "aws/ecs",
+						"prefix":         "ecs",
 					},
 					"task_definition": map[string]any{
 						"env_bucket_name": bucketEnvName,

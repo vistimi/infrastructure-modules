@@ -16,10 +16,6 @@ type GroupInfo struct {
 	Name                string
 	Users               []map[string]any
 	ExternalAssumeRoles []string
-	CreateAdminRole     bool
-	CreatePoweruserRole bool
-	CreateReadonlyRole  bool
-	AttachRoleName      string
 }
 
 func ValidateLevel(t *testing.T, accountRegion, prefixName string, groups ...GroupInfo) {
@@ -33,7 +29,7 @@ func ValidateLevel(t *testing.T, accountRegion, prefixName string, groups ...Gro
 func ValidateGroup(t *testing.T, accountRegion, prefixName string, group GroupInfo) {
 	terratestStructure.RunTestStage(t, "validate_group", func() {
 		terratestStructure.RunTestStage(t, "validate_group_role", func() {
-			accessRoleNames := append(group.ExternalAssumeRoles, group.AttachRoleName)
+			accessRoleNames := group.ExternalAssumeRoles
 
 			for _, accessRoleName := range accessRoleNames {
 				groupName := util.Format(prefixName, group.Name, accessRoleName)
@@ -53,7 +49,7 @@ func ValidateGroup(t *testing.T, accountRegion, prefixName string, group GroupIn
 			}
 
 			for _, userName := range userNames {
-				userName := util.Format(groupName, userName)
+				// userName := util.Format(groupName, userName)
 				userArn := TestUser(t, accountRegion, userName)
 				if userArn == nil {
 					t.Fatalf("no userArn for userName: %s", userName)

@@ -15,11 +15,8 @@ variable "levels" {
 
 variable "groups" {
   type = map(object({
-    force_destroy         = optional(bool)
-    create_admin_role     = optional(bool)
-    create_poweruser_role = optional(bool)
-    create_readonly_role  = optional(bool)
-    pw_length             = optional(number)
+    force_destroy = optional(bool)
+    pw_length     = optional(number)
     users = list(object({
       name = string
       statements = optional(list(object({

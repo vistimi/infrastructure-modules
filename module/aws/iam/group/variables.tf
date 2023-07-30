@@ -26,23 +26,23 @@ variable "force_destroy" {
   default  = false
 }
 
-variable "create_admin_role" {
-  type     = bool
-  nullable = false
-  default  = false
-}
+# variable "create_admin_role" {
+#   type     = bool
+#   nullable = false
+#   default  = false
+# }
 
-variable "create_poweruser_role" {
-  type     = bool
-  nullable = false
-  default  = false
-}
+# variable "create_poweruser_role" {
+#   type     = bool
+#   nullable = false
+#   default  = false
+# }
 
-variable "create_readonly_role" {
-  type     = bool
-  nullable = false
-  default  = false
-}
+# variable "create_readonly_role" {
+#   type     = bool
+#   nullable = false
+#   default  = false
+# }
 
 variable "pw_length" {
   type     = number

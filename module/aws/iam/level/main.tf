@@ -61,13 +61,10 @@ module "groups" {
   name   = each.key
   levels = var.levels
 
-  force_destroy         = each.value.force_destroy
-  create_admin_role     = each.value.create_admin_role
-  create_poweruser_role = each.value.create_poweruser_role
-  create_readonly_role  = each.value.create_readonly_role
-  pw_length             = each.value.pw_length
-  users                 = each.value.users
-  statements            = each.value.statements
+  force_destroy = each.value.force_destroy
+  pw_length     = each.value.pw_length
+  users         = each.value.users
+  statements    = each.value.statements
 
   external_assume_role_arns = var.external_assume_role_arns
   store_secrets             = var.store_secrets

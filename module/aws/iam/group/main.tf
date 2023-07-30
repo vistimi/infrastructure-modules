@@ -34,15 +34,15 @@ module "group_role" {
   trusted_role_arns = ["*"]
 
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AdministratorAccess.html
-  create_admin_role = var.create_admin_role
+  create_admin_role = false
   admin_role_name   = join("-", [local.name, "admin"])
 
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/PowerUserAccess.html
-  create_poweruser_role = var.create_poweruser_role
+  create_poweruser_role = false
   poweruser_role_name   = join("-", [local.name, "poweruser"])
 
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/ReadOnlyAccess.html
-  create_readonly_role       = var.create_readonly_role
+  create_readonly_role       = false
   readonly_role_requires_mfa = false
   readonly_role_name         = join("-", [local.name, "readonly"])
 }
@@ -56,10 +56,7 @@ module "group" {
 
   name = local.name
 
-  assumable_roles = concat(
-    var.external_assume_role_arns,
-    compact([module.group_role.admin_iam_role_arn, module.group_role.poweruser_iam_role_arn, module.group_role.readonly_iam_role_arn])
-  )
+  assumable_roles = coalescelist(var.external_assume_role_arns, ["*"])
 
   group_users = [for user in module.users : user.user.iam_user_name]
 

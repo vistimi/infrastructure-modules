@@ -37,19 +37,11 @@ func Test_Unit_IAM_Level(t *testing.T) {
 			Name:                "admin",
 			Users:               []map[string]any{{"name": "ad1", "statements": userStatements}},
 			ExternalAssumeRoles: []string{},
-			CreateAdminRole:     true,
-			CreatePoweruserRole: false,
-			CreateReadonlyRole:  false,
-			AttachRoleName:      "admin",
 		},
 		{
 			Name:                "dev",
 			Users:               []map[string]any{{"name": "dev1", "statements": userStatements}},
 			ExternalAssumeRoles: []string{},
-			CreateAdminRole:     false,
-			CreatePoweruserRole: true,
-			CreateReadonlyRole:  false,
-			AttachRoleName:      "poweruser",
 		},
 	}
 
@@ -65,13 +57,10 @@ func Test_Unit_IAM_Level(t *testing.T) {
 	groupsOptions := map[string]any{}
 	for _, group := range groups {
 		groupsOptions[group.Name] = map[string]any{
-			"force_destroy":         true,
-			"create_admin_role":     group.CreateAdminRole,
-			"create_poweruser_role": group.CreatePoweruserRole,
-			"create_readonly_role":  group.CreateReadonlyRole,
-			"pw_length":             20,
-			"users":                 group.Users,
-			"statements":            groupStatements,
+			"force_destroy": true,
+			"pw_length":     20,
+			"users":         group.Users,
+			"statements":    groupStatements,
 		}
 	}
 
@@ -96,12 +85,14 @@ func Test_Unit_IAM_Level(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: pathLevel,
 		Vars: map[string]any{
-			"level_key":   "team",
-			"level_value": teamName,
 			"levels": []map[string]any{
 				{
 					"key":   "organization",
 					"value": orgName,
+				},
+				{
+					"key":   "team",
+					"value": teamName,
 				},
 			},
 

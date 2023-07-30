@@ -123,7 +123,7 @@ variable "log" {
   })
   default = {
     retention_days = 30
-    prefix         = "aws/ecs"
+    prefix         = "ecs"
   }
 }
 

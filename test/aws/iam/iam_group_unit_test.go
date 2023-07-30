@@ -34,10 +34,6 @@ func Test_Unit_IAM_Group(t *testing.T) {
 			},
 		}},
 		ExternalAssumeRoles: []string{},
-		CreateAdminRole:     true,
-		CreatePoweruserRole: true,
-		CreateReadonlyRole:  true,
-		AttachRoleName:      "poweruser",
 	}
 
 	groupStatements := []map[string]any{
@@ -52,7 +48,7 @@ func Test_Unit_IAM_Group(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: pathGroup,
 		Vars: map[string]any{
-			"group_name": group.Name,
+			"name": group.Name,
 
 			"levels": []map[string]any{
 				{
@@ -60,10 +56,6 @@ func Test_Unit_IAM_Group(t *testing.T) {
 					"value": teamName,
 				},
 			},
-
-			"create_admin_role":         group.CreateAdminRole,
-			"create_poweruser_role":     group.CreatePoweruserRole,
-			"create_readonly_role":      group.CreateReadonlyRole,
 			"pw_length":                 20,
 			"users":                     group.Users,
 			"statements":                groupStatements,
