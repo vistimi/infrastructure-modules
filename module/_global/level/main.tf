@@ -41,7 +41,7 @@ module "github_environments" {
   variables = [
     { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
     { key = "AWS_ACCOUNT_ID", value = local.account_id },
-    # { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
+    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
     { key = "AWS_REGION_NAME", value = local.region_name },
   ]
   secrets = [
