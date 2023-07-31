@@ -61,8 +61,8 @@ variable "traffic" {
 resource "null_resource" "listener" {
 
   for_each = {
-    for listener in var.traffic.listeners :
-    listener.port => listener
+    for idx, listener in var.traffic.listeners :
+    join("-", compact([listener.protocol, listener.port])) => listener
   }
 
   lifecycle {
@@ -71,7 +71,7 @@ resource "null_resource" "listener" {
       error_message = "Listener protocol must be one of [http, https]"
     }
     precondition {
-      condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc", null], each.value.protocol_version) : true
+      condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc"], each.value.protocol_version) : true
       error_message = "Listener protocol version must be one of [http, http2, grpc] or null"
     }
   }

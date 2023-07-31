@@ -129,7 +129,7 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"traffic": map[string]any{
 			"listeners": []map[string]any{
 				{
-					"port":     listenerHttpPort,
+					// "port":     listenerHttpPort,
 					"protocol": listenerHttpProtocol,
 					// "protocol_version": listenerHttpProtocolVersion,
 				},
