@@ -25,7 +25,7 @@ env:
   ORGANIZATION_NAME: ${{ github.repository_owner }}
   BRANCH_NAME: ${{ github.event_name == 'delete' && github.event.ref || (github.head_ref || github.ref_name) }}
   DEFAULT_BRANCH_NAME: ${{ 'trunk' || github.event.repository.default_branch }}
-  ARCHITECTURES: '"x86-64","ARM 64"' # "ARM"   "ARM 64"   "x86"   "x86-64"
+  ARCHITECTURES: "x86-64 arm-64" # "arm-32"   "arm-64"   "x86-32"   "x86-64"
   OS: '"Linux"' # "Windows"
   IMAGE_KEEP_COUNT_DEFAULT: 3
   IMAGE_KEEP_COUNT_NON_DEFAULT: 1
@@ -165,13 +165,28 @@ jobs:
             aws ecr set-repository-policy --repository-name $ECR_REPOSITORY_NAME --policy-text "file://ecr-repository-policy.json"
           }
 
+          func_ecr_get_ecr_platforms () {
+            PLATFORMS=""
+            for architecture in $ARCHITECTURES; do
+              if [ "$architecture" == "x86-64" ]; then
+                PLATFORMS='$PLATFORMS,"x86-64"'
+              elif [ "$architecture" == "arm-64" ]; then
+                PLATFORMS='$PLATFORMS,"ARM 64"'
+              else
+                continue
+              fi
+            done
+          }
+
           func_ecr_create_public_repository () {
             # TODO: repository catalog data logo ImageBlob
             # create repository
+            func_ecr_get_ecr_platforms
+
             ECR_REPOSITORY_URI=$(
               aws ecr-public create-repository \
                 --repository-name $ECR_REPOSITORY_NAME \
-                --catalog-data description="",architectures=${{ env.ARCHITECTURES }},operatingSystems=${{ env.OS }},aboutText="",usageText="" \
+                --catalog-data description="",architectures=$PLATFORMS,operatingSystems=${{ env.OS }},aboutText="",usageText="" \
                 --tags Key=Account,Value=$AWS_PROFILE_NAME Key=Region,Value=$AWS_REGION_NAME Key=Organization,Value=$ORGANIZATION_NAME Key=Repository,Value=$REPOSITORY_NAME Key=Branch,Value=$BRANCH_NAME \
                 --query 'repository.repositoryUri' | tr -d '"'
             )
@@ -195,6 +210,32 @@ jobs:
             fi
           }
 
+          func_ecr_get_buildx_platforms () {
+            PLATFORMS=""
+            for architecture in $ARCHITECTURES; do
+              if [ "$architecture" == "x86-64" ]; then
+                PLATFORMS='$PLATFORMS,linux/amd64'
+              elif [ "$architecture" == "arm-64" ]; then
+                PLATFORMS='$PLATFORMS,linux/arm64'
+              else
+                continue
+              fi
+            done
+          }
+
+          func_ecr_push_image_buildx () {
+            echo -e '\033[43mPushing buildx image to ECR\033[0m'
+            func_ecr_get_buildx_platforms
+            # docker buildx create --name multiarch --platform $PLATFORMS --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
+            docker buildx create --use --name multiarch
+
+            docker buildx inspect multiarch --bootstrap
+
+            docker buildx build --push --builder multiarch --platform $PLATFORMS -t $ECR_REPOSITORY_URI:${IMAGE_TAG:0:8} -t $ECR_REPOSITORY_URI:latest -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
+            aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME
+            docker manifest inspect $ECR_REPOSITORY_URI
+          }
+
           func_ecr_push_image () {
             # check existance of repository
             ECR_REPOSITORY_URI=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryUri' | tr -d '"')
@@ -206,15 +247,7 @@ jobs:
             fi
 
             # Push new image
-            echo -e '\033[43mPushing image to ECR\033[0m'
-            # docker buildx create --name multiarch --platform linux/amd64,linux/arm64 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
-            docker buildx create --use --name multiarch
-
-            docker buildx inspect multiarch --bootstrap
-
-            docker buildx build --push --builder multiarch --platform linux/amd64,linux/arm64 -t $ECR_REPOSITORY_URI:${IMAGE_TAG:0:8} -t $ECR_REPOSITORY_URI:latest -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
-            aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME
-            docker manifest inspect $ECR_REPOSITORY_URI
+            func_ecr_push_image_buildx
 
             # echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" $(docker images -q $ECR_REPOSITORY_URI:$latest) | numfmt --to=si)
 
