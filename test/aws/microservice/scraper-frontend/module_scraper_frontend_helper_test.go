@@ -19,13 +19,13 @@ const (
 
 	listenerHttpPort             = 80
 	listenerHttpProtocol         = "http"
-	listenerHttpProtocolVersion  = "http"
+	listenerHttpProtocolVersion  = "http1"
 	listenerHttpsPort            = 443
 	listenerHttpsProtocol        = "https"
-	listenerHttpsProtocolVersion = "http"
+	listenerHttpsProtocolVersion = "http1"
 	targetPort                   = 3000
 	targetProtocol               = "http"
-	targetProtocolVersion        = "http"
+	targetProtocolVersion        = "http1"
 
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-frontend"

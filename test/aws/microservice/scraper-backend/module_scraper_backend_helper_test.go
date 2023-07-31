@@ -23,13 +23,13 @@ const (
 
 	listenerHttpPort             = 80
 	listenerHttpProtocol         = "http"
-	listenerHttpProtocolVersion  = "http"
+	listenerHttpProtocolVersion  = "http1"
 	listenerHttpsPort            = 443
 	listenerHttpsProtocol        = "https"
-	listenerHttpsProtocolVersion = "http"
+	listenerHttpsProtocolVersion = "http1"
 	targetPort                   = 8080
 	targetProtocol               = "http"
-	targetProtocolVersion        = "http"
+	targetProtocolVersion        = "http1"
 
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-backend"
@@ -129,16 +129,16 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"traffic": map[string]any{
 			"listeners": []map[string]any{
 				{
-					"port":             listenerHttpPort,
-					"protocol":         listenerHttpProtocol,
-					"protocol_version": listenerHttpProtocolVersion,
+					"port":     listenerHttpPort,
+					"protocol": listenerHttpProtocol,
+					// "protocol_version": listenerHttpProtocolVersion,
 				},
 			},
 			"target": map[string]any{
-				"port":              targetPort,
-				"protocol":          targetProtocol,
-				"protocol_version":  targetProtocolVersion,
-				"health_check_path": GithubProject.HealthCheckPath,
+				"port":     targetPort,
+				"protocol": targetProtocol,
+				// "protocol_version":  targetProtocolVersion,
+				// "health_check_path": GithubProject.HealthCheckPath,
 			},
 		},
 	})

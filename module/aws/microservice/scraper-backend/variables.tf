@@ -57,14 +57,14 @@ variable "microservice" {
       })
       traffic = object({
         listeners = list(object({
-          port             = number
           protocol         = string
-          protocol_version = string
+          port             = optional(number)
+          protocol_version = optional(string)
         }))
         target = object({
-          port              = number
           protocol          = string
-          protocol_version  = string
+          port              = number
+          protocol_version  = optional(string)
           health_check_path = optional(string)
         })
       })

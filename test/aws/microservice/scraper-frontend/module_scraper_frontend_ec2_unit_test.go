@@ -1,7 +1,6 @@
 package microservice_scraper_frontend_test
 
 import (
-	"fmt"
 	"testing"
 
 	"golang.org/x/exp/maps"
@@ -15,21 +14,12 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsRepository(t)
 
-	// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#enable_task_iam_roles
-	// ECS_ENABLE_TASK_IAM_ROLE=true // Uses IAM roles for tasks for containers with the bridge and default network modes
-	// ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true // Uses IAM roles for tasks for containers with the host network mode
-
-	userDataOnDemand := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", testAwsModule.ECSReservedMemory)
-
-	userDataSpot := fmt.Sprintf(`#!/bin/bash\ncat <<'EOF' >> /etc/ecs/ecs.config\nECS_CLUSTER=%s\nECS_LOGLEVEL=debug\n%s\nECS_RESERVED_MEMORY=%d\nECS_ENABLE_SPOT_INSTANCE_DRAINING=true\nEOF`, commonName, "ECS_ENABLE_TASK_IAM_ROLE=true", testAwsModule.ECSReservedMemory)
-
 	instance := testAwsModule.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"ec2": map[string]map[string]any{
 			keySpot: {
-				"user_data":     userDataSpot,
 				"os":            "linux",
 				"os_version":    "2023",
 				"architecture":  instance.Architecture,
@@ -57,7 +47,6 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 				},
 			},
 			keyOnDemand: {
-				"user_data":     userDataOnDemand,
 				"os":            "linux",
 				"os_version":    "2023",
 				"architecture":  instance.Architecture,

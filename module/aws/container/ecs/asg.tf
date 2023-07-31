@@ -15,6 +15,21 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   name = each.value.name
 }
 
+locals {
+  # https://github.com/aws/amazon-ecs-agent/blob/master/README.md
+  # <<- is required compared to << because there should be no identation for EOT and EOF to work properly
+  user_data = {
+    for key, value in var.ec2 : key => <<-EOT
+        #!/bin/bash
+        cat <<'EOF' >> /etc/ecs/ecs.config
+        ECS_CLUSTER=${var.name}
+        ${value.use_spot ? "ECS_ENABLE_SPOT_INSTANCE_DRAINING=true" : ""}
+        ECS_ENABLE_TASK_IAM_ROLE=true
+        EOF
+      EOT
+  }
+}
+
 #------------------------
 #     EC2 autoscaler
 #------------------------
@@ -39,11 +54,8 @@ module "asg" {
         resource_type = "spot-instances-request"
         tags          = merge(var.tags, { Name = "${var.name}-spot-instance-request" })
       }] : []
-      instance_type = value.instance_type
-      key_name      = value.key_name # to SSH into instance
-      # image_id      = jsondecode(data.aws_ssm_parameter.ecs_optimized_ami[key].value)["image_id"]
-      image_id         = data.aws_ssm_parameter.ecs_optimized_ami_id[key].value
-      user_data        = base64encode(value.user_data)
+      instance_type    = value.instance_type
+      key_name         = value.key_name # to SSH into instance
       instance_refresh = value.asg.instance_refresh
     }
     if var.service.deployment_type == "ec2"
@@ -72,8 +84,8 @@ module "asg" {
   }])
   instance_market_options     = each.value.instance_market_options
   instance_type               = each.value.instance_type
-  image_id                    = each.value.image_id
-  user_data                   = each.value.user_data
+  image_id                    = data.aws_ssm_parameter.ecs_optimized_ami_id[each.key].value
+  user_data                   = base64encode(local.user_data[each.key])
   launch_template_name        = var.name
   launch_template_description = "${var.name} asg launch template"
   update_default_version      = true

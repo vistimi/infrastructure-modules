@@ -1,3 +1,25 @@
+locals {
+  traffic = {
+    listeners = [for listener in var.traffic.listeners : {
+      protocol = listener.protocol
+      port = coalesce(
+        listener.port,
+        listener.protocol == "http" ? 80 : null,
+        listener.protocol == "https" ? 443 : null,
+      )
+      protocol_version = listener.protocol_version
+    }]
+    target = {
+      protocol         = var.traffic.target.protocol
+      port             = var.traffic.target.port
+      protocol_version = var.traffic.target.protocol_version
+      health_check_path = coalesce(
+        var.traffic.target.health_check_path,
+        "/",
+      )
+    }
+  }
+}
 
 # -----------------
 #     ACM
@@ -5,7 +27,7 @@
 data "aws_route53_zone" "current" {
   for_each = {
     for name in flatten([
-      for listener in var.traffic.listeners : [
+      for listener in local.traffic.listeners : [
         for zone in try(var.route53.zones, []) : zone.name
       ] if listener.protocol == "https"
     ]) : name => {}
@@ -21,7 +43,7 @@ module "acm" {
 
   for_each = {
     for name in flatten([
-      for listener in var.traffic.listeners : [
+      for listener in local.traffic.listeners : [
         for zone in try(var.route53.zones, []) : zone.name
       ] if listener.protocol == "https"
     ]) : name => {}
@@ -81,7 +103,7 @@ module "elb" {
   security_groups = [module.elb_sg.security_group_id]
 
   http_tcp_listeners = [
-    for listener in var.traffic.listeners : {
+    for listener in local.traffic.listeners : {
       port               = listener.port
       protocol           = try(var.protocols[listener.protocol], "TCP")
       target_group_index = 0
@@ -89,7 +111,7 @@ module "elb" {
   ]
 
   https_listeners = [
-    for listener in var.traffic.listeners : {
+    for listener in local.traffic.listeners : {
       port               = listener.port
       protocol           = try(var.protocols[listener.protocol], "TCP")
       certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
@@ -102,21 +124,21 @@ module "elb" {
   target_groups = [
     {
       name             = var.name
-      backend_protocol = try(var.protocols[var.traffic.target.protocol], "TCP")
-      backend_port     = var.traffic.target.port
+      backend_protocol = try(var.protocols[local.traffic.target.protocol], "TCP")
+      backend_port     = local.traffic.target.port
       target_type      = var.service.deployment_type == "fargate" ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
       health_check = {
         enabled             = true
         interval            = 15 // seconds before new request
-        path                = var.traffic.target.health_check_path
-        port                = var.service.deployment_type == "fargate" ? var.traffic.target.port : null // traffic port by default
-        healthy_threshold   = 3                                                                         // consecutive health check failures before healthy
-        unhealthy_threshold = 3                                                                         // consecutive health check failures before unhealthy
-        timeout             = 5                                                                         // seconds for timeout of request
-        protocol            = try(var.protocols[var.traffic.target.protocol], "TCP")
+        path                = local.traffic.target.health_check_path
+        port                = var.service.deployment_type == "fargate" ? local.traffic.target.port : null // traffic port by default
+        healthy_threshold   = 3                                                                           // consecutive health check failures before healthy
+        unhealthy_threshold = 3                                                                           // consecutive health check failures before unhealthy
+        timeout             = 5                                                                           // seconds for timeout of request
+        protocol            = try(var.protocols[local.traffic.target.protocol], "TCP")
         matcher             = "200-299"
       }
-      protocol_version = try(var.protocol_versions[var.traffic.target.protocol_version], null)
+      protocol_version = try(var.protocol_versions[local.traffic.target.protocol_version], null)
     }
   ]
 
@@ -136,7 +158,7 @@ module "elb_sg" {
   vpc_id      = var.vpc.id
 
   ingress_with_cidr_blocks = [
-    for listener in var.traffic.listeners : {
+    for listener in local.traffic.listeners : {
       from_port   = listener.port
       to_port     = listener.port
       protocol    = "tcp"

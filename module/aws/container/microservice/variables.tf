@@ -50,14 +50,14 @@ variable "ecs" {
     })
     traffic = object({
       listeners = list(object({
-        port             = number
         protocol         = string
-        protocol_version = string
+        port             = optional(number)
+        protocol_version = optional(string)
       }))
       target = object({
-        port              = number
         protocol          = string
-        protocol_version  = string
+        port              = number
+        protocol_version  = optional(string)
         health_check_path = optional(string)
       })
     })
@@ -97,7 +97,6 @@ variable "ecs" {
       }))
     }))
     ec2 = optional(map(object({
-      user_data     = optional(string)
       instance_type = string
       os            = string
       os_version    = string

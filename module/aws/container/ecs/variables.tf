@@ -45,15 +45,15 @@ variable "route53" {
 variable "traffic" {
   type = object({
     listeners = list(object({
-      port             = number
       protocol         = string
-      protocol_version = string
+      port             = optional(number)
+      protocol_version = optional(string)
     }))
     target = object({
-      port              = number
       protocol          = string
-      protocol_version  = string
-      health_check_path = optional(string, "/")
+      port              = number
+      protocol_version  = optional(string)
+      health_check_path = optional(string)
     })
   })
 }
@@ -71,8 +71,8 @@ resource "null_resource" "listener" {
       error_message = "Listener protocol must be one of [http, https]"
     }
     precondition {
-      condition     = contains(["http", "http2", "grpc"], each.value.protocol_version)
-      error_message = "Listener protocol version must be one of [http, http2, grpc]"
+      condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc", null], each.value.protocol_version) : true
+      error_message = "Listener protocol version must be one of [http, http2, grpc] or null"
     }
   }
 }
@@ -84,8 +84,8 @@ resource "null_resource" "target" {
       error_message = "Target protocol must be one of [http, https]"
     }
     precondition {
-      condition     = contains(["http", "http2", "grpc"], var.traffic.target.protocol_version)
-      error_message = "Target protocol version must be one of [http, http2, grpc]"
+      condition     = var.traffic.target.protocol_version != null ? contains(["http", "http2", "grpc"], var.traffic.target.protocol_version) : true
+      error_message = "Target protocol version must be one of [http, http2, grpc] or null"
     }
   }
 }
@@ -106,7 +106,7 @@ variable "protocol_versions" {
   type        = map(string)
 
   default = {
-    http  = "HTTP1"
+    http1 = "HTTP1"
     http2 = "HTTP2"
     grpc  = "GRPC"
   }
@@ -254,7 +254,6 @@ variable "fargate_architecture" {
 #--------------
 variable "ec2" {
   type = map(object({
-    user_data     = optional(string)
     instance_type = string
     os            = string
     os_version    = string
