@@ -74,14 +74,21 @@ variable "microservice" {
         cpu                = number
         env_bucket_name    = string
         env_file_name      = string
-        repository = object({
-          privacy     = string
-          name        = string
-          image_tag   = optional(string)
-          account_id  = optional(string)
-          region_name = optional(string)
-          public = optional(object({
-            alias = string
+        docker = object({
+          registry = object({
+            name = optional(string)
+            ecr = optional(object({
+              privacy      = string
+              public_alias = optional(string)
+              account_id   = optional(string)
+              region_name  = optional(string)
+            }))
+          })
+          repository = object({
+            name = string
+          })
+          image = optional(object({
+            tag = string
           }))
         })
         tmpfs = optional(object({

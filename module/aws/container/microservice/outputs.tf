@@ -33,5 +33,5 @@ output "vpc" {
 }
 
 output "bucket_env" {
-  value = module.bucket_env.bucket
+  value = { for key, value in module.bucket_env : key => value.bucket }
 }

@@ -135,14 +135,21 @@ variable "task_definition" {
     cpu                = number
     env_bucket_name    = string
     env_file_name      = string
-    repository = object({
-      privacy     = string
-      name        = string
-      image_tag   = optional(string)
-      account_id  = optional(string)
-      region_name = optional(string)
-      public = optional(object({
-        alias = string
+    docker = object({
+      registry = object({
+        name = optional(string)
+        ecr = optional(object({
+          privacy      = string
+          public_alias = optional(string)
+          account_id   = optional(string)
+          region_name  = optional(string)
+        }))
+      })
+      repository = object({
+        name = string
+      })
+      image = optional(object({
+        tag = string
       }))
     })
     tmpfs = optional(object({
@@ -154,16 +161,26 @@ variable "task_definition" {
       name : string
       value : string
     })), [])
+    resource_requirements = optional(list(object({
+      type  = string
+      value = string
+    })), [])
+    command = optional(list(string), [])
   })
 
   validation {
-    condition     = contains(["public", "private"], var.task_definition.repository.privacy)
-    error_message = "task definition repository privacy must be one of [public, private]"
+    condition     = var.task_definition.docker.registry.ecr == null ? var.task_definition.docker.registry.ecr.name != null : true
+    error_message = "docker registry name must not be empty if ecr is not specified"
   }
 
   validation {
-    condition     = var.task_definition.repository.privacy == "public" ? length(coalesce(var.task_definition.repository.public.alias, "")) > 0 : true
-    error_message = "task definition repository alias need when repository privacy is `public`"
+    condition     = try(contains(["public", "private"], var.task_definition.docker.registry.ecr.privacy), true)
+    error_message = "docker repository privacy must be one of [public, private]"
+  }
+
+  validation {
+    condition     = try((var.task_definition.docker.registry.ecr.privacy == "public" ? length(coalesce(var.task_definition.docker.registry.ecr.public_alias, "")) > 0 : true), true)
+    error_message = "docker repository alias need when repository privacy is `public`"
   }
 }
 

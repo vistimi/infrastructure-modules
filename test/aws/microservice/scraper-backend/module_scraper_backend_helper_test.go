@@ -9,12 +9,12 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/test/util"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
 const (
@@ -37,7 +37,7 @@ const (
 
 var (
 	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "KookaS",
+		Organization:    "dresspeng",
 		Repository:      "scraper-backend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
@@ -145,9 +145,15 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
 		"env_file_name": envKey,
-		"repository": map[string]any{
-			"privacy": "private",
-			"name":    strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
+		"docker": map[string]any{
+			"registry": map[string]any{
+				"ecr": map[string]any{
+					"privacy": "private",
+				},
+			},
+			"repository": map[string]any{
+				"name": strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
+			},
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{

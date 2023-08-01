@@ -25,6 +25,7 @@ locals {
         ECS_CLUSTER=${var.name}
         ${value.use_spot ? "ECS_ENABLE_SPOT_INSTANCE_DRAINING=true" : ""}
         ECS_ENABLE_TASK_IAM_ROLE=true
+        ${value.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
         EOF
       EOT
   }

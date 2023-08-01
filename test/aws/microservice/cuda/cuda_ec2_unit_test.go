@@ -1,6 +1,7 @@
-package microservice_scraper_frontend_test
+package microservice_cuda_test
 
 import (
+	"fmt"
 	"testing"
 
 	"golang.org/x/exp/maps"
@@ -10,7 +11,26 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
+const (
+	projectName = "scraper"
+	serviceName = "detector"
+
+	Rootpath         = "../../../.."
+	MicroservicePath = Rootpath + "/module/aws/container/microservice"
+)
+
+var (
+	GithubProject = testAwsModule.GithubProjectInformation{
+		Organization: "dresspeng",
+		Repository:   "scraper-detector",
+		Branch:       "trunk", // TODO: make it flexible for testing other branches
+		ImageTag:     "latest",
+	}
+
+	Endpoints = []testAwsModule.EndpointTest{}
+)
+
+func Test_Unit_Microservice_Cuda_EC2(t *testing.T) {
 	t.Parallel()
 	optionsProject, commonName := SetupOptionsRepository(t)
 
@@ -88,9 +108,13 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"cpu":                instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
-		"memory":             instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
-		"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
+		"cpu":    instance.Cpu,
+		"memory": instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
+		"command": []string{
+			"sh",
+			"-c",
+			"nvidia-smi",
+		},
 	})
 
 	defer func() {
@@ -110,4 +134,47 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
 		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
 	})
+}
+
+func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
+	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+
+	optionsProject := &terraform.Options{
+		TerraformDir: MicroservicePath,
+		Vars:         map[string]any{},
+	}
+
+	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
+		"vpc": map[string]any{
+			"name":      commonName,
+			"cidr_ipv4": "102.0.0.0/16",
+			"tier":      "public",
+		},
+		"iam": map[string]any{
+			"scope":        "microservices",
+			"requires_mfa": false,
+		},
+	})
+	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+		"env_file_name": envKey,
+		"docker": map[string]any{
+			"registry": map[string]any{
+				"name": "nvidia",
+			},
+			"repository": map[string]any{
+				"name": "cuda",
+			},
+			"image": map[string]any{
+				"tag": "12.2.0-runtime-ubuntu22.04",
+			},
+		},
+	})
+	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
+		"file_key":  envKey,
+		"file_path": "override.env",
+	})
+
+	return optionsProject, commonName
 }

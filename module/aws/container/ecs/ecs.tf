@@ -1,7 +1,11 @@
 locals {
-  repository_account_id  = coalesce(var.task_definition.repository.account_id, local.account_id)
-  repository_region_name = var.task_definition.repository.privacy == "private" ? coalesce(var.task_definition.repository.region_name, local.region_name) : "us-east-1"
-  repository_image_tag   = coalesce(var.task_definition.repository.image_tag, "latest")
+  ecr_repository_account_id  = coalesce(try(var.task_definition.docker.registry.ecr.account_id, ""), local.account_id)
+  ecr_repository_region_name = try((var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"), "")
+
+  docker_registry_name = try(
+    var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
+    var.task_definition.docker.registry.name
+  )
 }
 
 resource "aws_cloudwatch_log_group" "cluster" {
@@ -117,57 +121,60 @@ module "ecs" {
       #---------------------
       create_task_exec_iam_role = true
       task_exec_iam_role_tags   = var.tags
-      task_exec_iam_statements = {
-        custom = {
-          actions = [
-            # // AmazonECSTaskExecutionRolePolicy for fargate 
-            # // AmazonEC2ContainerServiceforEC2Role for ec2
-            "ec2:DescribeTags",
-            "ecs:CreateCluster",
-            "ecs:DeregisterContainerInstance",
-            "ecs:DiscoverPollEndpoint",
-            "ecs:Poll",
-            "ecs:RegisterContainerInstance",
-            "ecs:StartTelemetrySession",
-            "ecs:UpdateContainerInstancesState",
-            "ecs:Submit*",
-            "ecs:StartTask",
-          ]
-          effect    = "Allow"
-          resources = ["*"],
+      task_exec_iam_statements = merge(
+        {
+          custom = {
+            actions = [
+              # // AmazonECSTaskExecutionRolePolicy for fargate 
+              # // AmazonEC2ContainerServiceforEC2Role for ec2
+              "ec2:DescribeTags",
+              "ecs:CreateCluster",
+              "ecs:DeregisterContainerInstance",
+              "ecs:DiscoverPollEndpoint",
+              "ecs:Poll",
+              "ecs:RegisterContainerInstance",
+              "ecs:StartTelemetrySession",
+              "ecs:UpdateContainerInstancesState",
+              "ecs:Submit*",
+              "ecs:StartTask",
+            ]
+            effect    = "Allow"
+            resources = ["*"],
+          },
+          bucket-env = {
+            actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}"],
+          },
+          bucket-env-files = {
+            actions   = ["s3:GetObject"]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
+          },
+          log-group = {
+            actions = [
+              "logs:CreateLogStream",
+              "logs:PutLogEvents",
+            ]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
+          },
         },
-        ecr = {
-          actions = [
-            "ecr:GetAuthorizationToken",
-            "ecr:BatchCheckLayerAvailability",
-            "ecr:GetDownloadUrlForLayer",
-            "ecr:BatchGetImage",
-            "ecr-public:GetAuthorizationToken",
-            "ecr-public:BatchCheckLayerAvailability",
-          ]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.repository.privacy]}:${local.repository_region_name}:${local.repository_account_id}:repository/${var.task_definition.repository.name}"]
-        },
-        bucket-env = {
-          actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}"],
-        },
-        bucket-env-files = {
-          actions   = ["s3:GetObject"]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
-        },
-        log-group = {
-          actions = [
-            "logs:CreateLogStream",
-            "logs:PutLogEvents",
-          ]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
-        },
-      }
-
+        var.task_definition.docker.registry.ecr != null ? {
+          ecr = {
+            actions = [
+              "ecr:GetAuthorizationToken",
+              "ecr:BatchCheckLayerAvailability",
+              "ecr:GetDownloadUrlForLayer",
+              "ecr:BatchGetImage",
+              "ecr-public:GetAuthorizationToken",
+              "ecr-public:BatchCheckLayerAvailability",
+            ]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.docker.registry.ecr.privacy]}:${local.ecr_repository_region_name}:${local.ecr_repository_account_id}:repository/${var.task_definition.docker.repository.name}"]
+          },
+        } : {}
+      )
 
       create_tasks_iam_role = true
       task_iam_role_tags    = var.tags
@@ -224,13 +231,29 @@ module "ecs" {
           cpu                = var.task_definition.cpu
           log_configuration  = null # other driver than json-file
 
+          resource_requirements = concat(
+            var.task_definition.resource_requirements,
+            [
+              for key, value in var.ec2 : {
+                "type" : "GPU",
+                "value" : "1" # TODO: support more than one gpu
+              } if var.service.deployment_type == "ec2" && value.architecture == "gpu"
+            ]
+          )
+
+          command = var.task_definition.command
+
           // fargate AMI
           runtime_platform = var.service.deployment_type == "fargate" ? {
             "operatingSystemFamily" = var.fargate_os[var.fargate.os],
             "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image     = var.task_definition.repository.privacy == "private" ? "${local.repository_account_id}.dkr.ecr.${local.repository_region_name}.${local.dns_suffix}/${var.task_definition.repository.name}:${local.repository_image_tag}" : "public.ecr.aws/${var.task_definition.repository.public.alias}/${var.task_definition.repository.name}:${local.repository_image_tag}"
+          image = join("/", [
+            local.docker_registry_name,
+            join(":", compact([var.task_definition.docker.repository.name, try(var.task_definition.docker.image.tag, "")]))
+          ])
+
           essential = true
         }
       }

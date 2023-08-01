@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/KookaS/infrastructure-modules/test/util"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 	terratest_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"

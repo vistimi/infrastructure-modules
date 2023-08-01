@@ -67,14 +67,21 @@ variable "ecs" {
       cpu                = number
       env_bucket_name    = string
       env_file_name      = string
-      repository = object({
-        privacy     = string
-        name        = string
-        image_tag   = optional(string)
-        account_id  = optional(string)
-        region_name = optional(string)
-        public = optional(object({
-          alias = string
+      docker = object({
+        registry = object({
+          name = optional(string)
+          ecr = optional(object({
+            privacy      = string
+            public_alias = optional(string)
+            account_id   = optional(string)
+            region_name  = optional(string)
+          }))
+        })
+        repository = object({
+          name = string
+        })
+        image = optional(object({
+          tag = string
         }))
       })
       tmpfs = optional(object({
@@ -86,6 +93,11 @@ variable "ecs" {
         name : string
         value : string
       })))
+      resource_requirements = optional(list(object({
+        type  = string
+        value = string
+      })))
+      command = optional(list(string))
     })
     fargate = optional(object({
       os           = string
@@ -136,6 +148,7 @@ variable "bucket_env" {
     file_path     = string
     file_key      = string
   })
+  default = null
 }
 
 variable "iam" {

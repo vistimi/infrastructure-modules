@@ -67,7 +67,7 @@ prepare-aws-iam-group:
 BRANCH_NAME ?= trunk
 prepare-aws-microservice-scraper-backend:
 	$(eval GIT_NAME=github.com)
-	$(eval ORGANIZATION_NAME=KookaS)
+	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=backend)
 	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
@@ -103,7 +103,7 @@ make prepare-microservice-scraper-backend-env:
 BRANCH_NAME ?= trunk
 prepare-aws-microservice-scraper-frontend:
 	$(eval GIT_NAME=github.com)
-	$(eval ORGANIZATION_NAME=KookaS)
+	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=frontend)
 	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})

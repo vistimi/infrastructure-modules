@@ -50,6 +50,8 @@ module "ecs" {
 module "bucket_env" {
   source = "../../../../module/aws/data/bucket"
 
+  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+
   name          = var.bucket_env.name
   force_destroy = var.bucket_env.force_destroy
   versioning    = var.bucket_env.versioning
@@ -66,8 +68,10 @@ module "bucket_env" {
 }
 
 resource "aws_s3_object" "env" {
+  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+
   key                    = var.bucket_env.file_key
-  bucket                 = module.bucket_env.bucket.id
+  bucket                 = module.bucket_env[each.key].bucket.id
   source                 = var.bucket_env.file_path
   server_side_encryption = "aws:kms"
 }
