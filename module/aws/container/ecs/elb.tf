@@ -1,24 +1,25 @@
 locals {
-  traffic = {
-    listeners = [for listener in var.traffic.listeners : {
-      protocol = listener.protocol
+  traffics = [for traffic in var.traffics : {
+    listener = {
+      protocol = traffic.listener.protocol
       port = coalesce(
-        listener.port,
-        listener.protocol == "http" ? 80 : null,
-        listener.protocol == "https" ? 443 : null,
+        traffic.listener.port,
+        traffic.listener.protocol == "http" ? 80 : null,
+        traffic.listener.protocol == "https" ? 443 : null,
       )
-      protocol_version = listener.protocol_version
-    }]
+      protocol_version = traffic.listener.protocol_version
+    }
     target = {
-      protocol         = var.traffic.target.protocol
-      port             = var.traffic.target.port
-      protocol_version = var.traffic.target.protocol_version
+      protocol         = traffic.target.protocol
+      port             = traffic.target.port
+      protocol_version = traffic.target.protocol_version
       health_check_path = coalesce(
-        var.traffic.target.health_check_path,
+        traffic.target.health_check_path,
         "/",
       )
     }
-  }
+    base = traffic.base
+  }]
 }
 
 # -----------------
@@ -27,9 +28,9 @@ locals {
 data "aws_route53_zone" "current" {
   for_each = {
     for name in flatten([
-      for listener in local.traffic.listeners : [
+      for traffic in local.traffics : [
         for zone in try(var.route53.zones, []) : zone.name
-      ] if listener.protocol == "https"
+      ] if traffic.listener.protocol == "https"
     ]) : name => {}
   }
 
@@ -43,9 +44,9 @@ module "acm" {
 
   for_each = {
     for name in flatten([
-      for listener in local.traffic.listeners : [
+      for traffic in local.traffics : [
         for zone in try(var.route53.zones, []) : zone.name
-      ] if listener.protocol == "https"
+      ] if traffic.protocol == "https"
     ]) : name => {}
   }
 
@@ -103,43 +104,42 @@ module "elb" {
   security_groups = [module.elb_sg.security_group_id]
 
   http_tcp_listeners = [
-    for listener in local.traffic.listeners : {
-      port               = listener.port
-      protocol           = try(var.protocols[listener.protocol], "TCP")
+    for traffic in local.traffics : {
+      port               = traffic.listener.port
+      protocol           = try(var.protocols[traffic.listener.protocol], "TCP")
       target_group_index = 0
-    } if listener.protocol == "http"
+    } if traffic.listener.protocol == "http"
   ]
 
   https_listeners = [
-    for listener in local.traffic.listeners : {
-      port               = listener.port
-      protocol           = try(var.protocols[listener.protocol], "TCP")
+    for traffic in local.traffics : {
+      port               = traffic.listener.port
+      protocol           = try(var.protocols[traffic.listener.protocol], "TCP")
       certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
       target_group_index = 0
-    } if listener.protocol == "https" && var.route53 != null
+    } if traffic.listener.protocol == "https" && var.route53 != null
   ]
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
-  target_groups = [
-    {
-      name             = var.name
-      backend_protocol = try(var.protocols[local.traffic.target.protocol], "TCP")
-      backend_port     = local.traffic.target.port
-      target_type      = var.service.deployment_type == "fargate" ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
-      health_check = {
-        enabled             = true
-        interval            = 15 // seconds before new request
-        path                = local.traffic.target.health_check_path
-        port                = var.service.deployment_type == "fargate" ? local.traffic.target.port : null // traffic port by default
-        healthy_threshold   = 3                                                                           // consecutive health check failures before healthy
-        unhealthy_threshold = 3                                                                           // consecutive health check failures before unhealthy
-        timeout             = 5                                                                           // seconds for timeout of request
-        protocol            = try(var.protocols[local.traffic.target.protocol], "TCP")
-        matcher             = "200-299"
-      }
-      protocol_version = try(var.protocol_versions[local.traffic.target.protocol_version], null)
+  target_groups = [for traffic in local.traffics : {
+    name             = var.name
+    backend_protocol = try(var.protocols[traffic.target.protocol], "TCP")
+    backend_port     = traffic.target.port
+    target_type      = var.service.deployment_type == "fargate" ? "ip" : "instance" # "ip" for awsvpc network, instance for host or bridge
+    health_check = {
+      enabled             = true
+      interval            = 15 // seconds before new request
+      path                = traffic.target.health_check_path
+      port                = var.service.deployment_type == "fargate" ? traffic.target.port : null // traffic port by default
+      healthy_threshold   = 3                                                                     // consecutive health check failures before healthy
+      unhealthy_threshold = 3                                                                     // consecutive health check failures before unhealthy
+      timeout             = 5                                                                     // seconds for timeout of request
+      protocol            = try(var.protocols[traffic.target.protocol], "TCP")
+      matcher             = "200-299"
     }
+    protocol_version = try(var.protocol_versions[traffic.target.protocol_version], null)
+    } if traffic.base || length(local.traffics) == 1
   ]
 
   # Sleep to give time to the ASG not to fail
@@ -158,13 +158,13 @@ module "elb_sg" {
   vpc_id      = var.vpc.id
 
   ingress_with_cidr_blocks = [
-    for listener in local.traffic.listeners : {
-      from_port   = listener.port
-      to_port     = listener.port
+    for traffic in local.traffics : {
+      from_port   = traffic.listener.port
+      to_port     = traffic.listener.port
       protocol    = "tcp"
-      description = "Listner port ${listener.port}"
+      description = "Listner port ${traffic.listener.port}"
       cidr_blocks = "0.0.0.0/0"
-    } if listener.protocol == "http" || (listener.protocol == "https" && var.route53 != null)
+    } if traffic.listener.protocol == "http" || (traffic.listener.protocol == "https" && var.route53 != null)
   ]
   egress_rules = ["all-all"]
   # egress_cidr_blocks = module.vpc.subnets_cidr_blocks

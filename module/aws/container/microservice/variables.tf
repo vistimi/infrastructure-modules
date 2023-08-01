@@ -28,6 +28,7 @@ variable "route53" {
       prefixes       = optional(list(string))
     })
   })
+  default = null
 }
 
 variable "ecs" {
@@ -48,23 +49,24 @@ variable "ecs" {
       retention_days = number
       prefix         = optional(string)
     })
-    traffic = object({
-      listeners = list(object({
+    traffics = list(object({
+      listener = object({
         protocol         = string
         port             = optional(number)
         protocol_version = optional(string)
-      }))
+      })
       target = object({
         protocol          = string
         port              = number
         protocol_version  = optional(string)
         health_check_path = optional(string)
       })
-    })
+    }))
     task_definition = object({
       memory             = number
       memory_reservation = optional(number)
       cpu                = number
+      gpu                = optional(number)
       env_bucket_name    = string
       env_file_name      = string
       docker = object({
@@ -109,6 +111,7 @@ variable "ecs" {
       }))
     }))
     ec2 = optional(map(object({
+      user_data     = optional(string)
       instance_type = string
       os            = string
       os_version    = string

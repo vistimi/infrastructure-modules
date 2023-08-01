@@ -15,6 +15,10 @@ resource "aws_cloudwatch_log_group" "cluster" {
   tags = var.tags
 }
 
+locals {
+  elb_port = [for traffic in var.traffics : traffic.target.port if traffic.base || length(local.traffics) == 1][0]
+}
+
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
@@ -91,7 +95,7 @@ module "ecs" {
         service = {
           target_group_arn = one(module.elb.target_group_arns[*]) // one LB per target group
           container_name   = var.name
-          container_port   = var.traffic.target.port
+          container_port   = local.elb_port
         }
       }
 
@@ -100,8 +104,8 @@ module "ecs" {
       security_group_rules = {
         elb_ingress = {
           type                     = "ingress"
-          from_port                = var.traffic.target.port
-          to_port                  = var.traffic.target.port
+          from_port                = local.elb_port
+          to_port                  = local.elb_port
           protocol                 = "tcp"
           description              = "Service port"
           source_security_group_id = module.elb_sg.security_group_id
@@ -218,8 +222,8 @@ module "ecs" {
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [
             {
-              containerPort = var.traffic.target.port
-              hostPort      = var.service.deployment_type == "fargate" ? var.traffic.target.port : 0 // "host" network can use target port 
+              containerPort = local.elb_port
+              hostPort      = var.service.deployment_type == "fargate" ? local.elb_port : 0 // "host" network can use target port 
               name          = "container-port"
               protocol      = "tcp"
             }
@@ -236,7 +240,7 @@ module "ecs" {
             [
               for key, value in var.ec2 : {
                 "type" : "GPU",
-                "value" : "1" # TODO: support more than one gpu
+                "value" : "${var.task_definition.gpu}"
               } if var.service.deployment_type == "ec2" && value.architecture == "gpu"
             ]
           )

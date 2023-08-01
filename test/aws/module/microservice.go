@@ -32,6 +32,7 @@ const (
 type EC2Instance struct {
 	Name          string
 	Cpu           int
+	Gpu           *int
 	Memory        int
 	MemoryAllowed int
 	Architecture  string
@@ -52,6 +53,14 @@ var (
 		Memory:        4096,
 		MemoryAllowed: 3828,
 		Architecture:  "x86_64",
+	}
+	G4adXlarge = EC2Instance{
+		Name:          "g4ad.xlarge",
+		Cpu:           4096,
+		Gpu:           util.Ptr(1),
+		Memory:        16384,
+		MemoryAllowed: 16384,
+		Architecture:  "arm_64",
 	}
 )
 

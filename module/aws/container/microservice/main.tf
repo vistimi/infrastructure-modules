@@ -32,9 +32,9 @@ module "ecs" {
 
   name = var.name
 
-  service = var.ecs.service
-  traffic = var.ecs.traffic
-  log     = var.ecs.log
+  service  = var.ecs.service
+  traffics = var.ecs.traffics
+  log      = var.ecs.log
 
   task_definition = var.ecs.task_definition
 

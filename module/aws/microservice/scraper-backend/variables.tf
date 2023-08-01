@@ -55,19 +55,19 @@ variable "microservice" {
         retention_days = number
         prefix         = optional(string)
       })
-      traffic = object({
-        listeners = list(object({
+      traffics = list(object({
+        listener = object({
           protocol         = string
           port             = optional(number)
           protocol_version = optional(string)
-        }))
+        })
         target = object({
           protocol          = string
           port              = number
           protocol_version  = optional(string)
           health_check_path = optional(string)
         })
-      })
+      }))
       task_definition = object({
         memory             = number
         memory_reservation = optional(number)

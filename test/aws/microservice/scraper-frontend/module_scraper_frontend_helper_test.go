@@ -17,16 +17,6 @@ const (
 	projectName = "scraper"
 	serviceName = "frontend"
 
-	listenerHttpPort             = 80
-	listenerHttpProtocol         = "http"
-	listenerHttpProtocolVersion  = "http1"
-	listenerHttpsPort            = 443
-	listenerHttpsProtocol        = "https"
-	listenerHttpsProtocolVersion = "http1"
-	targetPort                   = 3000
-	targetProtocol               = "http"
-	targetProtocolVersion        = "http1"
-
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-frontend"
 )
@@ -72,19 +62,15 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffic": map[string]any{
-			"listeners": []map[string]any{
-				{
-					"port":             listenerHttpPort,
-					"protocol":         listenerHttpProtocol,
-					"protocol_version": listenerHttpProtocolVersion,
+		"traffics": []map[string]any{
+			{
+				"listener": map[string]any{
+					"protocol": "http",
 				},
-			},
-			"target": map[string]any{
-				"port":              targetPort,
-				"protocol":          targetProtocol,
-				"protocol_version":  targetProtocolVersion,
-				"health_check_path": GithubProject.HealthCheckPath,
+				"target": map[string]any{
+					"port":     8080,
+					"protocol": "http",
+				},
 			},
 		},
 	})

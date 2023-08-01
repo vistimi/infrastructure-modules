@@ -27,6 +27,8 @@ locals {
         ECS_ENABLE_TASK_IAM_ROLE=true
         ${value.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
         EOF
+
+        ${coalesce(value.user_data, "")}
       EOT
   }
 }
@@ -280,14 +282,13 @@ module "autoscaling_sg" {
 
 
   // only accept incoming traffic from load balancer
-  computed_ingress_with_source_security_group_id = [
-    {
-      // dynamic port mapping requires all the ports open
-      from_port                = var.service.deployment_type == "fargate" ? var.traffic.target.port : 32768
-      to_port                  = var.service.deployment_type == "fargate" ? var.traffic.target.port : 65535
-      protocol                 = "tcp"
-      description              = "Load Balancer ports"
-      source_security_group_id = module.elb_sg.security_group_id
+  computed_ingress_with_source_security_group_id = [for traffic in var.traffics : {
+    // dynamic port mapping requires all the ports open
+    from_port                = var.service.deployment_type == "fargate" ? traffic.target.port : 32768
+    to_port                  = var.service.deployment_type == "fargate" ? traffic.target.port : 65535
+    protocol                 = "tcp"
+    description              = "Load Balancer ports"
+    source_security_group_id = module.elb_sg.security_group_id
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
