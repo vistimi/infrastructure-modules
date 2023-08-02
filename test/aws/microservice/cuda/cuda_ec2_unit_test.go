@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -43,7 +44,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	id := util.RandomID(8)
+	id := util.RandomID(4)
 	commonName := util.Format(projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
 	commonTags := map[string]string{
 		"TestID":  id,
@@ -52,9 +53,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		"Project": projectName,
 		"Service": serviceName,
 	}
-
-	bucketEnvName := fmt.Sprintf("%s-%s", commonName, "env")
-	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 
 	instance := testAwsModule.G4adXlarge
 	keySpot := "spot"
@@ -67,14 +65,26 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 			"tags": commonTags,
 
 			"ecs": map[string]any{
-				"traffic": []map[string]any{
+				"traffics": []map[string]any{
 					{
 						"listener": map[string]any{
-							"protocol": "http",
+							"port":     80,
+							"protocol": "tcp",
 						},
 						"target": map[string]any{
 							"port":     8080,
-							"protocol": "http",
+							"protocol": "tcp",
+						},
+						"base": true,
+					},
+					{
+						"listener": map[string]any{
+							"port":     8081,
+							"protocol": "tcp",
+						},
+						"target": map[string]any{
+							"port":     8081,
+							"protocol": "tcp",
 						},
 					},
 				},
@@ -83,32 +93,44 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					"prefix":         "ecs",
 				},
 				"task_definition": map[string]any{
-					"env_bucket_name": bucketEnvName,
-					"cpu":             instance.Cpu,
-					"gpu":             instance.Gpu,
-					"memory":          instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
-					"command": []string{
-						"sh",
+					"cpu":    instance.Cpu,
+					"gpu":    aws.IntValue(instance.Gpu),
+					"memory": instance.MemoryAllowed,
+					// "command": []string{
+					// 	"sh",
+					// 	"-c",
+					// 	"nvidia-smi",
+					// },
+					"entry_point": []string{
+						"/bin/bash",
 						"-c",
-						"nvidia-smi",
+						"mxnet-model-server --start --foreground --mms-config /home/model-server/config.properties --models densenet-eia=https://aws-dlc-sample-models.s3.amazonaws.com/pytorch/densenet_eia/densenet_eia.mar",
 					},
-					"env_file_name": envKey,
+					"health_check": map[string]any{
+						"retries": 2,
+						"command": []string{
+							"CMD-SHELL",
+							"LD_LIBRARY_PATH=/opt/ei_health_check/lib /opt/ei_health_check/bin/health_check",
+						},
+						"timeout":     5,
+						"interval":    30,
+						"startPeriod": 60,
+					},
 					"docker": map[string]any{
 						"registry": map[string]any{
-							"name": "nvidia",
+							"name": "pytorch",
 						},
 						"repository": map[string]any{
-							"name": "cuda",
+							"name": "pytorch",
 						},
 						"image": map[string]any{
-							"tag": "12.2.0-runtime-ubuntu22.04",
+							"tag": "2.0.1-cuda11.7-cudnn8-runtime",
 						},
 					},
 				},
 
 				"ec2": map[string]map[string]any{
 					keySpot: {
-						"user_data":     "echo \"ip_resolve=4\" >> /etc/yum.conf",
 						"os":            "linux",
 						"os_version":    "2023",
 						"architecture":  instance.Architecture,
@@ -136,7 +158,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 						},
 					},
 					keyOnDemand: {
-						"user_data":     "echo \"ip_resolve=4\" >> /etc/yum.conf",
 						"os":            "linux",
 						"os_version":    "2023",
 						"architecture":  instance.Architecture,
@@ -168,8 +189,8 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
 					"task_min_count":                     0,
-					"task_desired_count":                 3,
-					"task_max_count":                     3,
+					"task_desired_count":                 1,
+					"task_max_count":                     1,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required
 					"deployment_circuit_breaker": map[string]any{
 						"enable":   true,  // service deployment fail if no steady state
@@ -178,19 +199,12 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				},
 			},
 
-			"bucket_env": map[string]any{
-				"file_key":      envKey,
-				"file_path":     "override.env",
-				"name":          bucketEnvName,
-				"force_destroy": true,
-				"versioning":    false,
-			},
-
 			"vpc": map[string]any{
 				"name":      commonName,
 				"cidr_ipv4": "102.0.0.0/16",
 				"tier":      "public",
 			},
+
 			"iam": map[string]any{
 				"scope":        "microservices",
 				"requires_mfa": false,
@@ -198,15 +212,15 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		},
 	}
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)

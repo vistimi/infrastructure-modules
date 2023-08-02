@@ -16,7 +16,7 @@ resource "aws_cloudwatch_log_group" "cluster" {
 }
 
 locals {
-  elb_port = [for traffic in var.traffics : traffic.target.port if traffic.base || length(local.traffics) == 1][0]
+  elb_port = element([for traffic in var.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
 }
 
 module "ecs" {
@@ -93,7 +93,7 @@ module "ecs" {
 
       load_balancer = {
         service = {
-          target_group_arn = one(module.elb.target_group_arns[*]) // one LB per target group
+          target_group_arn = element(module.elb.target_group_arns, 0) // one LB per target group
           container_name   = var.name
           container_port   = local.elb_port
         }
@@ -145,16 +145,6 @@ module "ecs" {
             effect    = "Allow"
             resources = ["*"],
           },
-          bucket-env = {
-            actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}"],
-          },
-          bucket-env-files = {
-            actions   = ["s3:GetObject"]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/*"],
-          },
           log-group = {
             actions = [
               "logs:CreateLogStream",
@@ -164,6 +154,18 @@ module "ecs" {
             resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
           },
         },
+        try({
+          bucket-env = {
+            actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}"],
+          },
+          bucket-env-files = {
+            actions   = ["s3:GetObject"]
+            effect    = "Allow"
+            resources = ["arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}/*"],
+          },
+        }, {}),
         var.task_definition.docker.registry.ecr != null ? {
           ecr = {
             actions = [
@@ -211,12 +213,11 @@ module "ecs" {
       container_definitions = {
         "${var.name}" = {
           name = var.name
-          environment_files = [
-            {
-              "value" = "arn:${local.partition}:s3:::${var.task_definition.env_bucket_name}/${var.task_definition.env_file_name}",
-              "type"  = "s3"
+          environment_files = try([{
+            "value" = "arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}/${var.task_definition.env_file.file_name}",
+            "type"  = "s3"
             }
-          ]
+          ], [])
           environment = var.task_definition.environment,
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
@@ -245,7 +246,9 @@ module "ecs" {
             ]
           )
 
-          command = var.task_definition.command
+          command      = var.task_definition.command
+          entry_point  = var.task_definition.entry_point
+          health_check = var.task_definition.health_check
 
           // fargate AMI
           runtime_platform = var.service.deployment_type == "fargate" ? {

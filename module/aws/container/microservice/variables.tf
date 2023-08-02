@@ -67,8 +67,6 @@ variable "ecs" {
       memory_reservation = optional(number)
       cpu                = number
       gpu                = optional(number)
-      env_bucket_name    = string
-      env_file_name      = string
       docker = object({
         registry = object({
           name = optional(string)
@@ -87,19 +85,21 @@ variable "ecs" {
         }))
       })
       tmpfs = optional(object({
-        ContainerPath : optional(string),
-        MountOptions : optional(list(string)),
-        Size : number,
+        ContainerPath = optional(string)
+        MountOptions  = optional(list(string))
+        Size          = number
       }))
       environment = optional(list(object({
-        name : string
-        value : string
+        name  = string
+        value = string
       })))
       resource_requirements = optional(list(object({
         type  = string
         value = string
       })))
-      command = optional(list(string))
+      # command      = optional(list(string))
+      # entry_point  = optional(list(string))
+      # health_check = any
     })
     fargate = optional(object({
       os           = string

@@ -46,7 +46,7 @@ module "acm" {
     for name in flatten([
       for traffic in local.traffics : [
         for zone in try(var.route53.zones, []) : zone.name
-      ] if traffic.protocol == "https"
+      ] if traffic.listener.protocol == "https"
     ]) : name => {}
   }
 
@@ -139,7 +139,7 @@ module "elb" {
       matcher             = "200-299"
     }
     protocol_version = try(var.protocol_versions[traffic.target.protocol_version], null)
-    } if traffic.base || length(local.traffics) == 1
+    } if traffic.base == true || length(local.traffics) == 1
   ]
 
   # Sleep to give time to the ASG not to fail

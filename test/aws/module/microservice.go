@@ -60,7 +60,7 @@ var (
 		Gpu:           util.Ptr(1),
 		Memory:        16384,
 		MemoryAllowed: 16384,
-		Architecture:  "arm_64",
+		Architecture:  "gpu",
 	}
 )
 
@@ -109,9 +109,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 						"retention_days": 1,
 						"prefix":         "ecs",
 					},
-					"task_definition": map[string]any{
-						"env_bucket_name": bucketEnvName,
-					},
+					"task_definition": map[string]any{},
 				},
 				"bucket_env": map[string]any{
 					"name":          bucketEnvName,

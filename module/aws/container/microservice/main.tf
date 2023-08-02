@@ -37,6 +37,13 @@ module "ecs" {
   log      = var.ecs.log
 
   task_definition = var.ecs.task_definition
+  # merge(var.ecs.task_definition,
+  #   try({
+  #     env_file = {
+  #       bucket_name = var.bucket_env.name
+  #       file_name   = var.bucket_env.file_key
+  #     }
+  # }, {}))
 
   fargate = var.ecs.fargate
   ec2     = var.ecs.ec2

@@ -72,8 +72,6 @@ variable "microservice" {
         memory             = number
         memory_reservation = optional(number)
         cpu                = number
-        env_bucket_name    = string
-        env_file_name      = string
         docker = object({
           registry = object({
             name = optional(string)

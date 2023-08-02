@@ -79,8 +79,8 @@ resource "null_resource" "listener" {
 
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], each.value.protocol)
-      error_message = "Listener protocol must be one of [http, https]"
+      condition     = contains(["http", "https", "tcp"], each.value.protocol)
+      error_message = "Listener protocol must be one of [http, https, tcp]"
     }
     precondition {
       condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc"], each.value.protocol_version) : true
@@ -116,6 +116,7 @@ variable "protocols" {
     http  = "HTTP"
     https = "HTTPS"
     tcp   = "TCP"
+    ssl   = "SSL"
   }
 }
 
@@ -146,14 +147,24 @@ variable "log" {
 }
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
+# inference_accelerators = optional(list(object({
+# deviceName = string
+# deviceType = string
+# })), [])
 variable "task_definition" {
   type = object({
     memory             = number
     memory_reservation = optional(number)
     cpu                = number
     gpu                = optional(number)
-    env_bucket_name    = string
-    env_file_name      = string
+    env_file = optional(object({
+      bucket_name = string
+      file_name   = string
+    }))
+    environment = optional(list(object({
+      name  = string
+      value = string
+    })), [])
     docker = object({
       registry = object({
         name = optional(string)
@@ -172,23 +183,21 @@ variable "task_definition" {
       }))
     })
     tmpfs = optional(object({
-      ContainerPath : optional(string),
-      MountOptions : optional(list(string)),
-      Size : number,
+      ContainerPath = optional(string)
+      MountOptions  = optional(list(string))
+      Size          = number
     }), null)
-    environment = optional(list(object({
-      name : string
-      value : string
-    })), [])
     resource_requirements = optional(list(object({
       type  = string
       value = string
     })), [])
-    command = optional(list(string), [])
+    command      = optional(list(string), [])
+    entry_point  = optional(list(string), [])
+    health_check = optional(any, {})
   })
 
   validation {
-    condition     = var.task_definition.docker.registry.ecr == null ? var.task_definition.docker.registry.ecr.name != null : true
+    condition     = try(var.task_definition.docker.registry.ecr.name != null, true)
     error_message = "docker registry name must not be empty if ecr is not specified"
   }
 
@@ -335,6 +344,7 @@ resource "null_resource" "ec2_architecture" {
   for_each = {
     for key, value in var.ec2 :
     key => {
+      os              = value.os
       architecture    = value.architecture
       instance_type   = value.instance_type
       instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)

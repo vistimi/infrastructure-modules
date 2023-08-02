@@ -28,7 +28,7 @@ locals {
         ${value.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
         EOF
 
-        ${coalesce(value.user_data, "")}
+        ${value.user_data != null ? value.user_data : ""}
       EOT
   }
 }
@@ -315,7 +315,7 @@ resource "aws_autoscaling_attachment" "ecs" {
     if var.service.deployment_type == "ec2"
   }
   autoscaling_group_name = module.asg[each.key].autoscaling_group_name
-  lb_target_group_arn    = one(module.elb.target_group_arns[*])
+  lb_target_group_arn    = element(module.elb.target_group_arns, 0)
 }
 
 # group notification
