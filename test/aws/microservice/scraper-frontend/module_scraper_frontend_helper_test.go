@@ -61,13 +61,8 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 
 	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
-		"vpc": map[string]any{
-			"name":      commonName,
-			"cidr_ipv4": "101.0.0.0/16",
-			"tier":      "public",
-		},
 		"iam": map[string]any{
-			"scope":        "microservices",
+			"scope":        "accounts",
 			"requires_mfa": false,
 		},
 	})

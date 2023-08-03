@@ -2,7 +2,7 @@ module "microservice" {
   source = "../../../../module/aws/container/microservice"
 
   name       = var.name
-  vpc        = var.microservice.vpc
+  vpc        = var.vpc
   route53    = var.microservice.route53
   ecs        = var.microservice.ecs
   bucket_env = var.microservice.bucket_env
@@ -17,7 +17,7 @@ locals {
     account_ids = var.microservice.iam.account_ids
     vpc_ids     = var.microservice.iam.vpc_ids
   }
-  tags = merge(var.tags, { VpcId = "${module.microservice.vpc.vpc.id}" })
+  tags = merge(var.tags, { VpcId = "${var.vpc.id}" })
 }
 
 module "dynamodb_table" {

@@ -94,6 +94,11 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 			"name": commonName,
 			"tags": commonTags,
 
+			"vpc": map[string]any{
+				"id":   "vpc-0d5c1d5379f616e2f",
+				"tier": "public",
+			},
+
 			"microservice": map[string]any{
 				"ecs": map[string]any{
 					"log": map[string]any{

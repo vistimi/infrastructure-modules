@@ -12,7 +12,6 @@ variable "tags" {
 variable "vpc" {
   type = object({
     id                 = string
-    security_group_ids = list(string)
     tier               = string
   })
 }

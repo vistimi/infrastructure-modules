@@ -30,12 +30,6 @@ variable "enable_nat" {
   default     = false
 }
 
-variable "tier" {
-  description = "Choose which tier"
-  type        = string
-  default     = "public"
-}
-
 variable "tier_tags" {
   description = "vpc tier tags"
   type        = list(string)

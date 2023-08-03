@@ -3,20 +3,15 @@ variable "name" {
   type        = string
 }
 
-variable "tags" {
-  description = "Custom tags to set on the Instances in the ASG"
-  type        = map(string)
-  default     = {}
+variable "vpc" {
+  type = object({
+    id   = string
+    tier = string
+  })
 }
 
 variable "microservice" {
   type = object({
-    vpc = object({
-      name       = string
-      cidr_ipv4  = string
-      tier       = string
-      enable_nat = optional(bool)
-    })
     route53 = optional(object({
       zones = list(object({
         name = string
@@ -135,4 +130,10 @@ variable "microservice" {
       })))
     })
   })
+}
+
+variable "tags" {
+  description = "Custom tags to set on the Instances in the ASG"
+  type        = map(string)
+  default     = {}
 }
