@@ -114,10 +114,22 @@ module "elb" {
     for listener in local.traffic.listeners : {
       port               = listener.port
       protocol           = try(var.protocols[listener.protocol], "TCP")
-      certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
+      certificate_arn    = one(module.acm[*].acm_certificate_arn)
       target_group_index = 0
     } if listener.protocol == "https" && var.route53 != null
   ]
+
+  variable "route53" {
+  type = object({
+    zones = list(object({
+      name = string
+    }))
+    record = object({
+      prefixes       = optional(list(string))
+      subdomain_name = string
+    })
+  })
+}
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
