@@ -118,17 +118,6 @@ module "elb" {
       target_group_index = 0
     } if listener.protocol == "https" && var.route53 != null
   ]
-
-  variable "route53" {
-  type = object({
-    zones = list(object({
-      name = string
-    }))
-    record = object({
-      prefixes       = optional(list(string))
-      subdomain_name = string
-    })
-  })
 }
 
   // forward listener to target
