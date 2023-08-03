@@ -118,7 +118,6 @@ module "elb" {
       target_group_index = 0
     } if listener.protocol == "https" && var.route53 != null
   ]
-}
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
