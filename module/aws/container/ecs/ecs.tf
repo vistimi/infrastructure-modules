@@ -203,7 +203,7 @@ module "ecs" {
 
       # Task definition
       memory                   = var.task_definition.memory
-      cpu                      = var.task_definition.cpu
+      cpu                      = null
       family                   = var.name
       requires_compatibilities = var.service.deployment_type == "fargate" ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
@@ -238,12 +238,10 @@ module "ecs" {
 
           resource_requirements = concat(
             var.task_definition.resource_requirements,
-            [
-              for key, value in var.ec2 : {
-                "type" : "GPU",
-                "value" : "${var.task_definition.gpu}"
-              } if var.service.deployment_type == "ec2" && value.architecture == "gpu"
-            ]
+            var.service.deployment_type == "ec2" && alltrue([for key, value in var.ec2 : value.architecture == "gpu"]) ? [{
+              "type" : "GPU",
+              "value" : "${var.task_definition.gpu}"
+            }] : []
           )
 
           command      = var.task_definition.command

@@ -54,9 +54,9 @@ var (
 		MemoryAllowed: 3828,
 		Architecture:  "x86_64",
 	}
-	G4adXlarge = EC2Instance{
-		Name:          "g4ad.xlarge",
-		Cpu:           4096,
+	G4dnXlarge = EC2Instance{
+		Name:          "g4dn.xlarge",
+		Cpu:           100, //4096 max, http://aws.amazon.com/contact-us/ec2-request
 		Gpu:           util.Ptr(1),
 		Memory:        16384,
 		MemoryAllowed: 16384,

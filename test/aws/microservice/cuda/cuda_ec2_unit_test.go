@@ -54,8 +54,8 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		"Service": serviceName,
 	}
 
-	instance := testAwsModule.G4adXlarge
-	keySpot := "spot"
+	instance := testAwsModule.G4dnXlarge
+	// keySpot := "spot"
 	keyOnDemand := "on-demand"
 
 	options := &terraform.Options{
@@ -93,8 +93,8 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					"prefix":         "ecs",
 				},
 				"task_definition": map[string]any{
-					"cpu":    instance.Cpu,
 					"gpu":    aws.IntValue(instance.Gpu),
+					"cpu":    instance.Cpu,
 					"memory": instance.MemoryAllowed,
 					// "command": []string{
 					// 	"sh",
@@ -130,36 +130,36 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				},
 
 				"ec2": map[string]map[string]any{
-					keySpot: {
-						"os":            "linux",
-						"os_version":    "2023",
-						"architecture":  instance.Architecture,
-						"instance_type": instance.Name,
-						"key_name":      nil,
-						"use_spot":      true,
-						"asg": map[string]any{
-							"instance_refresh": map[string]any{
-								"strategy": "Rolling",
-								"preferences": map[string]any{
-									"checkpoint_delay":       600,
-									"checkpoint_percentages": []int{35, 70, 100},
-									"instance_warmup":        300,
-									"min_healthy_percentage": 80,
-								},
-								"triggers": []string{"tag"},
-							},
-						},
-						"capacity_provider": map[string]any{
-							"base":                        nil, // no preferred instance amount
-							"weight":                      50,  // 50% chance
-							"target_capacity_cpu_percent": 70,
-							"maximum_scaling_step_size":   1,
-							"minimum_scaling_step_size":   1,
-						},
-					},
+					// keySpot: {
+					// 	"os":            "linux",
+					// 	"os_version":    "2",
+					// 	"architecture":  instance.Architecture,
+					// 	"instance_type": instance.Name,
+					// 	"key_name":      nil,
+					// 	"use_spot":      true,
+					// 	"asg": map[string]any{
+					// 		"instance_refresh": map[string]any{
+					// 			"strategy": "Rolling",
+					// 			"preferences": map[string]any{
+					// 				"checkpoint_delay":       600,
+					// 				"checkpoint_percentages": []int{35, 70, 100},
+					// 				"instance_warmup":        300,
+					// 				"min_healthy_percentage": 80,
+					// 			},
+					// 			"triggers": []string{"tag"},
+					// 		},
+					// 	},
+					// 	"capacity_provider": map[string]any{
+					// 		"base":                        nil, // no preferred instance amount
+					// 		"weight":                      50,  // 50% chance
+					// 		"target_capacity_cpu_percent": 70,
+					// 		"maximum_scaling_step_size":   1,
+					// 		"minimum_scaling_step_size":   1,
+					// 	},
+					// },
 					keyOnDemand: {
 						"os":            "linux",
-						"os_version":    "2023",
+						"os_version":    "2",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
 						"key_name":      nil,
@@ -212,15 +212,15 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratestStructure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)

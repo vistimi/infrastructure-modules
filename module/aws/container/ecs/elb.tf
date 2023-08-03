@@ -107,7 +107,7 @@ module "elb" {
     for traffic in local.traffics : {
       port               = traffic.listener.port
       protocol           = try(var.protocols[traffic.listener.protocol], "TCP")
-      target_group_index = 0
+      target_group_index = 0 // TODO: multiple target groups
     } if traffic.listener.protocol == "http"
   ]
 
@@ -116,12 +116,13 @@ module "elb" {
       port               = traffic.listener.port
       protocol           = try(var.protocols[traffic.listener.protocol], "TCP")
       certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
-      target_group_index = 0
+      target_group_index = 0 // TODO: multiple target groups
     } if traffic.listener.protocol == "https" && var.route53 != null
   ]
 
   // forward listener to target
   // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
+  // TODO: multiple target groups
   target_groups = [for traffic in local.traffics : {
     name             = var.name
     backend_protocol = try(var.protocols[traffic.target.protocol], "TCP")
@@ -130,13 +131,13 @@ module "elb" {
     health_check = {
       enabled             = true
       interval            = 15 // seconds before new request
-      path                = traffic.target.health_check_path
-      port                = var.service.deployment_type == "fargate" ? traffic.target.port : null // traffic port by default
-      healthy_threshold   = 3                                                                     // consecutive health check failures before healthy
-      unhealthy_threshold = 3                                                                     // consecutive health check failures before unhealthy
-      timeout             = 5                                                                     // seconds for timeout of request
+      path                = contains(["http", "https"], traffic.target.protocol) ? traffic.target.health_check_path : ""
+      port                = var.service.deployment_type == "ec2" ? null : traffic.target.port // traffic port by default
+      healthy_threshold   = 3                                                                 // consecutive health check failures before healthy
+      unhealthy_threshold = 3                                                                 // consecutive health check failures before unhealthy
+      timeout             = 5                                                                 // seconds for timeout of request
       protocol            = try(var.protocols[traffic.target.protocol], "TCP")
-      matcher             = "200-299"
+      matcher             = contains(["http", "https"], traffic.target.protocol) ? "200-299" : ""
     }
     protocol_version = try(var.protocol_versions[traffic.target.protocol_version], null)
     } if traffic.base == true || length(local.traffics) == 1

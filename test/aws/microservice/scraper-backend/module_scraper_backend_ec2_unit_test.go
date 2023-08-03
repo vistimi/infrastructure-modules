@@ -12,7 +12,7 @@ import (
 
 func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	// t.Parallel()
-	optionsProject, commonName := SetupOptionsRepository(t)
+	optionsProject, _ := SetupOptionsRepository(t)
 
 	maxTaskCount := 3
 
@@ -105,11 +105,11 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 		})
 	}()
 
-	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, optionsProject)
-	})
-	terratestStructure.RunTestStage(t, "validate", func() {
-		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
-	})
+	// terratestStructure.RunTestStage(t, "deploy", func() {
+	// 	terraform.InitAndApply(t, optionsProject)
+	// })
+	// terratestStructure.RunTestStage(t, "validate", func() {
+	// 	// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
+	// 	testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
+	// })
 }

@@ -98,8 +98,8 @@ resource "null_resource" "target" {
 
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], each.value.protocol)
-      error_message = "Target protocol must be one of [http, https]"
+      condition     = contains(["http", "https", "tcp"], each.value.protocol)
+      error_message = "Target protocol must be one of [http, https, tcp]"
     }
     precondition {
       condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc"], each.value.protocol_version) : true
@@ -336,6 +336,21 @@ variable "ec2" {
   }))
   nullable = false
   default  = {}
+}
+
+data "aws_ec2_instance_types" "region" {
+
+  filter {
+    name   = "instance-type"
+    values = [for key, value in var.ec2 : value.instance_type]
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = sort([for key, value in var.ec2 : value.instance_type]) == sort(self.instance_types)
+      error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
+    }
+  }
 }
 
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html

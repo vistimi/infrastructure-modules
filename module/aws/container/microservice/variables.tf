@@ -61,6 +61,7 @@ variable "ecs" {
         protocol_version  = optional(string)
         health_check_path = optional(string)
       })
+      base = optional(bool)
     }))
     task_definition = object({
       memory             = number

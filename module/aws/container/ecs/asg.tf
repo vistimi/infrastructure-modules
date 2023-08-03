@@ -17,6 +17,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
 
 locals {
   # https://github.com/aws/amazon-ecs-agent/blob/master/README.md
+  # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-gpu.html
   # <<- is required compared to << because there should be no identation for EOT and EOF to work properly
   user_data = {
     for key, value in var.ec2 : key => <<-EOT
@@ -26,8 +27,8 @@ locals {
         ${value.use_spot ? "ECS_ENABLE_SPOT_INSTANCE_DRAINING=true" : ""}
         ECS_ENABLE_TASK_IAM_ROLE=true
         ${value.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
+        ${value.architecture == "gpu" ? "ECS_NVIDIA_RUNTIME=nvidia" : ""}
         EOF
-
         ${value.user_data != null ? value.user_data : ""}
       EOT
   }
