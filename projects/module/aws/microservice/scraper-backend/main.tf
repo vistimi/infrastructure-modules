@@ -1,7 +1,12 @@
-module "microservice" {
-  source = "../../../../module/aws/container/microservice"
+locals {
+  config_vars = yamldecode(file("./config.yml"))
+  name        = lower(join("-", [local.config_vars.name, var.name_suffix]))
+}
 
-  name       = var.name
+module "microservice" {
+  source = "../../../../../module/aws/container/microservice"
+
+  name       = local.name
   vpc        = var.vpc
   route53    = var.microservice.route53
   ecs        = var.microservice.ecs
@@ -17,11 +22,10 @@ locals {
     account_ids = var.microservice.iam.account_ids
     vpc_ids     = var.microservice.iam.vpc_ids
   }
-  tags = merge(var.tags, { VpcId = "${var.vpc.id}" })
 }
 
 module "dynamodb_table" {
-  source = "../../../../module/aws/data/dynamodb"
+  source = "../../../../../module/aws/data/dynamodb"
 
   for_each = {
     for index, dt in var.dynamodb_tables :
@@ -29,7 +33,7 @@ module "dynamodb_table" {
   }
 
   # TODO: handle no sort key
-  table_name                   = "${var.name}-${each.value.name}"
+  table_name                   = "${local.name}-${each.value.name}"
   primary_key_name             = each.value.primary_key_name
   primary_key_type             = each.value.primary_key_type
   sort_key_name                = each.value.sort_key_name
@@ -39,17 +43,17 @@ module "dynamodb_table" {
   table_attachement_role_names = [module.microservice.ecs.service.task_iam_role_name]
   iam                          = local.iam
 
-  tags = local.tags
+  tags = var.tags
 }
 
 module "bucket_picture" {
-  source = "../../../../module/aws/data/bucket"
+  source = "../../../../../module/aws/data/bucket"
 
-  name                          = var.bucket_picture.name
+  name                          = "${local.name}-${var.bucket_picture.name}"
   force_destroy                 = var.bucket_picture.force_destroy
   versioning                    = var.bucket_picture.versioning
   bucket_attachement_role_names = [module.microservice.ecs.service.task_iam_role_name]
   iam                           = local.iam
 
-  tags = local.tags
+  tags = var.tags
 }

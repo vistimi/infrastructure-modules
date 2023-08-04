@@ -5,14 +5,15 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
 	t.Parallel()
-	optionsProject, commonName := SetupOptionsRepository(t)
+	optionsProject, nameSuffix := SetupOptionsRepository(t)
 
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
@@ -60,6 +61,7 @@ func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
 		terraform.InitAndApply(t, optionsProject)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
+		name := util.Format("scraper-backend", nameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, GithubProject, Endpoints)
 	})
 }

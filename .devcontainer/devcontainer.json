@@ -28,7 +28,8 @@
 				"ms-vscode.makefile-tools",
 				"ms-azuretools.vscode-docker",
 				"IronGeek.vscode-env",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"redhat.vscode-yaml"
 			]
 		}
 	}

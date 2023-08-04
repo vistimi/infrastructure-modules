@@ -3,7 +3,7 @@ package module
 import (
 	"testing"
 
-	"github.com/KookaS/infrastructure-modules/test/util"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"

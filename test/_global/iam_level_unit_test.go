@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
-	"github.com/KookaS/infrastructure-modules/test/util"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )

@@ -10,7 +10,7 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 
 var (
 	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "KookaS",
+		Organization:    "dresspeng",
 		Repository:      "scraper-frontend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
@@ -52,7 +52,7 @@ var (
 )
 
 func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, nameSuffix := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -106,5 +106,5 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"file_path": "override.env",
 	})
 
-	return optionsProject, commonName
+	return optionsProject, nameSuffix
 }
