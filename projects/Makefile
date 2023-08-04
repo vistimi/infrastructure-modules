@@ -6,7 +6,9 @@ MAKEFLAGS += --warn-undefined-variables
 
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-PATH_TEST_AWS_MICROSERVICE=projects/test/aws/microservice
+PATH_AWS=module/aws
+PATH_AWS_MICROSERVICE=module/aws/microservice
+PATH_TEST_AWS_MICROSERVICE=test/aws/microservice
 
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
@@ -40,7 +42,7 @@ test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/projects/module/aws
+	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {

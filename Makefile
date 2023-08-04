@@ -7,9 +7,7 @@ MAKEFLAGS += --warn-undefined-variables
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 PATH_AWS=module/aws
-PATH_AWS_MICROSERVICE=${PATH_AWS}/microservice
-PATH_AWS_IAM=${PATH_AWS}/iam
-PATH_AWS_ECR=${PATH_AWS}/container/ecr
+PATH_AWS_IAM=module/aws/iam
 
 PATH_TEST_AWS_MICROSERVICE=test/aws/microservice
 
