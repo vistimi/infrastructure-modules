@@ -1,6 +1,6 @@
 locals {
   config_vars = yamldecode(file("./config.yml"))
-  name        = join("-", ["${local.config_vars.name}", "${var.name_suffix}"])
+  name        = lower(join("-", [local.config_vars.name, var.name_suffix]))
 }
 
 module "microservice" {

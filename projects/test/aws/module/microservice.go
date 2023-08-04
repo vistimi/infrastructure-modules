@@ -80,7 +80,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	// global variables
 	id := util.RandomID(8)
-	commonName := util.Format(projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
+	nameSuffix := util.Format(util.GetEnvVariable("AWS_PROFILE_NAME"), id)
 	commonTags := map[string]string{
 		"TestID":  id,
 		"Account": AccountName,
@@ -89,12 +89,12 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 		"Service": serviceName,
 	}
 
-	bucketEnvName := fmt.Sprintf("%s-%s", commonName, "env")
+	bucketEnvName := fmt.Sprintf("%s-%s", nameSuffix, "env")
 
 	options := &terraform.Options{
 		Vars: map[string]any{
-			"name": commonName,
-			"tags": commonTags,
+			"name_suffix": nameSuffix,
+			"tags":        commonTags,
 
 			"vpc": map[string]any{
 				"id":   "vpc-0d5c1d5379f616e2f",
@@ -119,7 +119,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 			},
 		},
 	}
-	return options, commonName
+	return options, nameSuffix
 }
 
 func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
@@ -159,10 +159,10 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	}
 }
 
-func ValidateMicroservice(t *testing.T, commonName string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
+func ValidateMicroservice(t *testing.T, name string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		testAwsModule.ValidateEcs(t, AccountRegion, commonName, commonName, serviceCount)
+		testAwsModule.ValidateEcs(t, AccountRegion, name, name, serviceCount)
 
 		// test Load Balancer HTTP
 		elb := microserviceExtractElb(t, microservicePath)

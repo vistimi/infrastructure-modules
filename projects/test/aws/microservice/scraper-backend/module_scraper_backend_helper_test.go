@@ -63,10 +63,10 @@ var (
 )
 
 func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, nameSuffix := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	// override.env
-	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", commonName, MicroservicePath)
+	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
 	command := terratestShell.Command{
 		Command: "bash",
 		Args:    []string{"-c", bashCode},
@@ -99,7 +99,7 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 	if !ok {
 		t.Errorf("config.yml file missing buckets.picture")
 	}
-	bucket_picture_name := fmt.Sprintf("%s-%s", commonName, *bucket_picture_name_extension.Name)
+	bucket_picture_name := *bucket_picture_name_extension.Name
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -150,5 +150,5 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"file_path": "override.env",
 	})
 
-	return optionsProject, commonName
+	return optionsProject, nameSuffix
 }

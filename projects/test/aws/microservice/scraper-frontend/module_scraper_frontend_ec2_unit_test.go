@@ -6,13 +6,14 @@ import (
 	"golang.org/x/exp/maps"
 
 	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
 func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 	t.Parallel()
-	optionsProject, commonName := SetupOptionsRepository(t)
+	optionsProject, nameSuffix := SetupOptionsRepository(t)
 
 	instance := testAwsModule.T3Small
 	keySpot := "spot"
@@ -108,6 +109,7 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
+		name := util.Format("scraper-backend", nameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, GithubProject, Endpoints)
 	})
 }

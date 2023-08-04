@@ -30,7 +30,7 @@ fmt: ## Format all files
 	terraform fmt -recursive
 
 aws-auth:
-	make -f ../Makefile_infra aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
+	make -C ../ -f Makefile_infra aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
 	aws configure list
 
 test: ## Setup the test environment, run the tests and clean the environment
@@ -62,8 +62,8 @@ prepare-aws-microservice-scraper-backend:
 	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_MICROSERVICE}/${REPOSITORY_NAME})
 	$(eval COMMON_NAME="")
 	$(eval CLOUD_HOST=aws)
-	make -f ../Makefile_infra gh-load-folder \
-		TERRAGRUNT_CONFIG_PATH=${OUTPUT_FOLDER} \
+	make -C ../ -f Makefile_infra gh-load-folder \
+		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
 		REPOSITORY_NAME=${REPOSITORY_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
@@ -73,12 +73,12 @@ prepare-aws-microservice-scraper-backend:
 		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST}
-	make -f ../Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
 make prepare-microservice-scraper-backend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
-	make -f ${MAKEFILE} prepare \
+	make -C ../ -f projects/${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
-		CONFIG_FOLDER_PATH=${REPOSITORY_CONFIG_PATH} \
+		CONFIG_FOLDER_PATH=projects/${REPOSITORY_CONFIG_PATH} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST} \
 		FLICKR_PRIVATE_KEY=123 \
@@ -96,8 +96,8 @@ prepare-aws-microservice-scraper-frontend:
 	$(eval SERVICE_NAME=frontend)
 	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
 	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_MICROSERVICE}/${REPOSITORY_NAME})
-	make -f ../Makefile_infra gh-load-folder \
-		TERRAGRUNT_CONFIG_PATH=${OUTPUT_FOLDER} \
+	make -C ../ -f Makefile_infra gh-load-folder \
+		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
 		REPOSITORY_NAME=${REPOSITORY_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
@@ -105,22 +105,22 @@ prepare-aws-microservice-scraper-frontend:
 	make prepare-microservice-scraper-frontend-env \
 		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
 		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-	make -f ../Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
 prepare-microservice-scraper-frontend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
-	make -f ${MAKEFILE} prepare \
+	make -C ../ -f projects/${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
 		NEXT_PUBLIC_API_URL="http://not-needed.com" \
 		PORT=$(shell yq eval '.port' ${REPOSITORY_CONFIG_PATH}/config_${OVERRIDE_EXTENSION}.yml)
 
 clean: ## Clean the test environment
-	make -f ../Makefile_infra nuke-region
-	make -f ../Makefile_infra nuke-vpc
-	make -f ../Makefile_infra nuke-global
+	make -C ../ -f Makefile_infra nuke-region
+	make -C ../ -f Makefile_infra nuke-vpc
+	make -C ../ -f Makefile_infra nuke-global
 
-	make -f ../Makefile_infra clean-task-definition
-	make -f ../Makefile_infra clean-elb
-	make -f ../Makefile_infra clean-ecs
+	make -C ../ -f Makefile_infra clean-task-definition
+	make -C ../ -f Makefile_infra clean-elb
+	make -C ../ -f Makefile_infra clean-ecs
 
 	make clean-local
 

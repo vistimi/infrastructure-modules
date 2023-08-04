@@ -4,35 +4,61 @@
 locals {
   config = {
     scraper = {
-      frontend = yamldecode(file("../../microservice/scraper-frontend/config.yml"))
-      backend  = yamldecode(file("../../microservice/scraper-backend/config.yml"))
+      frontend = yamldecode(file("${var.root_path}/projects/module/aws/microservice/scraper-frontend/config.yml"))
+      backend  = yamldecode(file("${var.root_path}/projects/module/aws/microservice/scraper-backend/config.yml"))
     }
   }
 
-  microservice_config = yamldecode(file("../../microservice/config.yml"))
+  microservice_config = yamldecode(file("${var.root_path}/projects/module/aws/microservice/config.yml"))
 
-  statements = concat(
+  statements = flatten(concat(
     [
-      for statement in local.microservice_config.statements : {
-        actions    = try(statement.actions, [])
-        effect     = try(statement.effect, null)
-        resources  = try(statement.resources, [])
-        conditions = try(statement.conditions, [])
-      }
+      for statement in local.microservice_config.statements : [
+        for sid, value in statement : {
+          sid        = title(sid)
+          actions    = try(value.actions, [])
+          effect     = try(value.effect, null)
+          resources  = try(value.resources, [])
+          conditions = try(value.conditions, [])
+        }
+      ]
     ],
     [
       for project_name in var.project_names : [
-        for project_config in local.config[project_name] : [
-          for microservice_config in values(project_config) : [
-            for statement in microservice_config.statements : {
-              actions    = try(statement.actions, [])
-              effect     = try(statement.effect, null)
-              resources  = try(statement.resources, [])
-              conditions = try(statement.conditions, [])
+        for service_name, microservice_config in local.config[project_name] : [
+          for statement in microservice_config.statements : [
+            for sid, value in statement : {
+              sid        = format("%s%s%s", title(project_name), title(service_name), title(sid))
+              actions    = try(value.actions, [])
+              effect     = try(value.effect, null)
+              resources  = try(value.resources, [])
+              conditions = try(value.conditions, [])
             }
           ]
         ]
       ]
     ]
-  )
+  ))
+}
+
+data "aws_iam_policy_document" "check" {
+  dynamic "statement" {
+    for_each = local.statements
+
+    content {
+      sid       = statement.value.sid
+      actions   = statement.value.actions
+      resources = statement.value.resources
+      effect    = statement.value.effect
+
+      dynamic "condition" {
+        for_each = statement.value.conditions
+        content {
+          test     = condition.value.test
+          variable = condition.value.variable
+          values   = condition.value.values
+        }
+      }
+    }
+  }
 }

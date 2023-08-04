@@ -52,7 +52,7 @@ var (
 )
 
 func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, commonName := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, nameSuffix := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -106,5 +106,5 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"file_path": "override.env",
 	})
 
-	return optionsProject, commonName
+	return optionsProject, nameSuffix
 }
