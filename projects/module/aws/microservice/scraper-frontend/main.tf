@@ -1,7 +1,12 @@
-module "microservice" {
-  source = "../../../../module/aws/container/microservice"
+locals {
+  config_vars = yamldecode(file("./config.yml"))
+  name        = join("-", ["${local.config_vars.name}", "${var.name_suffix}"])
+}
 
-  name       = var.name
+module "microservice" {
+  source = "../../../../../module/aws/container/microservice"
+
+  name       = local.name
   tags       = var.tags
   vpc        = var.vpc
   route53    = var.microservice.route53

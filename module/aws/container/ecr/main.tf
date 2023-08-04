@@ -31,7 +31,7 @@ locals {
 }
 
 module "bucket_policy" {
-  source = "../../iam/policy_document"
+  source = "../../iam/resource_scope"
 
   scope       = var.iam.scope
   statements  = local.iam_statements

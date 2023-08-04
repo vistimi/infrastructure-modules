@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/KookaS/infrastructure-modules/test/util"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 	terratest_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
 var (
@@ -160,7 +162,7 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 func ValidateMicroservice(t *testing.T, commonName string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		ValidateEcs(t, AccountRegion, commonName, commonName, serviceCount)
+		testAwsModule.ValidateEcs(t, AccountRegion, commonName, commonName, serviceCount)
 
 		// test Load Balancer HTTP
 		elb := microserviceExtractElb(t, microservicePath)

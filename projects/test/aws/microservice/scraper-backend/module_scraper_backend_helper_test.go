@@ -9,12 +9,12 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/KookaS/infrastructure-modules/test/util"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 )
 
 const (
@@ -37,7 +37,7 @@ const (
 
 var (
 	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "KookaS",
+		Organization:    "dresspeng",
 		Repository:      "scraper-backend",
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",

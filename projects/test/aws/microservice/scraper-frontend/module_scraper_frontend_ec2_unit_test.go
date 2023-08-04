@@ -5,7 +5,7 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )

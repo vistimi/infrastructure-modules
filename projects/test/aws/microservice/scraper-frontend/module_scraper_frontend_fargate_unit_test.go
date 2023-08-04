@@ -1,17 +1,17 @@
-package microservice_scraper_backend_test
+package microservice_scraper_frontend_test
 
 import (
 	"testing"
 
 	"golang.org/x/exp/maps"
 
-	testAwsModule "github.com/KookaS/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_Microservice_ScraperBackend_Fargate(t *testing.T) {
-	// t.Parallel()
+func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
+	t.Parallel()
 	optionsProject, commonName := SetupOptionsRepository(t)
 
 	keySpot := "spot"

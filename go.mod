@@ -1,4 +1,4 @@
-module github.com/KookaS/infrastructure-modules
+module github.com/dresspeng/infrastructure-modules
 
 go 1.18
 

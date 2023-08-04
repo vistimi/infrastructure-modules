@@ -1,5 +1,5 @@
-variable "name" {
-  description = "The common part of the name used for all resources"
+variable "name_suffix" {
+  description = "The name suffix that comes after the microservice name"
   type        = string
 }
 
