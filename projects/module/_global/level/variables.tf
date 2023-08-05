@@ -20,7 +20,7 @@ variable "aws" {
             variable = string
             values   = list(string)
           })), [])
-        })))
+        })), [])
       }))
       statements = optional(list(object({
         sid       = optional(string)
@@ -32,7 +32,7 @@ variable "aws" {
           variable = string
           values   = list(string)
         })), [])
-      })))
+      })), [])
     }))
     statements = list(object({
       sid       = optional(string)
@@ -44,7 +44,7 @@ variable "aws" {
         variable = string
         values   = list(string)
       })), [])
-    }))
+    }), [])
     external_assume_role_arns = list(string)
 
     store_secrets = bool
