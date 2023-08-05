@@ -7,7 +7,7 @@ variable "aws" {
     groups = map(object({
       force_destroy = optional(bool)
       pw_length     = optional(number)
-      project_names = list(string)
+      project_names = optional(list(string), [])
       users = list(object({
         name = string
         statements = optional(list(object({

@@ -9,7 +9,7 @@ locals {
 module "group_project_statements" {
   source = "../../aws/iam/statements/project"
 
-  for_each = { for key, value in var.aws.groups : key => value }
+  for_each = { for key, value in var.aws.groups : key => value if length(value.project_names) > 0 }
 
   root_path     = "../../../.."
   project_names = each.value.project_names
@@ -23,7 +23,7 @@ module "aws_level" {
     force_destroy = values.force_destroy
     pw_length     = values.pw_length
     users         = values.users
-    statements    = concat(values.statements, module.group_project_statements[key].statements)
+    statements    = concat(values.statements, try(module.group_project_statements[key].statements, []))
   }) }
   statements                = var.aws.statements
   external_assume_role_arns = var.aws.external_assume_role_arns
