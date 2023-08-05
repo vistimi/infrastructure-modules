@@ -13,10 +13,8 @@ statements:
   - EcrPublicRead:
       actions:
         [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
+          "ecr-public:GetAuthorizationToken",
+          "ecr-public:BatchCheckLayerAvailability",
         ]
       effect: "Allow"
       resources: ["arn:aws:ecr-public:::repository/scraper-backend*"]
