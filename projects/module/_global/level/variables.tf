@@ -34,7 +34,7 @@ variable "aws" {
         })), [])
       })), [])
     }))
-    statements = list(object({
+    statements = optional(list(object({
       sid       = optional(string)
       actions   = list(string)
       effect    = optional(string)
@@ -44,7 +44,7 @@ variable "aws" {
         variable = string
         values   = list(string)
       })), [])
-    }), [])
+    })), [])
     external_assume_role_arns = list(string)
 
     store_secrets = bool
