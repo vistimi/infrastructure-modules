@@ -46,8 +46,8 @@ module "github_environments" {
   source = "../../../../module/github/environments"
 
   for_each = merge([
-    for group_name, groups in module.aws_level.groups : merge({
-      for user_name, value in groups.users : user_name => value.user if value.github_store_environment
+    for group_name, group in module.aws_level.groups : merge({
+      for user_name, value in group.users : user_name => value.user if group.github_store_environment
     })
   ]...)
 
@@ -61,8 +61,8 @@ module "github_environments" {
   ]
   secrets = [
     { key = "AWS_SECRET_KEY", value = merge([
-      for group_name, groups in module.aws_level.groups_sensitive : merge({
-        for user_name, value in groups.users : user_name => value.user
+      for group_name, group in module.aws_level.groups_sensitive : merge({
+        for user_name, value in group.users : user_name => value.user
       })
       ]...)[each.key].iam_access_key_secret
     }
