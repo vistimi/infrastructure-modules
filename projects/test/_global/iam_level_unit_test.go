@@ -61,7 +61,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 			"pw_length":     20,
 			"users":         group.Users,
 			"statements":    groupStatements,
-			"project_names": []string{"scraper"},
+			// "project_names": []string{"scraper"},
 		}
 	}
 

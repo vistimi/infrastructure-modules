@@ -19,12 +19,13 @@ module "aws_level" {
   source = "../../../../module/aws/iam/level"
 
   levels = var.aws.levels
-  groups = { for key, values in var.aws.groups : key => merge(values, {
-    force_destroy = values.force_destroy
-    pw_length     = values.pw_length
-    users         = values.users
-    statements    = concat(values.statements, try(module.group_project_statements[key].statements, []))
-  }) }
+  groups = { for key, value in var.aws.groups : key => {
+    force_destroy = value.force_destroy
+    pw_length     = value.pw_length
+    users         = value.users
+    statements    = concat(value.statements, try(module.group_project_statements[key].statements, []))
+    }
+  }
   statements                = var.aws.statements
   external_assume_role_arns = var.aws.external_assume_role_arns
 
