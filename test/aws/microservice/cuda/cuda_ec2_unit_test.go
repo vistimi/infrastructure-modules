@@ -64,6 +64,11 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 			"name": commonName,
 			"tags": commonTags,
 
+			"vpc": map[string]any{
+				"id":   "vpc-0d5c1d5379f616e2f",
+				"tier": "public",
+			},
+
 			"ecs": map[string]any{
 				"traffics": []map[string]any{
 					{
@@ -199,14 +204,8 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				},
 			},
 
-			"vpc": map[string]any{
-				"name":      commonName,
-				"cidr_ipv4": "102.0.0.0/16",
-				"tier":      "public",
-			},
-
 			"iam": map[string]any{
-				"scope":        "microservices",
+				"scope":        "accounts",
 				"requires_mfa": false,
 			},
 		},

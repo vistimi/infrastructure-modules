@@ -10,7 +10,8 @@ import (
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
 const (
@@ -52,7 +53,7 @@ var (
 )
 
 func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, nameSuffix := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, nameSuffix := testAwsProjectModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	optionsProject := &terraform.Options{
 		TerraformDir: MicroservicePath,
