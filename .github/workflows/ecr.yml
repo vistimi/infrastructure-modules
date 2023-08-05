@@ -169,12 +169,13 @@ jobs:
             PLATFORMS=""
             for architecture in $ARCHITECTURES; do
               if [ "$architecture" == "x86-64" ]; then
-                PLATFORMS='$PLATFORMS,"x86-64"'
+                PLATFORMS=$(if [[ -z $PLATFORMS ]]; then echo '"x86-64"'; else echo $PLATFORMS',"x86-64"'; fi)
               elif [ "$architecture" == "arm-64" ]; then
-                PLATFORMS='$PLATFORMS,"ARM 64"'
+                PLATFORMS=$(if [[ -z $PLATFORMS ]]; then echo '"ARM 64"'; else echo $PLATFORMS',"ARM 64"'; fi)
               else
                 continue
               fi
+              echo PLATFORMS:: $PLATFORMS
             done
           }
 
@@ -214,12 +215,13 @@ jobs:
             PLATFORMS=""
             for architecture in $ARCHITECTURES; do
               if [ "$architecture" == "x86-64" ]; then
-                PLATFORMS='$PLATFORMS,linux/amd64'
+                PLATFORMS=$(if [[ -z $PLATFORMS ]]; then echo 'linux/amd64'; else echo $PLATFORMS',linux/amd64'; fi)
               elif [ "$architecture" == "arm-64" ]; then
-                PLATFORMS='$PLATFORMS,linux/arm64'
+                PLATFORMS=$(if [[ -z $PLATFORMS ]]; then echo 'linux/arm64'; else echo $PLATFORMS',linux/arm64'; fi)
               else
                 continue
               fi
+              echo PLATFORMS:: $PLATFORMS
             done
           }
 
