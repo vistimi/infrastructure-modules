@@ -47,7 +47,7 @@ module "github_environments" {
 
   for_each = merge([
     for group_name, groups in module.aws_level.groups : merge({
-      for user_name, value in groups.users : user_name => value.user if var.github.store_environment
+      for user_name, value in groups.users : user_name => value.user if value.github_store_environment
     })
   ]...)
 

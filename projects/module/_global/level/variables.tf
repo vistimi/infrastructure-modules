@@ -5,9 +5,10 @@ variable "aws" {
       value = string
     })))
     groups = map(object({
-      force_destroy = optional(bool)
-      pw_length     = optional(number)
-      project_names = optional(list(string), [])
+      force_destroy            = optional(bool)
+      pw_length                = optional(number)
+      project_names            = optional(list(string), [])
+      github_store_environment = optional(bool, false)
       users = list(object({
         name = string
         statements = optional(list(object({
@@ -67,7 +68,6 @@ variable "github" {
       key   = string
       value = string
     })), [])
-    store_environment = bool
   })
 
   validation {
