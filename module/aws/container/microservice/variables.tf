@@ -11,10 +11,8 @@ variable "tags" {
 
 variable "vpc" {
   type = object({
-    name       = string
-    cidr_ipv4  = string
-    tier       = string
-    enable_nat = optional(bool)
+    id   = string
+    tier = string
   })
 }
 

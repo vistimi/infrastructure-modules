@@ -115,7 +115,7 @@ module "elb" {
     for traffic in local.traffics : {
       port               = traffic.listener.port
       protocol           = try(var.protocols[traffic.listener.protocol], "TCP")
-      certificate_arn    = module.acm[var.route53.record.subdomain_name].acm_certificate_arn
+      certificate_arn    = one(module.acm[*].acm_certificate_arn)
       target_group_index = 0 // TODO: multiple target groups
     } if traffic.listener.protocol == "https" && var.route53 != null
   ]

@@ -1,19 +1,5 @@
-# ------------
-#     VPC
-# ------------
-module "vpc" {
-  source = "../../../../module/aws/network/vpc"
-
-  name       = var.name
-  cidr_ipv4  = var.vpc.cidr_ipv4
-  enable_nat = var.vpc.enable_nat
-  tier       = var.vpc.tier
-
-  tags = var.tags
-}
-
 locals {
-  tags = merge(var.tags, { VpcId = "${module.vpc.vpc.id}" })
+  tags = merge(var.tags, { VpcId = "${var.vpc.id}" })
 }
 
 # ------------
@@ -22,11 +8,7 @@ locals {
 module "ecs" {
   source = "../../../../module/aws/container/ecs"
 
-  vpc = {
-    id                 = module.vpc.vpc.id
-    security_group_ids = [module.vpc.default.security_group_id]
-    tier               = var.vpc.tier
-  }
+  vpc = var.vpc
 
   route53 = var.route53
 

@@ -1,0 +1,20 @@
+name: scraper-frontend
+statements:
+  - EcrRead:
+      actions:
+        [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ]
+      effect: "Allow"
+      resources: ["arn:aws:ecr:*:*:repository/scraper-frontend*"]
+  - EcrPublicRead:
+      actions:
+        [
+          "ecr-public:GetAuthorizationToken",
+          "ecr-public:BatchCheckLayerAvailability",
+        ]
+      effect: "Allow"
+      resources: ["arn:aws:ecr-public:::repository/scraper-frontend*"]
