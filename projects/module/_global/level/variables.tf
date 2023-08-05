@@ -1,8 +1,3 @@
-variable "root_path" {
-  type     = string
-  nullable = false
-}
-
 variable "aws" {
   type = object({
     levels = optional(list(object({

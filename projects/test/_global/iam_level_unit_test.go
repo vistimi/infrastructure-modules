@@ -86,7 +86,6 @@ func Test_Unit_Global_Level(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: pathLevel,
 		Vars: map[string]any{
-			"root_path": "../../../..",
 			"aws": map[string]any{
 				"levels": []map[string]any{
 					{

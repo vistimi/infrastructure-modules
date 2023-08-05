@@ -11,7 +11,7 @@ module "group_project_statements" {
 
   for_each = { for key, value in var.aws.groups : key => value }
 
-  root_path     = var.root_path
+  root_path     = "../../../.."
   project_names = each.value.project_names
 }
 
