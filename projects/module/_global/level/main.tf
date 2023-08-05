@@ -6,11 +6,25 @@ locals {
   account_id  = data.aws_caller_identity.current.account_id
 }
 
-module "aws_level" {
-  source = "../../aws/iam/level"
+module "group_project_statements" {
+  source = "../../aws/iam/statements/project"
 
-  levels                    = var.aws.levels
-  groups                    = var.aws.groups
+  for_each = { for key, value in var.aws.groups : key => value }
+
+  root_path     = var.root_path
+  project_names = each.value.project_names
+}
+
+module "aws_level" {
+  source = "../../../../module/aws/iam/level"
+
+  levels = var.aws.levels
+  groups = { for key, values in var.aws.groups : key => merge(values, {
+    force_destroy = values.force_destroy
+    pw_length     = values.pw_length
+    users         = values.users
+    statements    = concat(values.statements, module.group_project_statements[key].statements)
+  }) }
   statements                = var.aws.statements
   external_assume_role_arns = var.aws.external_assume_role_arns
 
@@ -20,15 +34,15 @@ module "aws_level" {
 }
 
 resource "github_actions_variable" "example_variable" {
-  for_each = { for repository in var.github.repositories : repository.name => {} }
+  for_each = { for product in setproduct(var.github.repositories, var.github.variables) : "${product[0].name}-${product[1].key}" => { repository = product[0], variable = product[1] } }
 
-  repository    = each.key
-  variable_name = var.github.docker_action.key
-  value         = var.github.docker_action.value
+  repository    = join("/", [each.value.repository.name])
+  variable_name = each.value.variable.key
+  value         = each.value.variable.value
 }
 
 module "github_environments" {
-  source = "../../github/environments"
+  source = "../../../../module/github/environments"
 
   for_each = merge([
     for group_name, groups in module.aws_level.groups : merge({

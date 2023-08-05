@@ -44,7 +44,6 @@ test-clear: ## Clear the cache for the tests
 
 prepare-terragrunt:
 	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}
-	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/_global
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -53,9 +52,6 @@ prepare-account-aws:
 		aws_account_id="${AWS_ACCOUNT_ID}"
 	}
 	EOF
-
-prepare-global-level:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
 prepare-aws-iam-level:
 	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level

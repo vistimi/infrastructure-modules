@@ -42,6 +42,7 @@ test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
+	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/_global
 	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
@@ -51,6 +52,9 @@ prepare-account-aws:
 		aws_account_id="${AWS_ACCOUNT_ID}"
 	}
 	EOF
+
+prepare-global-level:
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
 BRANCH_NAME ?= trunk
 prepare-aws-microservice-scraper-backend:

@@ -1,3 +1,8 @@
+variable "root_path" {
+  type     = string
+  nullable = false
+}
+
 variable "aws" {
   type = object({
     levels = optional(list(object({
@@ -7,6 +12,7 @@ variable "aws" {
     groups = map(object({
       force_destroy = optional(bool)
       pw_length     = optional(number)
+      project_names = list(string)
       users = list(object({
         name = string
         statements = optional(list(object({
@@ -58,14 +64,14 @@ variable "aws" {
 
 variable "github" {
   type = object({
-    repositories = list(object({
+    repositories = optional(list(object({
       owner = string
       name  = string
-    }))
-    docker_action = object({
+    })), [])
+    variables = optional(list(object({
       key   = string
       value = string
-    })
+    })), [])
     store_environment = bool
   })
 

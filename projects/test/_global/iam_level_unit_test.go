@@ -37,13 +37,11 @@ func Test_Unit_Global_Level(t *testing.T) {
 			Name:                "admin",
 			Users:               []map[string]any{{"name": "ad1", "statements": userStatements}},
 			ExternalAssumeRoles: []string{},
-			AttachRoleName:      "admin",
 		},
 		{
 			Name:                "dev",
 			Users:               []map[string]any{{"name": "dev1", "statements": userStatements}},
 			ExternalAssumeRoles: []string{},
-			AttachRoleName:      "poweruser",
 		},
 	}
 
@@ -63,6 +61,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 			"pw_length":     20,
 			"users":         group.Users,
 			"statements":    groupStatements,
+			"project_names": []string{"scraper"},
 		}
 	}
 
@@ -87,6 +86,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: pathLevel,
 		Vars: map[string]any{
+			"root_path": "../../../..",
 			"aws": map[string]any{
 				"levels": []map[string]any{
 					{
@@ -109,7 +109,18 @@ func Test_Unit_Global_Level(t *testing.T) {
 			},
 
 			"github": map[string]any{
-				"repository_names":  []string{"dresspeng/infrastructure-modules"},
+				"repositories": []map[string]any{
+					{
+						"owner": "dresspeng",
+						"name":  "infrastructure-modules",
+					},
+				},
+				"variables": []map[string]any{
+					{
+						"key":   "TEST",
+						"value": "test",
+					},
+				},
 				"store_environment": true,
 			},
 		},
