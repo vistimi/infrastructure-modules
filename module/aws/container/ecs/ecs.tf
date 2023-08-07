@@ -233,6 +233,7 @@ module "ecs" {
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [
+            // TODO: add all traffics ports
             {
               containerPort = local.elb_port
               hostPort      = var.service.deployment_type == "fargate" ? local.elb_port : 0 // "host" network can use target port 
@@ -256,7 +257,7 @@ module "ecs" {
           )
 
           command      = var.task_definition.command
-          entry_point  = var.task_definition.entry_point
+          entrypoint   = var.task_definition.entrypoint
           health_check = var.task_definition.health_check
 
           // fargate AMI

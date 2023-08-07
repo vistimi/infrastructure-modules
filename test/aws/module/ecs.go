@@ -14,7 +14,7 @@ import (
 )
 
 // https://github.com/gruntwork-io/terratest/blob/master/test/terraform_aws_ecs_example_test.go
-func ValidateEcs(t *testing.T, accountRegion, clusterName, serviceName string, serviceCount int64) {
+func ValidateEcs(t *testing.T, accountRegion, clusterName, serviceName string, serviceCount int64, deploymentTest DeploymentTest) {
 	terratestStructure.RunTestStage(t, "validate_ecs", func() {
 
 		// cluster
@@ -49,7 +49,13 @@ func ValidateEcs(t *testing.T, accountRegion, clusterName, serviceName string, s
 		assert.Equal(t, awsSDK.Int64Value(deployment.DesiredCount), serviceTaskDesiredCount, "amount of desired tasks in service do not match")
 
 		maxRetries := 5
-		sleepBetweenRetries := time.Second * 30
+		if deploymentTest.MaxRetries != nil {
+			maxRetries = *deploymentTest.MaxRetries
+		}
+		sleepBetweenRetries := 30 * time.Second
+		if deploymentTest.SleepBetweenRetries != nil {
+			sleepBetweenRetries = *deploymentTest.SleepBetweenRetries
+		}
 		for i := 0; i <= maxRetries; i++ {
 			deployment := terratestAws.GetEcsService(t, accountRegion, clusterName, serviceName).Deployments[0]
 			terratestLogger.Log(t, fmt.Sprintf(`

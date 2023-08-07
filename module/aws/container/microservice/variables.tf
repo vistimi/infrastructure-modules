@@ -96,9 +96,9 @@ variable "ecs" {
         type  = string
         value = string
       })))
-      # command      = optional(list(string))
-      # entry_point  = optional(list(string))
-      # health_check = any
+      command      = optional(list(string))
+      entrypoint   = optional(list(string))
+      health_check = optional(any)
     })
     fargate = optional(object({
       os           = string

@@ -10,8 +10,6 @@ locals {
     # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
     amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
   }
-
-  weight_total = var.service.deployment_type == "fargate" ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
@@ -19,7 +17,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name = local.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
+      name = local.ami_ssm_name[join("-", ["amazon", value.os, value.os_version, value.architecture])]
     }
     if var.service.deployment_type == "ec2"
   }
@@ -28,6 +26,11 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
 }
 
 locals {
+  image_ids = {
+    for key, value in var.ec2 :
+    key => data.aws_ssm_parameter.ecs_optimized_ami_id[key].value if var.service.deployment_type == "ec2"
+  }
+
   # https://github.com/aws/amazon-ecs-agent/blob/master/README.md
   # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-gpu.html
   # <<- is required compared to << because there should be no identation for EOT and EOF to work properly
@@ -44,6 +47,8 @@ locals {
         ${value.user_data != null ? value.user_data : ""}
       EOT
   }
+
+  weight_total = var.service.deployment_type == "fargate" ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
 }
 
 #------------------------
@@ -100,7 +105,7 @@ module "asg" {
   }])
   instance_market_options     = each.value.instance_market_options
   instance_type               = each.value.instance_type
-  image_id                    = data.aws_ssm_parameter.ecs_optimized_ami_id[each.key].value
+  image_id                    = local.image_ids[each.key]
   user_data                   = base64encode(local.user_data[each.key])
   launch_template_name        = var.name
   launch_template_description = "${var.name} asg launch template"

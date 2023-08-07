@@ -27,17 +27,13 @@ var (
 	AccountRegion = util.GetEnvVariable("AWS_REGION_NAME")
 	DomainName    = fmt.Sprintf("%s.%s", util.GetEnvVariable("DOMAIN_NAME"), util.GetEnvVariable("DOMAIN_SUFFIX"))
 
-	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization: "dresspeng",
-		Repository:   "scraper-detector",
-		Branch:       "trunk", // TODO: make it flexible for testing other branches
-		ImageTag:     "latest",
+	Deployment = testAwsModule.DeploymentTest{
+		MaxRetries: aws.Int(20),
 	}
-
-	Endpoints = []testAwsModule.EndpointTest{}
 )
 
 // https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
+// https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
 func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	t.Parallel()
 
@@ -77,21 +73,32 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 							"protocol": "tcp",
 						},
 						"target": map[string]any{
-							"port":     8080,
+							"port":     80,
 							"protocol": "tcp",
 						},
 						"base": true,
 					},
-					{
-						"listener": map[string]any{
-							"port":     8081,
-							"protocol": "tcp",
-						},
-						"target": map[string]any{
-							"port":     8081,
-							"protocol": "tcp",
-						},
-					},
+					// {
+					// 	"listener": map[string]any{
+					// 		"port":     80,
+					// 		"protocol": "tcp",
+					// 	},
+					// 	"target": map[string]any{
+					// 		"port":     8080,
+					// 		"protocol": "tcp",
+					// 	},
+					// 	"base": true,
+					// },
+					// {
+					// 	"listener": map[string]any{
+					// 		"port":     8081,
+					// 		"protocol": "tcp",
+					// 	},
+					// 	"target": map[string]any{
+					// 		"port":     8081,
+					// 		"protocol": "tcp",
+					// 	},
+					// },
 				},
 				"log": map[string]any{
 					"retention_days": 1,
@@ -101,35 +108,48 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					"gpu":    aws.IntValue(instance.Gpu),
 					"cpu":    instance.Cpu,
 					"memory": instance.MemoryAllowed,
-					// "command": []string{
-					// 	"sh",
-					// 	"-c",
-					// 	"nvidia-smi",
-					// },
-					"entry_point": []string{
+
+					"entrypoint": []string{
 						"/bin/bash",
 						"-c",
-						"mxnet-model-server --start --foreground --mms-config /home/model-server/config.properties --models densenet-eia=https://aws-dlc-sample-models.s3.amazonaws.com/pytorch/densenet_eia/densenet_eia.mar",
 					},
-					"health_check": map[string]any{
-						"retries": 2,
-						"command": []string{
-							"CMD-SHELL",
-							"LD_LIBRARY_PATH=/opt/ei_health_check/lib /opt/ei_health_check/bin/health_check",
-						},
-						"timeout":     5,
-						"interval":    30,
-						"startPeriod": 60,
+					"command": []string{
+						"/usr/bin/git clone https://github.com/pytorch/examples.git && /opt/conda/bin/pip install -r examples/mnist_hogwild/requirements.txt && /opt/conda/bin/python3 examples/mnist_hogwild/main.py --epochs 1",
 					},
+
+					// "health_check": map[string]any{
+					// 	"retries": 2,
+					// 	"command": []string{
+					// 		"CMD-SHELL",
+					// 		"LD_LIBRARY_PATH=/opt/ei_health_check/lib /opt/ei_health_check/bin/health_check",
+					// 	},
+					// 	"timeout":     5,
+					// 	"interval":    30,
+					// 	"startPeriod": 60,
+					// },
 					"docker": map[string]any{
+						// "registry": map[string]any{
+						// 	"name": "pytorch",
+						// },
+						// "repository": map[string]any{
+						// 	"name": "pytorch",
+						// },
+						// "image": map[string]any{
+						// 	"tag": "2.0.1-cuda11.7-cudnn8-runtime",
+						// },
 						"registry": map[string]any{
 							"name": "pytorch",
+							"ecr": map[string]any{
+								"privacy":     "private",
+								"account_id":  "763104351884",
+								"region_name": "us-east-1",
+							},
 						},
 						"repository": map[string]any{
-							"name": "pytorch",
+							"name": "pytorch-training",
 						},
 						"image": map[string]any{
-							"tag": "2.0.1-cuda11.7-cudnn8-runtime",
+							"tag": "1.8.1-gpu-py36-cu111-ubuntu18.04-v1.7",
 						},
 					},
 				},
@@ -167,7 +187,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 						"os_version":    "2",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
-						"key_name":      nil,
+						"key_name":      "local",
 						"use_spot":      false,
 						"asg": map[string]any{
 							"instance_refresh": map[string]any{
@@ -226,6 +246,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, GithubProject, Endpoints)
+		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment)
 	})
 }

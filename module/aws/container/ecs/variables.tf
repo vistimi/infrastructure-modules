@@ -20,7 +20,7 @@ resource "null_resource" "deployment_type" {
   lifecycle {
     precondition {
       condition     = contains(["fargate", "ec2"], var.service.deployment_type)
-      error_message = "EC2 os must be one of [fargate, ec2]"
+      error_message = "EC2 deployment type must be one of [fargate, ec2]"
     }
   }
 }
@@ -168,7 +168,7 @@ variable "task_definition" {
       value = string
     })), [])
     command      = optional(list(string), [])
-    entry_point  = optional(list(string), [])
+    entrypoint   = optional(list(string), [])
     health_check = optional(any, {})
   })
 
@@ -284,6 +284,11 @@ variable "ec2" {
   }))
   nullable = false
   default  = {}
+
+  # validation {
+  #   condition     = [for key, value in var.ec2 : contains(["ecs-optimized", "deep-learning"], value.ami_type)]
+  #   error_message = "ec2 ami_type should be in [ecs-optimized, deep-learning]"
+  # }
 }
 
 data "aws_ec2_instance_types" "region" {

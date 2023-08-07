@@ -1,11 +1,11 @@
 locals {
   protocols = {
-    http  = "HTTP"
-    https = "HTTPS"
-    tcp   = "TCP"
-    udp   = "UDP"
-    # tcp_udp = "TCP_UDP"
-    ssl = "SSL"
+    http    = "HTTP"
+    https   = "HTTPS"
+    tcp     = "TCP"
+    udp     = "UDP"
+    tcp_udp = "TCP_UDP"
+    ssl     = "SSL"
   }
   protocol_versions = {
     http1 = "HTTP1"
@@ -107,11 +107,12 @@ module "route53_records" {
 locals {
   traffic_base = one([for traffic in local.traffics : traffic if traffic.base == true || length(local.traffics) == 1])
   load_balancer_types = {
-    http  = "application"
-    https = "application"
-    tls   = "network"
-    tcp   = "network"
-    udp   = "network"
+    http    = "application"
+    https   = "application"
+    tls     = "network"
+    tcp     = "network"
+    tcp_udp = "network"
+    udp     = "network"
   }
 }
 
@@ -133,7 +134,7 @@ module "elb" {
       port               = traffic.listener.port
       protocol           = local.protocols[traffic.listener.protocol]
       target_group_index = 0 // TODO: multiple target groups
-    } if traffic.listener.protocol == "http"
+    } if contains(["http", "tcp", "tcp_udp", "udp"], traffic.listener.protocol)
   ]
 
   https_listeners = [
@@ -142,7 +143,7 @@ module "elb" {
       protocol           = local.protocols[traffic.listener.protocol]
       certificate_arn    = one(module.acm[*].acm_certificate_arn)
       target_group_index = 0 // TODO: multiple target groups
-    } if traffic.listener.protocol == "https" && var.route53 != null
+    } if contains(["https", "tls"], traffic.listener.protocol) && var.route53 != null
   ]
 
   // forward listener to target

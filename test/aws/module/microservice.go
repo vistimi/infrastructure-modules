@@ -54,10 +54,10 @@ var (
 	}
 	G4dnXlarge = EC2Instance{
 		Name:          "g4dn.xlarge",
-		Cpu:           100, //4096 max, http://aws.amazon.com/contact-us/ec2-request
+		Cpu:           4096,
 		Gpu:           util.Ptr(1),
 		Memory:        16384,
-		MemoryAllowed: 16384,
+		MemoryAllowed: 15731,
 		Architecture:  "gpu",
 	}
 )
@@ -76,14 +76,20 @@ type EndpointTest struct {
 	Path                string
 	ExpectedStatus      int
 	ExpectedBody        *string
-	MaxRetries          int
-	SleepBetweenRetries time.Duration
+	MaxRetries          *int
+	SleepBetweenRetries *time.Duration
 }
 
-func ValidateMicroservice(t *testing.T, name string, microservicePath string, githubProject GithubProjectInformation, endpoints []EndpointTest) {
+type DeploymentTest struct {
+	MaxRetries          *int
+	SleepBetweenRetries *time.Duration
+	Endpoints           []EndpointTest
+}
+
+func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		ValidateEcs(t, AccountRegion, name, name, serviceCount)
+		ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
 
 		// test Load Balancer HTTP
 		elb := microserviceExtractElb(t, microservicePath)
@@ -94,7 +100,7 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, gi
 
 			// add dns to endpoints
 			endpointsLoadBalancer := []EndpointTest{}
-			for _, endpoint := range endpoints {
+			for _, endpoint := range deployment.Endpoints {
 				endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
 					Path:                elbDnsUrl + endpoint.Path,
 					ExpectedStatus:      endpoint.ExpectedStatus,
@@ -121,7 +127,7 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, gi
 
 			// add dns to endpoints
 			endpointsRoute53 := []EndpointTest{}
-			for _, endpoint := range endpoints {
+			for _, endpoint := range deployment.Endpoints {
 				endpointsRoute53 = append(endpointsRoute53, EndpointTest{
 					Path:                route53DnsUrl + endpoint.Path,
 					ExpectedStatus:      endpoint.ExpectedStatus,
@@ -150,7 +156,15 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 		if endpoint.ExpectedBody != nil {
 			expectedBody = *endpoint.ExpectedBody
 		}
-		for i := 0; i <= endpoint.MaxRetries; i++ {
+		maxRetries := 5
+		if endpoint.MaxRetries != nil {
+			maxRetries = *endpoint.MaxRetries
+		}
+		sleepBetweenRetries := 30 * time.Second
+		if endpoint.SleepBetweenRetries != nil {
+			sleepBetweenRetries = *endpoint.SleepBetweenRetries
+		}
+		for i := 0; i <= maxRetries; i++ {
 			gotStatus, gotBody := terratest_http_helper.HttpGetWithOptions(t, options)
 			terratestLogger.Log(t, fmt.Sprintf(`
 			got status:: %d
@@ -166,11 +180,11 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 				terratestLogger.Log(t, `'HTTP GET to URL %s' successful`, endpoint.Path)
 				return
 			}
-			if i == endpoint.MaxRetries {
-				t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Path, endpoint.MaxRetries)
+			if i == maxRetries {
+				t.Fatalf(`'HTTP GET to URL %s' unsuccessful after %d retries`, endpoint.Path, maxRetries)
 			}
-			terratestLogger.Log(t, fmt.Sprintf("Sleeping %s...", endpoint.SleepBetweenRetries))
-			time.Sleep(endpoint.SleepBetweenRetries)
+			terratestLogger.Log(t, fmt.Sprintf("Sleeping %s...", sleepBetweenRetries))
+			time.Sleep(sleepBetweenRetries)
 		}
 	}
 }

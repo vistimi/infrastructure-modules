@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"golang.org/x/exp/maps"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
@@ -44,20 +44,21 @@ var (
 		ImageTag:        "latest",
 	}
 
-	Endpoints = []testAwsModule.EndpointTest{
-		{
-			Path:                GithubProject.HealthCheckPath,
-			ExpectedStatus:      200,
-			ExpectedBody:        util.Ptr(`"ok"`),
-			MaxRetries:          3,
-			SleepBetweenRetries: 30 * time.Second,
-		},
-		{
-			Path:                "/tags/wanted",
-			ExpectedStatus:      200,
-			ExpectedBody:        util.Ptr(`[]`),
-			MaxRetries:          3,
-			SleepBetweenRetries: 30 * time.Second,
+	Deployment = testAwsModule.DeploymentTest{
+		MaxRetries: aws.Int(10),
+		Endpoints: []testAwsModule.EndpointTest{
+			{
+				Path:           GithubProject.HealthCheckPath,
+				ExpectedStatus: 200,
+				ExpectedBody:   util.Ptr(`"ok"`),
+				MaxRetries:     aws.Int(3),
+			},
+			{
+				Path:           "/tags/wanted",
+				ExpectedStatus: 200,
+				ExpectedBody:   util.Ptr(`[]`),
+				MaxRetries:     aws.Int(3),
+			},
 		},
 	}
 )
@@ -149,7 +150,7 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 				"name": util.Format(GithubProject.Repository, GithubProject.Branch),
 			},
 			"image": map[string]any{
-				"tag": "latest",
+				"tag": GithubProject.ImageTag,
 			},
 		},
 	})
