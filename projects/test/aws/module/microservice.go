@@ -3,6 +3,7 @@ package module
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +28,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	// global variables
 	id := util.RandomID(8)
-	nameSuffix := util.Format(util.GetEnvVariable("AWS_PROFILE_NAME"), id)
+	nameSuffix := strings.ToLower(util.Format(util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	commonTags := map[string]string{
 		"TestID":  id,
 		"Account": AccountName,
@@ -35,8 +36,6 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 		"Project": projectName,
 		"Service": serviceName,
 	}
-
-	bucketEnvName := fmt.Sprintf("%s-%s", nameSuffix, "env")
 
 	options := &terraform.Options{
 		Vars: map[string]any{
@@ -57,7 +56,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 					"task_definition": map[string]any{},
 				},
 				"bucket_env": map[string]any{
-					"name":          bucketEnvName,
+					"name":          "env",
 					"force_destroy": true,
 					"versioning":    false,
 				},

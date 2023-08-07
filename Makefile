@@ -53,6 +53,9 @@ prepare-account-aws:
 	}
 	EOF
 
+prepare-aws-microservice:
+	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
+
 prepare-aws-iam-level:
 	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level
 prepare-aws-iam-group:

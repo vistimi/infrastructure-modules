@@ -2,7 +2,6 @@ package microservice_scraper_frontend_test
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
+	"github.com/dresspeng/infrastructure-modules/test/util"
 )
 
 const (
@@ -68,28 +68,36 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffic": map[string]any{
-			"listeners": []map[string]any{
-				{
-					"port":             listenerHttpPort,
-					"protocol":         listenerHttpProtocol,
-					"protocol_version": listenerHttpProtocolVersion,
+		"traffics": []map[string]any{
+			{
+				"listener": map[string]any{
+					// "port":     listenerHttpPort,
+					"protocol": listenerHttpProtocol,
+					// "protocol_version": listenerHttpProtocolVersion,
 				},
-			},
-			"target": map[string]any{
-				"port":              targetPort,
-				"protocol":          targetProtocol,
-				"protocol_version":  targetProtocolVersion,
-				"health_check_path": GithubProject.HealthCheckPath,
+				"target": map[string]any{
+					"port":     targetPort,
+					"protocol": targetProtocol,
+					// "protocol_version":  targetProtocolVersion,
+					"health_check_path": GithubProject.HealthCheckPath,
+				},
 			},
 		},
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"env_file_name": envKey,
-		"repository": map[string]any{
-			"privacy": "private",
-			"name":    strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
+		"docker": map[string]any{
+			"registry": map[string]any{
+				"ecr": map[string]any{
+					"privacy": "private",
+				},
+			},
+			"repository": map[string]any{
+				"name": util.Format(GithubProject.Repository, GithubProject.Branch),
+			},
+			"image": map[string]any{
+				"tag": "latest",
+			},
 		},
 		"tmpfs": map[string]any{
 			"ContainerPath": "/run/npm",

@@ -18,14 +18,13 @@ module "ecs" {
   traffics = var.ecs.traffics
   log      = var.ecs.log
 
-  task_definition = var.ecs.task_definition
-  # merge(var.ecs.task_definition,
-  #   try({
-  #     env_file = {
-  #       bucket_name = var.bucket_env.name
-  #       file_name   = var.bucket_env.file_key
-  #     }
-  # }, {}))
+  task_definition = merge(var.ecs.task_definition,
+    var.bucket_env != null ? {
+      env_file = {
+        bucket_name = join("-", [var.name, var.bucket_env.name])
+        file_name   = var.bucket_env.file_key
+      }
+  } : {})
 
   fargate = var.ecs.fargate
   ec2     = var.ecs.ec2
@@ -41,7 +40,7 @@ module "bucket_env" {
 
   for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
 
-  name          = var.bucket_env.name
+  name          = join("-", [var.name, var.bucket_env.name])
   force_destroy = var.bucket_env.force_destroy
   versioning    = var.bucket_env.versioning
   encryption = {

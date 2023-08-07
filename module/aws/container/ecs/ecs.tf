@@ -1,4 +1,15 @@
 locals {
+  ecr_services = {
+    private = "ecr"
+    public  = "ecr-public"
+  }
+  fargate_os = {
+    linux = "LINUX"
+  }
+  fargate_architecture = {
+    x86_64 = "X86_64"
+  }
+
   ecr_repository_account_id  = coalesce(try(var.task_definition.docker.registry.ecr.account_id, ""), local.account_id)
   ecr_repository_region_name = try((var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"), "")
 
@@ -177,7 +188,7 @@ module "ecs" {
               "ecr-public:BatchCheckLayerAvailability",
             ]
             effect    = "Allow"
-            resources = ["arn:${local.partition}:${var.ecr_services[var.task_definition.docker.registry.ecr.privacy]}:${local.ecr_repository_region_name}:${local.ecr_repository_account_id}:repository/${var.task_definition.docker.repository.name}"]
+            resources = ["arn:${local.partition}:${local.ecr_services[var.task_definition.docker.registry.ecr.privacy]}:${local.ecr_repository_region_name}:${local.ecr_repository_account_id}:repository/${var.task_definition.docker.repository.name}"]
           },
         } : {}
       )
@@ -250,8 +261,8 @@ module "ecs" {
 
           // fargate AMI
           runtime_platform = var.service.deployment_type == "fargate" ? {
-            "operatingSystemFamily" = var.fargate_os[var.fargate.os],
-            "cpuArchitecture"       = var.fargate_architecture[var.fargate.architecture],
+            "operatingSystemFamily" = local.fargate_os[var.fargate.os],
+            "cpuArchitecture"       = local.fargate_architecture[var.fargate.architecture],
           } : null
 
           image = join("/", [

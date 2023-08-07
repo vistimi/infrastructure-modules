@@ -1,4 +1,16 @@
 locals {
+  # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/retrieve-ecs-optimized_AMI.html
+  ami_ssm_name = {
+    amazon-linux-2-x86_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    amazon-linux-2-arm_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
+    amazon-linux-2-gpu       = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
+    amazon-linux-2-inf       = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
+    amazon-linux-2023-x86_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+    amazon-linux-2023-arm_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
+    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
+    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
+  }
+
   weight_total = var.service.deployment_type == "fargate" ? 0 : sum([for key, value in var.ec2 : value.capacity_provider.weight])
 }
 
@@ -7,7 +19,7 @@ data "aws_ssm_parameter" "ecs_optimized_ami_id" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      name = var.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
+      name = local.ami_ssm_name["amazon-${value.os}-${value.os_version}-${value.architecture}"]
     }
     if var.service.deployment_type == "ec2"
   }

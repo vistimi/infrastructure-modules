@@ -11,8 +11,8 @@ variable "tags" {
 
 variable "vpc" {
   type = object({
-    id                 = string
-    tier               = string
+    id   = string
+    tier = string
   })
 }
 
@@ -107,29 +107,6 @@ resource "null_resource" "target" {
   }
 }
 
-variable "protocols" {
-  description = "Map to select a routing protocol"
-  type        = map(string)
-
-  default = {
-    http  = "HTTP"
-    https = "HTTPS"
-    tcp   = "TCP"
-    ssl   = "SSL"
-  }
-}
-
-variable "protocol_versions" {
-  description = "Map to select a routing protocol version"
-  type        = map(string)
-
-  default = {
-    http1 = "HTTP1"
-    http2 = "HTTP2"
-    grpc  = "GRPC"
-  }
-}
-
 #--------------
 # ECS
 #--------------
@@ -211,16 +188,6 @@ variable "task_definition" {
   }
 }
 
-variable "ecr_services" {
-  description = "Map to select an aws ecr service"
-  type        = map(string)
-
-  default = {
-    private = "ecr"
-    public  = "ecr-public"
-  }
-}
-
 variable "service" {
   type = object({
     deployment_type                    = string
@@ -275,24 +242,6 @@ resource "null_resource" "fargate" {
   }
 }
 
-variable "fargate_os" {
-  description = "Map to select the OS for Fargate"
-  type        = map(string)
-
-  default = {
-    linux = "LINUX"
-  }
-}
-
-variable "fargate_architecture" {
-  description = "Map to select the architecture for Fargate"
-  type        = map(string)
-
-  default = {
-    x86_64 = "X86_64"
-  }
-}
-
 #--------------
 #   ASG
 #--------------
@@ -338,7 +287,6 @@ variable "ec2" {
 }
 
 data "aws_ec2_instance_types" "region" {
-
   filter {
     name   = "instance-type"
     values = [for key, value in var.ec2 : value.instance_type]
@@ -346,7 +294,7 @@ data "aws_ec2_instance_types" "region" {
 
   lifecycle {
     postcondition {
-      condition     = sort([for key, value in var.ec2 : value.instance_type]) == sort(self.instance_types)
+      condition     = sort(distinct([for key, value in var.ec2 : value.instance_type])) == sort(distinct(self.instance_types))
       error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
     }
   }
@@ -417,25 +365,6 @@ resource "null_resource" "ec2_os" {
       condition     = each.value.os == "linux" ? contains(["2", "2023"], each.value.os_version) : false
       error_message = "EC2 os version must be one of linux:[2, 2023]"
     }
-  }
-}
-
-# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/retrieve-ecs-optimized_AMI.html
-variable "ami_ssm_name" {
-  description = "Map to select an optimized ami for the correct architecture"
-  type        = map(string)
-
-  # add deep learning ami
-  # https://aws.amazon.com/releasenotes/aws-deep-learning-ami-catalog/
-  default = {
-    amazon-linux-2-x86_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-    amazon-linux-2-arm_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
-    amazon-linux-2-gpu       = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
-    amazon-linux-2-inf       = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
-    amazon-linux-2023-x86_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
-    amazon-linux-2023-arm_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
-    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
-    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
   }
 }
 
