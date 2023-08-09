@@ -14,11 +14,17 @@ module "ecs" {
 
   name = var.name
 
-  service = var.ecs.service
-  traffic = var.ecs.traffic
-  log     = var.ecs.log
+  service  = var.ecs.service
+  traffics = var.ecs.traffics
+  log      = var.ecs.log
 
-  task_definition = var.ecs.task_definition
+  task_definition = merge(var.ecs.task_definition,
+    var.bucket_env != null ? {
+      env_file = {
+        bucket_name = join("-", [var.name, var.bucket_env.name])
+        file_name   = var.bucket_env.file_key
+      }
+  } : {})
 
   fargate = var.ecs.fargate
   ec2     = var.ecs.ec2
@@ -32,7 +38,9 @@ module "ecs" {
 module "bucket_env" {
   source = "../../../../module/aws/data/bucket"
 
-  name          = var.bucket_env.name
+  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+
+  name          = join("-", [var.name, var.bucket_env.name])
   force_destroy = var.bucket_env.force_destroy
   versioning    = var.bucket_env.versioning
   encryption = {
@@ -48,8 +56,10 @@ module "bucket_env" {
 }
 
 resource "aws_s3_object" "env" {
+  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+
   key                    = var.bucket_env.file_key
-  bucket                 = module.bucket_env.bucket.id
+  bucket                 = module.bucket_env[each.key].bucket.id
   source                 = var.bucket_env.file_path
   server_side_encryption = "aws:kms"
 }

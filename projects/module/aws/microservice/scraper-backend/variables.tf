@@ -50,33 +50,38 @@ variable "microservice" {
         retention_days = number
         prefix         = optional(string)
       })
-      traffic = object({
-        listeners = list(object({
+      traffics = list(object({
+        listener = object({
           protocol         = string
           port             = optional(number)
           protocol_version = optional(string)
-        }))
+        })
         target = object({
           protocol          = string
           port              = number
           protocol_version  = optional(string)
           health_check_path = optional(string)
         })
-      })
+      }))
       task_definition = object({
         memory             = number
         memory_reservation = optional(number)
         cpu                = number
-        env_bucket_name    = string
-        env_file_name      = string
-        repository = object({
-          privacy     = string
-          name        = string
-          image_tag   = optional(string)
-          account_id  = optional(string)
-          region_name = optional(string)
-          public = optional(object({
-            alias = string
+        docker = object({
+          registry = object({
+            name = optional(string)
+            ecr = optional(object({
+              privacy      = string
+              public_alias = optional(string)
+              account_id   = optional(string)
+              region_name  = optional(string)
+            }))
+          })
+          repository = object({
+            name = string
+          })
+          image = optional(object({
+            tag = string
           }))
         })
         tmpfs = optional(object({

@@ -26,6 +26,7 @@ variable "route53" {
       prefixes       = optional(list(string))
     })
   })
+  default = null
 }
 
 variable "ecs" {
@@ -46,44 +47,58 @@ variable "ecs" {
       retention_days = number
       prefix         = optional(string)
     })
-    traffic = object({
-      listeners = list(object({
+    traffics = list(object({
+      listener = object({
         protocol         = string
         port             = optional(number)
         protocol_version = optional(string)
-      }))
+      })
       target = object({
         protocol          = string
         port              = number
         protocol_version  = optional(string)
         health_check_path = optional(string)
       })
-    })
+      base = optional(bool)
+    }))
     task_definition = object({
       memory             = number
       memory_reservation = optional(number)
       cpu                = number
-      env_bucket_name    = string
-      env_file_name      = string
-      repository = object({
-        privacy     = string
-        name        = string
-        image_tag   = optional(string)
-        account_id  = optional(string)
-        region_name = optional(string)
-        public = optional(object({
-          alias = string
+      gpu                = optional(number)
+      docker = object({
+        registry = object({
+          name = optional(string)
+          ecr = optional(object({
+            privacy      = string
+            public_alias = optional(string)
+            account_id   = optional(string)
+            region_name  = optional(string)
+          }))
+        })
+        repository = object({
+          name = string
+        })
+        image = optional(object({
+          tag = string
         }))
       })
-      tmpfs = optional(object({
-        ContainerPath : optional(string),
-        MountOptions : optional(list(string)),
-        Size : number,
-      }))
       environment = optional(list(object({
-        name : string
-        value : string
+        name  = string
+        value = string
       })))
+      resource_requirements = optional(list(object({
+        type  = string
+        value = string
+      })))
+      command                  = optional(list(string), [])
+      entrypoint               = optional(list(string), [])
+      health_check             = optional(any, {})
+      readonly_root_filesystem = optional(bool)
+      user                     = optional(string)
+      volumes_from             = optional(list(any))
+      working_directory        = optional(string)
+      mount_points             = optional(list(any))
     })
     fargate = optional(object({
       os           = string
@@ -95,6 +110,7 @@ variable "ecs" {
       }))
     }))
     ec2 = optional(map(object({
+      user_data     = optional(string)
       instance_type = string
       os            = string
       os_version    = string
@@ -134,6 +150,7 @@ variable "bucket_env" {
     file_path     = string
     file_key      = string
   })
+  default = null
 }
 
 variable "iam" {

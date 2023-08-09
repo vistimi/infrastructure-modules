@@ -11,8 +11,8 @@ variable "tags" {
 
 variable "vpc" {
   type = object({
-    id                 = string
-    tier               = string
+    id   = string
+    tier = string
   })
 }
 
@@ -20,7 +20,7 @@ resource "null_resource" "deployment_type" {
   lifecycle {
     precondition {
       condition     = contains(["fargate", "ec2"], var.service.deployment_type)
-      error_message = "EC2 os must be one of [fargate, ec2]"
+      error_message = "EC2 deployment type must be one of [fargate, ec2]"
     }
   }
 }
@@ -38,36 +38,48 @@ variable "route53" {
       subdomain_name = string
     })
   })
+  default = null
 }
 
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-protocol-version
-variable "traffic" {
-  type = object({
-    listeners = list(object({
+variable "traffics" {
+  type = list(object({
+    listener = object({
       protocol         = string
       port             = optional(number)
       protocol_version = optional(string)
-    }))
+    })
     target = object({
       protocol          = string
       port              = number
       protocol_version  = optional(string)
       health_check_path = optional(string)
     })
-  })
+    base = optional(bool)
+  }))
+
+  validation {
+    condition     = length(var.traffics) > 0
+    error_message = "traffic must have at least one element"
+  }
+
+  validation {
+    condition     = length([for traffic in var.traffics : traffic.base if traffic.base != null]) <= 1
+    error_message = "traffic must at most one base"
+  }
 }
 
 resource "null_resource" "listener" {
 
   for_each = {
-    for idx, listener in var.traffic.listeners :
-    join("-", compact([listener.protocol, listener.port])) => listener
+    for traffic in var.traffics :
+    join("-", compact([traffic.listener.protocol, traffic.listener.port])) => traffic.listener
   }
 
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], each.value.protocol)
-      error_message = "Listener protocol must be one of [http, https]"
+      condition     = contains(["http", "https", "tcp"], each.value.protocol)
+      error_message = "Listener protocol must be one of [http, https, tcp]"
     }
     precondition {
       condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc"], each.value.protocol_version) : true
@@ -77,37 +89,21 @@ resource "null_resource" "listener" {
 }
 
 resource "null_resource" "target" {
+
+  for_each = {
+    for traffic in var.traffics :
+    join("-", compact([traffic.target.protocol, traffic.target.port])) => traffic.target
+  }
+
   lifecycle {
     precondition {
-      condition     = contains(["http", "https"], var.traffic.target.protocol)
-      error_message = "Target protocol must be one of [http, https]"
+      condition     = contains(["http", "https", "tcp"], each.value.protocol)
+      error_message = "Target protocol must be one of [http, https, tcp]"
     }
     precondition {
-      condition     = var.traffic.target.protocol_version != null ? contains(["http", "http2", "grpc"], var.traffic.target.protocol_version) : true
+      condition     = each.value.protocol_version != null ? contains(["http", "http2", "grpc"], each.value.protocol_version) : true
       error_message = "Target protocol version must be one of [http, http2, grpc] or null"
     }
-  }
-}
-
-variable "protocols" {
-  description = "Map to select a routing protocol"
-  type        = map(string)
-
-  default = {
-    http  = "HTTP"
-    https = "HTTPS"
-    tcp   = "TCP"
-  }
-}
-
-variable "protocol_versions" {
-  description = "Map to select a routing protocol version"
-  type        = map(string)
-
-  default = {
-    http1 = "HTTP1"
-    http2 = "HTTP2"
-    grpc  = "GRPC"
   }
 }
 
@@ -127,52 +123,73 @@ variable "log" {
 }
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
+# inference_accelerators = optional(list(object({
+# deviceName = string
+# deviceType = string
+# })), [])
 variable "task_definition" {
   type = object({
     memory             = number
     memory_reservation = optional(number)
     cpu                = number
-    env_bucket_name    = string
-    env_file_name      = string
-    repository = object({
-      privacy     = string
-      name        = string
-      image_tag   = optional(string)
-      account_id  = optional(string)
-      region_name = optional(string)
-      public = optional(object({
-        alias = string
+    gpu                = optional(number)
+    env_file = optional(object({
+      bucket_name = string
+      file_name   = string
+    }))
+    environment = optional(list(object({
+      name  = string
+      value = string
+    })), [])
+    docker = object({
+      registry = object({
+        name = optional(string)
+        ecr = optional(object({
+          privacy      = string
+          public_alias = optional(string)
+          account_id   = optional(string)
+          region_name  = optional(string)
+        }))
+      })
+      repository = object({
+        name = string
+      })
+      image = optional(object({
+        tag = string
       }))
     })
     tmpfs = optional(object({
-      ContainerPath : optional(string),
-      MountOptions : optional(list(string)),
-      Size : number,
+      ContainerPath = optional(string)
+      MountOptions  = optional(list(string))
+      Size          = number
     }), null)
-    environment = optional(list(object({
-      name : string
-      value : string
+    resource_requirements = optional(list(object({
+      type  = string
+      value = string
     })), [])
+    command                  = optional(list(string), [])
+    entrypoint               = optional(list(string), [])
+    health_check             = optional(any, {})
+    readonly_root_filesystem = optional(bool)
+    user                     = optional(string)
+    volumes_from             = optional(list(any), [])
+    working_directory        = optional(string)
+    mount_points             = optional(list(any), [])
   })
 
   validation {
-    condition     = contains(["public", "private"], var.task_definition.repository.privacy)
-    error_message = "task definition repository privacy must be one of [public, private]"
+    condition     = try(var.task_definition.docker.registry.ecr.name != null, true)
+    error_message = "docker registry name must not be empty if ecr is not specified"
   }
 
   validation {
-    condition     = var.task_definition.repository.privacy == "public" ? length(coalesce(var.task_definition.repository.public.alias, "")) > 0 : true
-    error_message = "task definition repository alias need when repository privacy is `public`"
+    condition     = try(contains(["public", "private"], var.task_definition.docker.registry.ecr.privacy), true)
+    error_message = "docker repository privacy must be one of [public, private]"
   }
-}
 
-variable "ecr_services" {
-  description = "Map to select an aws ecr service"
-  type        = map(string)
-
-  default = {
-    private = "ecr"
-    public  = "ecr-public"
+  validation {
+    condition     = try((var.task_definition.docker.registry.ecr.privacy == "public" ? length(coalesce(var.task_definition.docker.registry.ecr.public_alias, "")) > 0 : true), true)
+    error_message = "docker repository alias need when repository privacy is `public`"
   }
 }
 
@@ -230,29 +247,13 @@ resource "null_resource" "fargate" {
   }
 }
 
-variable "fargate_os" {
-  description = "Map to select the OS for Fargate"
-  type        = map(string)
-
-  default = {
-    linux = "LINUX"
-  }
-}
-
-variable "fargate_architecture" {
-  description = "Map to select the architecture for Fargate"
-  type        = map(string)
-
-  default = {
-    x86_64 = "X86_64"
-  }
-}
-
 #--------------
 #   ASG
 #--------------
+# TODO: remove arch because not needed
 variable "ec2" {
   type = map(object({
+    user_data     = optional(string)
     instance_type = string
     os            = string
     os_version    = string
@@ -288,6 +289,25 @@ variable "ec2" {
   }))
   nullable = false
   default  = {}
+
+  # validation {
+  #   condition     = [for key, value in var.ec2 : contains(["ecs-optimized", "deep-learning"], value.ami_type)]
+  #   error_message = "ec2 ami_type should be in [ecs-optimized, deep-learning]"
+  # }
+}
+
+data "aws_ec2_instance_types" "region" {
+  filter {
+    name   = "instance-type"
+    values = [for key, value in var.ec2 : value.instance_type]
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = sort(distinct([for key, value in var.ec2 : value.instance_type])) == sort(distinct(self.instance_types))
+      error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
+    }
+  }
 }
 
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
@@ -296,6 +316,7 @@ resource "null_resource" "ec2_architecture" {
   for_each = {
     for key, value in var.ec2 :
     key => {
+      os              = value.os
       architecture    = value.architecture
       instance_type   = value.instance_type
       instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)
@@ -306,17 +327,29 @@ resource "null_resource" "ec2_architecture" {
 
   lifecycle {
     precondition {
+      condition     = each.value.os == "linux" ? contains(["x86_64", "arm_64", "gpu", "inf"], each.value.architecture) : false
+      error_message = "EC2 architecture must for one of linux:[x86_64, arm_64, gpu, inf]"
+    }
+
+    precondition {
       // TODO: add support for mac
-      condition = each.value.architecture == "x86_64" ? contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
-        each.value.architecture == "arm_64" ? contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)) : (
+      condition = each.value.architecture == "x86_64" ? (
+        contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
+        ) : (
+        each.value.architecture == "arm_64" ? (
+          contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
+          ) : (
           each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
-            each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (
-              false
-            )
+            each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (false)
           )
         )
       )
       error_message = "EC2 instance config do not match, arch: ${each.value.architecture}, instance type ${each.value.instance_type}, instance family ${each.value.instance_family}, instance generation ${substr(each.value.instance.prefix, length(each.value.instance_family) + 0, 1)}, processor family ${substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)}, additional capability ${substr(each.value.instance.prefix, length(each.value.instance_family) + 2, -1)}, instance size ${each.value.instance.size}"
+    }
+
+    precondition {
+      condition     = each.value.architecture == "gpu" ? var.task_definition.gpu != null : true
+      error_message = "EC2 gpu must have a task definition gpu number"
     }
   }
 }
@@ -326,9 +359,8 @@ resource "null_resource" "ec2_os" {
   for_each = {
     for key, value in var.ec2 :
     key => {
-      os           = value.os
-      os_version   = value.os_version
-      architecture = value.architecture
+      os         = value.os
+      os_version = value.os_version
     }
     if var.service.deployment_type == "ec2"
   }
@@ -343,28 +375,6 @@ resource "null_resource" "ec2_os" {
       condition     = each.value.os == "linux" ? contains(["2", "2023"], each.value.os_version) : false
       error_message = "EC2 os version must be one of linux:[2, 2023]"
     }
-
-    precondition {
-      condition     = each.value.os == "linux" ? contains(["x86_64", "arm_64", "gpu", "inf"], each.value.architecture) : false
-      error_message = "EC2 architecture must for one of linux:[x86_64, arm_64, gpu, inf]"
-    }
-  }
-}
-
-# https://docs.aws.amazon.com/AmazonECS/latest/developerguide/retrieve-ecs-optimized_AMI.html
-variable "ami_ssm_name" {
-  description = "Map to select an optimized ami for the correct architecture"
-  type        = map(string)
-
-  default = {
-    amazon-linux-2-x86_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
-    amazon-linux-2-arm_64    = "/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id"
-    amazon-linux-2-gpu       = "/aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended/image_id"
-    amazon-linux-2-inf       = "/aws/service/ecs/optimized-ami/amazon-linux-2/inf/recommended/image_id"
-    amazon-linux-2023-x86_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
-    amazon-linux-2023-arm_64 = "/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id"
-    # amazon-linux-2023-gpu   = "/aws/service/ecs/optimized-ami/amazon-linux-2023/gpu/recommended/image_id"
-    amazon-linux-2023-inf = "/aws/service/ecs/optimized-ami/amazon-linux-2023/inf/recommended/image_id"
   }
 }
 

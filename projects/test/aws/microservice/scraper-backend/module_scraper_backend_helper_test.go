@@ -3,18 +3,18 @@ package microservice_scraper_backend_test
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"golang.org/x/exp/maps"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
 const (
@@ -44,26 +44,27 @@ var (
 		ImageTag:        "latest",
 	}
 
-	Endpoints = []testAwsModule.EndpointTest{
-		{
-			Path:                GithubProject.HealthCheckPath,
-			ExpectedStatus:      200,
-			ExpectedBody:        util.Ptr(`"ok"`),
-			MaxRetries:          3,
-			SleepBetweenRetries: 30 * time.Second,
-		},
-		{
-			Path:                "/tags/wanted",
-			ExpectedStatus:      200,
-			ExpectedBody:        util.Ptr(`[]`),
-			MaxRetries:          3,
-			SleepBetweenRetries: 30 * time.Second,
+	Deployment = testAwsModule.DeploymentTest{
+		MaxRetries: aws.Int(10),
+		Endpoints: []testAwsModule.EndpointTest{
+			{
+				Path:           GithubProject.HealthCheckPath,
+				ExpectedStatus: 200,
+				ExpectedBody:   util.Ptr(`"ok"`),
+				MaxRetries:     aws.Int(3),
+			},
+			{
+				Path:           "/tags/wanted",
+				ExpectedStatus: 200,
+				ExpectedBody:   util.Ptr(`[]`),
+				MaxRetries:     aws.Int(3),
+			},
 		},
 	}
 )
 
 func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, nameSuffix := testAwsModule.SetupOptionsMicroservice(t, projectName, serviceName)
+	optionsMicroservice, nameSuffix := testAwsProjectModule.SetupOptionsMicroservice(t, projectName, serviceName)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
@@ -121,28 +122,36 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffic": map[string]any{
-			"listeners": []map[string]any{
-				{
+		"traffics": []map[string]any{
+			{
+				"listener": map[string]any{
 					// "port":     listenerHttpPort,
 					"protocol": listenerHttpProtocol,
 					// "protocol_version": listenerHttpProtocolVersion,
 				},
-			},
-			"target": map[string]any{
-				"port":     targetPort,
-				"protocol": targetProtocol,
-				// "protocol_version":  targetProtocolVersion,
-				// "health_check_path": GithubProject.HealthCheckPath,
+				"target": map[string]any{
+					"port":     targetPort,
+					"protocol": targetProtocol,
+					// "protocol_version":  targetProtocolVersion,
+					"health_check_path": GithubProject.HealthCheckPath,
+				},
 			},
 		},
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"env_file_name": envKey,
-		"repository": map[string]any{
-			"privacy": "private",
-			"name":    strings.ToLower(fmt.Sprintf("%s-%s", GithubProject.Repository, GithubProject.Branch)),
+		"docker": map[string]any{
+			"registry": map[string]any{
+				"ecr": map[string]any{
+					"privacy": "private",
+				},
+			},
+			"repository": map[string]any{
+				"name": util.Format(GithubProject.Repository, GithubProject.Branch),
+			},
+			"image": map[string]any{
+				"tag": GithubProject.ImageTag,
+			},
 		},
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
