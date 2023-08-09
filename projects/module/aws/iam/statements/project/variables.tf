@@ -13,3 +13,15 @@ variable "project_names" {
     error_message = "project names must be in [scraper]"
   }
 }
+
+variable "user_name" {
+  type     = string
+  nullable = false
+  default  = "*"
+}
+
+variable "branch_name" {
+  type     = string
+  nullable = false
+  default  = "*"
+}

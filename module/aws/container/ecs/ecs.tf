@@ -242,7 +242,6 @@ module "ecs" {
               protocol      = "tcp"
             }
           ]
-          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
           memory             = var.task_definition.memory
           memory_reservation = var.task_definition.memory_reservation
           cpu                = var.task_definition.cpu

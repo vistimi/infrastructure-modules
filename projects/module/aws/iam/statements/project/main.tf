@@ -4,29 +4,32 @@
 locals {
   config = {
     scraper = {
-      frontend = yamldecode(file("${var.root_path}/projects/module/aws/microservice/scraper-frontend/config.yml"))
-      backend  = yamldecode(file("${var.root_path}/projects/module/aws/microservice/scraper-backend/config.yml"))
+      frontend = {
+        microservice = yamldecode(templatefile("${var.root_path}/projects/module/aws/microservice/config.yml", {
+          name            = join("-", ["scraper-frontend", var.user_name, var.branch_name])
+          repository_name = join("-", ["scraper-frontend", var.branch_name])
+        }))
+        repository = yamldecode(templatefile("${var.root_path}/projects/module/aws/microservice/scraper-frontend/config.yml", {
+        }))
+      }
+      backend = {
+        microservice = yamldecode(templatefile("${var.root_path}/projects/module/aws/microservice/config.yml", {
+          name            = join("-", ["scraper-backend", var.user_name, var.branch_name])
+          repository_name = join("-", ["scraper-backend", var.branch_name])
+        }))
+        repository = yamldecode(templatefile("${var.root_path}/projects/module/aws/microservice/scraper-backend/config.yml", {
+          name                = join("-", ["scraper-backend", var.user_name, var.branch_name])
+          bucket_picture_name = "picture"
+        }))
+      }
     }
   }
 
-  microservice_config = yamldecode(file("${var.root_path}/projects/module/aws/microservice/config.yml"))
-
-  statements = flatten(concat(
-    [
-      for statement in local.microservice_config.statements : [
-        for sid, value in statement : {
-          sid        = title(sid)
-          actions    = try(value.actions, [])
-          effect     = try(value.effect, null)
-          resources  = try(value.resources, [])
-          conditions = try(value.conditions, [])
-        }
-      ]
-    ],
+  statements = flatten(
     [
       for project_name in var.project_names : [
-        for service_name, microservice_config in local.config[project_name] : [
-          for statement in microservice_config.statements : [
+        for service_name, configs in local.config[project_name] : [
+          for statement in concat(try(configs.microservice.statements, []), try(configs.repository.statements, [])) : [
             for sid, value in statement : {
               sid        = format("%s%s%s", title(project_name), title(service_name), title(sid))
               actions    = try(value.actions, [])
@@ -38,7 +41,7 @@ locals {
         ]
       ]
     ]
-  ))
+  )
 }
 
 data "aws_iam_policy_document" "check" {

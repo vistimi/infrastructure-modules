@@ -84,11 +84,6 @@ variable "microservice" {
             tag = string
           }))
         })
-        tmpfs = optional(object({
-          ContainerPath : optional(string),
-          MountOptions : optional(list(string)),
-          Size : number,
-        }))
         environment = optional(list(object({
           name : string
           value : string

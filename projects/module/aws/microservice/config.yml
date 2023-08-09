@@ -1,3 +1,4 @@
+bucket_env_name: "env"
 statements:
   - Microservice:
       actions:
@@ -26,8 +27,8 @@ statements:
       effect: "Allow"
       resources: ["*"]
   - Route53RecordsFull:
-      actions:
-        [
+      actions: [
+          # first trial
           "route53:ChangeResourceRecordSets",
           "route53:ListResourceRecordSets",
           "route53:GetHostedZone",
@@ -36,6 +37,8 @@ statements:
           "route53:ListHostedZonesByName",
           "route53:ListHostedZonesByVPC",
           "route53:ListTagsForResource",
+          # required
+          "route53:GetChange",
         ]
       effect: "Allow"
       resources: ["*"]
@@ -43,3 +46,25 @@ statements:
       actions: ["acm:*"]
       effect: "Allow"
       resources: ["*"]
+  - Env:
+      actions: ["s3:*"]
+      effect: "Allow"
+      resources: ["arn:aws:s3:::${name}-env"]
+  - EcrRead:
+      actions:
+        [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ]
+      effect: "Allow"
+      resources: ["arn:aws:ecr:*:*:repository/${repository_name}"]
+  - EcrPublicRead:
+      actions:
+        [
+          "ecr-public:GetAuthorizationToken",
+          "ecr-public:BatchCheckLayerAvailability",
+        ]
+      effect: "Allow"
+      resources: ["arn:aws:ecr-public:::repository/${repository_name}"]

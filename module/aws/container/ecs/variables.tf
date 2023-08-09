@@ -122,7 +122,6 @@ variable "log" {
   }
 }
 
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
 # inference_accelerators = optional(list(object({
 # deviceName = string
 # deviceType = string
@@ -158,11 +157,6 @@ variable "task_definition" {
         tag = string
       }))
     })
-    tmpfs = optional(object({
-      ContainerPath = optional(string)
-      MountOptions  = optional(list(string))
-      Size          = number
-    }), null)
     resource_requirements = optional(list(object({
       type  = string
       value = string

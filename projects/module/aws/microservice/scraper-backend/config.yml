@@ -1,32 +1,10 @@
 name: scraper-backend
 statements:
-  - Env:
-      actions: ["s3:*"]
-      effect: "Allow"
-      resources: ["arn:aws:s3:::scraper-backend*-env"]
-  - EcrRead:
-      actions:
-        [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-        ]
-      effect: "Allow"
-      resources: ["arn:aws:ecr:*:*:repository/scraper-backend*"]
-  - EcrPublicRead:
-      actions:
-        [
-          "ecr-public:GetAuthorizationToken",
-          "ecr-public:BatchCheckLayerAvailability",
-        ]
-      effect: "Allow"
-      resources: ["arn:aws:ecr-public:::repository/scraper-backend*"]
   - Pictures:
       actions: ["s3:*"]
       effect: "Allow"
-      resources: ["arn:aws:s3:::scraper-backend*-picture"]
+      resources: ["arn:aws:s3:::${name}-${bucket_picture_name}"]
   - Databases:
       actions: ["dynamodb:*"]
       effect: "Allow"
-      resources: ["arn:aws:dynamodb:*:*:table/scraper-backend*"]
+      resources: ["arn:aws:dynamodb:*:*:table/${name}*"]

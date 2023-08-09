@@ -169,7 +169,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 						"os_version":    "2",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
-						"key_name":      "local",
+						"key_name":      nil,
 						"use_spot":      false,
 						"asg": map[string]any{
 							"instance_refresh": map[string]any{
