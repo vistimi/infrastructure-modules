@@ -6,13 +6,23 @@ locals {
   account_id  = data.aws_caller_identity.current.account_id
 }
 
-module "group_project_statements" {
+module "group_user_project_statements" {
   source = "../../aws/iam/statements/project"
 
-  for_each = { for key, value in var.aws.groups : key => value if length(value.project_names) > 0 }
+  for_each = merge([
+    for key, value in var.aws.groups : merge([
+      for user in value.users : {
+        "${key}-${user.name}" = {
+          project_names = value.project_names
+          user_name     = user.name
+        }
+      }]...
+    ) if length(value.project_names) > 0
+  ]...)
 
   root_path     = "../../../.."
   project_names = each.value.project_names
+  user_name     = each.value.user_name
 }
 
 module "aws_level" {
@@ -22,8 +32,11 @@ module "aws_level" {
   groups = { for key, value in var.aws.groups : key => {
     force_destroy = value.force_destroy
     pw_length     = value.pw_length
-    users         = value.users
-    statements    = concat(value.statements, try(module.group_project_statements[key].statements, []))
+    users = [for user in value.users : merge(user, {
+      statements = concat(try(user.statements, []), try(module.group_user_project_statements["${key}-${user.name}"].statements, []))
+      })
+    ]
+    statements = value.statements
     }
   }
   statements                = var.aws.statements
