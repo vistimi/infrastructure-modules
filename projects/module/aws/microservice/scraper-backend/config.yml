@@ -1,5 +1,9 @@
 name: scraper-backend
 statements:
+  - Env:
+      actions: ["s3:*"]
+      effect: "Allow"
+      resources: ["arn:aws:s3:::scraper-backend*-env"]
   - EcrRead:
       actions:
         [
@@ -21,7 +25,7 @@ statements:
   - Pictures:
       actions: ["s3:*"]
       effect: "Allow"
-      resources: ["arn:aws:s3:::scraper-backend*"]
+      resources: ["arn:aws:s3:::scraper-backend*-picture"]
   - Databases:
       actions: ["dynamodb:*"]
       effect: "Allow"

@@ -27,7 +27,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	id := util.RandomID(8)
+	id := util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format(util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	commonTags := map[string]string{
 		"TestID":  id,

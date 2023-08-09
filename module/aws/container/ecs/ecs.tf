@@ -214,7 +214,7 @@ module "ecs" {
 
       # Task definition
       memory                   = var.task_definition.memory
-      cpu                      = null
+      cpu                      = var.task_definition.cpu
       family                   = var.name
       requires_compatibilities = var.service.deployment_type == "fargate" ? ["FARGATE"] : ["EC2"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
