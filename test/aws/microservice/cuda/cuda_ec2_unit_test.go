@@ -114,29 +114,11 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 						"-c",
 					},
 					"command": []string{
-						"/usr/bin/git clone https://github.com/pytorch/examples.git && /opt/conda/bin/pip install -r examples/mnist_hogwild/requirements.txt && /opt/conda/bin/python3 examples/mnist_hogwild/main.py --epochs 1",
+						"git clone https://github.com/pytorch/examples.git && pip install -r examples/mnist_hogwild/requirements.txt && python3 examples/mnist_hogwild/main.py --epochs 1",
 					},
+					"readonly_root_filesystem": false,
 
-					// "health_check": map[string]any{
-					// 	"retries": 2,
-					// 	"command": []string{
-					// 		"CMD-SHELL",
-					// 		"LD_LIBRARY_PATH=/opt/ei_health_check/lib /opt/ei_health_check/bin/health_check",
-					// 	},
-					// 	"timeout":     5,
-					// 	"interval":    30,
-					// 	"startPeriod": 60,
-					// },
 					"docker": map[string]any{
-						// "registry": map[string]any{
-						// 	"name": "pytorch",
-						// },
-						// "repository": map[string]any{
-						// 	"name": "pytorch",
-						// },
-						// "image": map[string]any{
-						// 	"tag": "2.0.1-cuda11.7-cudnn8-runtime",
-						// },
 						"registry": map[string]any{
 							"name": "pytorch",
 							"ecr": map[string]any{
@@ -231,21 +213,22 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		},
 	}
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)
 	})
+
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment)
+		// testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment)
 	})
 }

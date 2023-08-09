@@ -221,6 +221,7 @@ module "ecs" {
       network_mode = var.service.deployment_type == "fargate" ? "awsvpc" : "bridge" // "host" for single instance
 
       # Task definition container(s)
+      # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
         "${var.name}" = {
           name = var.name
@@ -242,7 +243,6 @@ module "ecs" {
             }
           ]
           # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-tmpfs.html#aws-properties-ecs-taskdefinition-tmpfs-properties
-          tmpfs              = var.task_definition.tmpfs
           memory             = var.task_definition.memory
           memory_reservation = var.task_definition.memory_reservation
           cpu                = var.task_definition.cpu
@@ -256,9 +256,15 @@ module "ecs" {
             }] : []
           )
 
-          command      = var.task_definition.command
-          entrypoint   = var.task_definition.entrypoint
-          health_check = var.task_definition.health_check
+
+          command                  = var.task_definition.command
+          entrypoint               = var.task_definition.entrypoint
+          health_check             = var.task_definition.health_check
+          readonly_root_filesystem = var.task_definition.readonly_root_filesystem
+          user                     = var.task_definition.user
+          volumes_from             = var.task_definition.volumes_from
+          working_directory        = var.task_definition.working_directory
+          mount_points             = var.task_definition.mount_points
 
           // fargate AMI
           runtime_platform = var.service.deployment_type == "fargate" ? {

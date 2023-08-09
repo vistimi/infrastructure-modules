@@ -83,11 +83,6 @@ variable "ecs" {
           tag = string
         }))
       })
-      tmpfs = optional(object({
-        ContainerPath = optional(string)
-        MountOptions  = optional(list(string))
-        Size          = number
-      }))
       environment = optional(list(object({
         name  = string
         value = string
@@ -96,9 +91,14 @@ variable "ecs" {
         type  = string
         value = string
       })))
-      command      = optional(list(string))
-      entrypoint   = optional(list(string))
-      health_check = optional(any)
+      command                  = optional(list(string), [])
+      entrypoint               = optional(list(string), [])
+      health_check             = optional(any, {})
+      readonly_root_filesystem = optional(bool)
+      user                     = optional(string)
+      volumes_from             = optional(list(any))
+      working_directory        = optional(string)
+      mount_points             = optional(list(any))
     })
     fargate = optional(object({
       os           = string

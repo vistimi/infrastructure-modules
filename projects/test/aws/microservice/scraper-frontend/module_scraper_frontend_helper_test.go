@@ -101,16 +101,7 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 				"tag": GithubProject.ImageTag,
 			},
 		},
-		"tmpfs": map[string]any{
-			"ContainerPath": "/run/npm",
-			"Size":          1024,
-		},
-		"environment": []map[string]any{
-			{
-				"name":  "TMPFS_NPM",
-				"value": "/run/npm",
-			},
-		},
+		"readonly_root_filesystem": false,
 	})
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
 		"file_key":  envKey,

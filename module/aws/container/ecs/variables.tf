@@ -167,9 +167,14 @@ variable "task_definition" {
       type  = string
       value = string
     })), [])
-    command      = optional(list(string), [])
-    entrypoint   = optional(list(string), [])
-    health_check = optional(any, {})
+    command                  = optional(list(string), [])
+    entrypoint               = optional(list(string), [])
+    health_check             = optional(any, {})
+    readonly_root_filesystem = optional(bool)
+    user                     = optional(string)
+    volumes_from             = optional(list(any), [])
+    working_directory        = optional(string)
+    mount_points             = optional(list(any), [])
   })
 
   validation {
