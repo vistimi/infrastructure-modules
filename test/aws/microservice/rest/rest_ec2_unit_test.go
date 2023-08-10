@@ -81,7 +81,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	}
 
 	instance := testAwsModule.G4dnXlarge
-	// keySpot := "spot"
+	keySpot := "spot"
 	keyOnDemand := "on-demand"
 
 	traffics := []map[string]any{}
@@ -142,33 +142,33 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 				},
 
 				"ec2": map[string]map[string]any{
-					// keySpot: {
-					// 	"os":            "linux",
-					// 	"os_version":    "2",
-					// 	"architecture":  instance.Architecture,
-					// 	"instance_type": instance.Name,
-					// 	"key_name":      nil,
-					// 	"use_spot":      true,
-					// 	"asg": map[string]any{
-					// 		"instance_refresh": map[string]any{
-					// 			"strategy": "Rolling",
-					// 			"preferences": map[string]any{
-					// 				"checkpoint_delay":       600,
-					// 				"checkpoint_percentages": []int{35, 70, 100},
-					// 				"instance_warmup":        300,
-					// 				"min_healthy_percentage": 80,
-					// 			},
-					// 			"triggers": []string{"tag"},
-					// 		},
-					// 	},
-					// 	"capacity_provider": map[string]any{
-					// 		"base":                        nil, // no preferred instance amount
-					// 		"weight":                      50,  // 50% chance
-					// 		"target_capacity_cpu_percent": 70,
-					// 		"maximum_scaling_step_size":   1,
-					// 		"minimum_scaling_step_size":   1,
-					// 	},
-					// },
+					keySpot: {
+						"os":            "linux",
+						"os_version":    "2",
+						"architecture":  instance.Architecture,
+						"instance_type": instance.Name,
+						"key_name":      nil,
+						"use_spot":      true,
+						"asg": map[string]any{
+							"instance_refresh": map[string]any{
+								"strategy": "Rolling",
+								"preferences": map[string]any{
+									"checkpoint_delay":       600,
+									"checkpoint_percentages": []int{35, 70, 100},
+									"instance_warmup":        300,
+									"min_healthy_percentage": 80,
+								},
+								"triggers": []string{"tag"},
+							},
+						},
+						"capacity_provider": map[string]any{
+							"base":                        nil, // no preferred instance amount
+							"weight":                      50,  // 50% chance
+							"target_capacity_cpu_percent": 70,
+							"maximum_scaling_step_size":   1,
+							"minimum_scaling_step_size":   1,
+						},
+					},
 					keyOnDemand: {
 						"os":            "linux",
 						"os_version":    "2",
@@ -201,8 +201,8 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
 					"task_min_count":                     0,
-					"task_desired_count":                 1,
-					"task_max_count":                     1,
+					"task_desired_count":                 3,
+					"task_max_count":                     3,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required
 					"deployment_circuit_breaker": map[string]any{
 						"enable":   true,  // service deployment fail if no steady state

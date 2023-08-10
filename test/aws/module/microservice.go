@@ -97,60 +97,68 @@ type Traffic struct {
 	Target   TrafficPoint
 }
 
-func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, modulePath string) {
+func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, traffics []Traffic, modulePath string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
 		ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
 
-		// test Load Balancer HTTP
-		elb := extractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
-		if elb != nil {
-			elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
-			elbDnsUrl = "http://" + elbDnsUrl
-			fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
+		for _, traffic := range traffics {
+			port := -1
+			if traffic.Listener.Protocol == "http" {
+				port = util.Value(traffic.Listener.Port, 80)
+			} else if traffic.Listener.Protocol == "https" {
+				port = util.Value(traffic.Listener.Port, 443)
+			}
+			// test Load Balancer HTTP
+			elb := extractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
+			if elb != nil {
+				elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
+				elbDnsUrl = fmt.Sprintf("http://%s:%d", elbDnsUrl, port)
+				fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
 
-			// add dns to endpoints
-			endpointsLoadBalancer := []EndpointTest{}
-			for _, endpoint := range deployment.Endpoints {
-				endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
-					Path:                elbDnsUrl + endpoint.Path,
-					ExpectedStatus:      endpoint.ExpectedStatus,
-					ExpectedBody:        endpoint.ExpectedBody,
-					MaxRetries:          endpoint.MaxRetries,
-					SleepBetweenRetries: endpoint.SleepBetweenRetries,
+				// add dns to endpoints
+				endpointsLoadBalancer := []EndpointTest{}
+				for _, endpoint := range deployment.Endpoints {
+					endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
+						Path:                elbDnsUrl + endpoint.Path,
+						ExpectedStatus:      endpoint.ExpectedStatus,
+						ExpectedBody:        endpoint.ExpectedBody,
+						MaxRetries:          endpoint.MaxRetries,
+						SleepBetweenRetries: endpoint.SleepBetweenRetries,
+					})
+				}
+
+				terratestStructure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
+					TestRestEndpoints(t, endpointsLoadBalancer)
 				})
 			}
 
-			terratestStructure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
-				TestRestEndpoints(t, endpointsLoadBalancer)
-			})
-		}
+			// TODO: add HTTPS
 
-		// TODO: add HTTPS
+			// test Route53
+			route53 := extractFromState(t, microservicePath, "microservice.route53")
+			if route53 != nil {
+				zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
+				recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
+				route53DnsUrl := fmt.Sprintf("%s.%s:%d", recordSubdomainName, zoneName, port)
+				fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
 
-		// test Route53
-		route53 := extractFromState(t, microservicePath, "microservice.route53")
-		if route53 != nil {
-			zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
-			recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
-			route53DnsUrl := recordSubdomainName + "." + zoneName
-			fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
+				// add dns to endpoints
+				endpointsRoute53 := []EndpointTest{}
+				for _, endpoint := range deployment.Endpoints {
+					endpointsRoute53 = append(endpointsRoute53, EndpointTest{
+						Path:                route53DnsUrl + endpoint.Path,
+						ExpectedStatus:      endpoint.ExpectedStatus,
+						ExpectedBody:        endpoint.ExpectedBody,
+						MaxRetries:          endpoint.MaxRetries,
+						SleepBetweenRetries: endpoint.SleepBetweenRetries,
+					})
+				}
 
-			// add dns to endpoints
-			endpointsRoute53 := []EndpointTest{}
-			for _, endpoint := range deployment.Endpoints {
-				endpointsRoute53 = append(endpointsRoute53, EndpointTest{
-					Path:                route53DnsUrl + endpoint.Path,
-					ExpectedStatus:      endpoint.ExpectedStatus,
-					ExpectedBody:        endpoint.ExpectedBody,
-					MaxRetries:          endpoint.MaxRetries,
-					SleepBetweenRetries: endpoint.SleepBetweenRetries,
+				terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
+					TestRestEndpoints(t, endpointsRoute53)
 				})
 			}
-
-			terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
-				TestRestEndpoints(t, endpointsRoute53)
-			})
 		}
 	})
 }

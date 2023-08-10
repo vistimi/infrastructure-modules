@@ -10,12 +10,16 @@ locals {
     x86_64 = "X86_64"
   }
 
-  ecr_repository_account_id  = coalesce(try(var.task_definition.docker.registry.ecr.account_id, ""), local.account_id)
-  ecr_repository_region_name = try((var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"), "")
+  ecr_repository_account_id = coalesce(try(var.task_definition.docker.registry.ecr.account_id, null), local.account_id)
+  ecr_repository_region_name = try(
+    (var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"),
+    null
+  )
 
   docker_registry_name = try(
     var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
-    var.task_definition.docker.registry.name
+    var.task_definition.docker.registry.name,
+    null
   )
 }
 
@@ -179,7 +183,7 @@ module "ecs" {
             resources = ["arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}/*"],
           },
         }, {}),
-        var.task_definition.docker.registry.ecr != null ? {
+        try(var.task_definition.docker.registry.ecr != null, false) ? {
           ecr = {
             actions = [
               "ecr:GetAuthorizationToken",
@@ -274,10 +278,10 @@ module "ecs" {
             "cpuArchitecture"       = local.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image = join("/", [
+          image = join("/", compact([
             local.docker_registry_name,
             join(":", compact([var.task_definition.docker.repository.name, try(var.task_definition.docker.image.tag, "")]))
-          ])
+          ]))
 
           essential = true
         }
