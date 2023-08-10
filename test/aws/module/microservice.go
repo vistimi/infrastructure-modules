@@ -4,8 +4,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,13 +87,23 @@ type DeploymentTest struct {
 	Endpoints           []EndpointTest
 }
 
-func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest) {
+type TrafficPoint struct {
+	Port     *int
+	Protocol string
+}
+
+type Traffic struct {
+	Listener TrafficPoint
+	Target   TrafficPoint
+}
+
+func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, modulePath string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
 		ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
 
 		// test Load Balancer HTTP
-		elb := microserviceExtractElb(t, microservicePath)
+		elb := extractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
 		if elb != nil {
 			elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
 			elbDnsUrl = "http://" + elbDnsUrl
@@ -115,10 +126,10 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, de
 			})
 		}
 
-		// TODO: add HTTPS if no timeout from ACM
+		// TODO: add HTTPS
 
 		// test Route53
-		route53 := microserviceExtractRoute53(t, microservicePath)
+		route53 := extractFromState(t, microservicePath, "microservice.route53")
 		if route53 != nil {
 			zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
 			recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
@@ -189,27 +200,27 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 	}
 }
 
-func microserviceExtractElb(t *testing.T, microservicePath string) any {
-	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
+func extractFromState(t *testing.T, microservicePath, statePath string) any {
 	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	var result map[string]any
 	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"]
-}
+	result = result["outputs"].(map[string]any)
 
-func microserviceExtractRoute53(t *testing.T, microservicePath string) any {
-	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
-	if err != nil {
-		t.Fatal(err)
+	stateFields := strings.Split(statePath, ".")
+	if len(stateFields) > 1 {
+		for i := 0; i < len(stateFields)-1; i++ {
+			value := stateFields[i]
+			if result[value] == nil {
+				result = result["value"].(map[string]any)
+				continue
+			}
+			result = result[value].(map[string]any)
+		}
 	}
-	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var result map[string]any
-	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["route53"]
+	return result[stateFields[len(stateFields)-1]]
 }

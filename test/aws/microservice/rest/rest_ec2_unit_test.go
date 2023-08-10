@@ -34,30 +34,37 @@ var (
 				Protocol: "http",
 			},
 			Target: testAwsModule.TrafficPoint{
-				Port:     util.Ptr(3000),
+				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
 		},
-		// {
-		// 	Listener: testAwsModule.TrafficPoint{
-		// 		Port:     util.Ptr(443),
-		// 		Protocol: "https",
-		// 	},
-		// 	Target: testAwsModule.TrafficPoint{
-		// 		Port:     util.Ptr(3000),
-		// 		Protocol: "https",
-		// 	},
-		// },
+		{
+			Listener: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(81),
+				Protocol: "http",
+			},
+			Target: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(80),
+				Protocol: "http",
+			},
+		},
 	}
 
 	Deployment = testAwsModule.DeploymentTest{
-		MaxRetries: aws.Int(20),
+		MaxRetries: aws.Int(5),
+		Endpoints: []testAwsModule.EndpointTest{
+			{
+				Path:           "/",
+				ExpectedStatus: 200,
+				MaxRetries:     aws.Int(3),
+			},
+		},
 	}
 )
 
 // https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
-func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
+func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	t.Parallel()
 
 	rand.Seed(time.Now().UnixNano())
@@ -120,24 +127,16 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 						"-c",
 					},
 					"command": []string{
-						"git clone https://github.com/pytorch/examples.git && pip install -r examples/mnist_hogwild/requirements.txt && python3 examples/mnist_hogwild/main.py --epochs 1",
+						"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost",
 					},
 					"readonly_root_filesystem": false,
 
 					"docker": map[string]any{
-						"registry": map[string]any{
-							"name": "pytorch",
-							"ecr": map[string]any{
-								"privacy":     "private",
-								"account_id":  "763104351884",
-								"region_name": "us-east-1",
-							},
-						},
 						"repository": map[string]any{
-							"name": "pytorch-training",
+							"name": "ubuntu",
 						},
 						"image": map[string]any{
-							"tag": "1.8.1-gpu-py36-cu111-ubuntu18.04-v1.7",
+							"tag": "latest",
 						},
 					},
 				},

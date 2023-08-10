@@ -32,7 +32,7 @@ func ValidateGroup(t *testing.T, accountRegion, prefixName string, group GroupIn
 			accessRoleNames := group.ExternalAssumeRoles
 
 			for _, accessRoleName := range accessRoleNames {
-				groupName := util.Format(prefixName, group.Name, accessRoleName)
+				groupName := util.Format("-", prefixName, group.Name, accessRoleName)
 				groupRoleArn := TestRole(t, accountRegion, groupName)
 				if groupRoleArn == nil {
 					t.Fatalf("no groupRoleArn for groupName: %s", groupName)
@@ -42,14 +42,14 @@ func ValidateGroup(t *testing.T, accountRegion, prefixName string, group GroupIn
 
 		terratestStructure.RunTestStage(t, "validate_group_permissions", func() {
 			userNames := util.Reduce(group.Users, func(resource map[string]any) string { return resource["name"].(string) })
-			groupName := util.Format(prefixName, group.Name)
+			groupName := util.Format("-", prefixName, group.Name)
 			groupArn := TestGroup(t, accountRegion, groupName, userNames)
 			if groupArn == nil {
 				t.Fatalf("no groupArn for groupName: %s", groupName)
 			}
 
 			for _, userName := range userNames {
-				// userName := util.Format(groupName, userName)
+				// userName := util.Format("-",groupName, userName)
 				userArn := TestUser(t, accountRegion, userName)
 				if userArn == nil {
 					t.Fatalf("no userArn for userName: %s", userName)
@@ -112,7 +112,7 @@ func TestRole(t *testing.T, accountRegion, roleName string) *string {
 	}
 
 	terratestLogger.Log(t, "role:: "+roleName)
-	role, err := iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(util.Format(roleName))})
+	role, err := iamClient.GetRole(&iam.GetRoleInput{RoleName: aws.String(util.Format("-", roleName))})
 	if err != nil {
 		t.Fatal(err)
 	}

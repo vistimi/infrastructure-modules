@@ -69,7 +69,7 @@ variable "microservice" {
         memory_reservation = optional(number)
         cpu                = number
         docker = object({
-          registry = object({
+          registry = optional(object({
             name = optional(string)
             ecr = optional(object({
               privacy      = string
@@ -77,7 +77,7 @@ variable "microservice" {
               account_id   = optional(string)
               region_name  = optional(string)
             }))
-          })
+          }))
           repository = object({
             name = string
           })
