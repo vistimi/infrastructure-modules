@@ -235,6 +235,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment, "")
+		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment, Traffic, "")
 	})
 }

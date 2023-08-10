@@ -234,6 +234,6 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment, "")
+		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment, Traffic, "")
 	})
 }
