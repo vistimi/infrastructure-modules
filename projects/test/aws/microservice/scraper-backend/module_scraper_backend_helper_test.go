@@ -135,6 +135,17 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 					// "protocol_version":  targetProtocolVersion,
 					"health_check_path": GithubProject.HealthCheckPath,
 				},
+				"base": true,
+			},
+			{
+				"listener": map[string]any{
+					"port":     81,
+					"protocol": listenerHttpProtocol,
+				},
+				"target": map[string]any{
+					"port":     targetPort,
+					"protocol": targetProtocol,
+				},
 			},
 		},
 	})

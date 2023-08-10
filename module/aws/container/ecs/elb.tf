@@ -12,28 +12,6 @@ locals {
     http2 = "HTTP2"
     grpc  = "GRPC"
   }
-
-  traffics = [for traffic in var.traffics : {
-    listener = {
-      protocol = traffic.listener.protocol
-      port = coalesce(
-        traffic.listener.port,
-        traffic.listener.protocol == "http" ? 80 : null,
-        traffic.listener.protocol == "https" ? 443 : null,
-      )
-      protocol_version = traffic.listener.protocol_version
-    }
-    target = {
-      protocol         = traffic.target.protocol
-      port             = traffic.target.port
-      protocol_version = traffic.target.protocol_version
-      health_check_path = coalesce(
-        traffic.target.health_check_path,
-        "/",
-      )
-    }
-    base = traffic.base
-  }]
 }
 
 # -----------------
@@ -105,7 +83,7 @@ module "route53_records" {
 }
 
 locals {
-  traffic_base = one([for traffic in local.traffics : traffic if traffic.base == true || length(local.traffics) == 1])
+  traffic_base = element([for traffic in local.traffics : traffic if traffic.base == true || length(local.traffics) == 1], 0)
   load_balancer_types = {
     http    = "application"
     https   = "application"
@@ -185,13 +163,16 @@ module "elb_sg" {
   vpc_id      = var.vpc.id
 
   ingress_with_cidr_blocks = [
-    for traffic in local.traffics : {
-      from_port   = traffic.listener.port
-      to_port     = traffic.listener.port
-      protocol    = "tcp"
-      description = "Listner port ${traffic.listener.port}"
+    for listener in distinct([for traffic in local.traffics : {
+      port     = traffic.listener.port
+      protocol = traffic.listener.protocol
+      }]) : {
+      from_port   = listener.port
+      to_port     = listener.port
+      protocol    = local.aws_security_group_rule_protocols[listener.protocol]
+      description = "listener port ${local.aws_security_group_rule_protocols[listener.protocol]} ${listener.port}"
       cidr_blocks = "0.0.0.0/0"
-    } if traffic.listener.protocol == "http" || (traffic.listener.protocol == "https" && var.route53 != null)
+    } if listener.protocol == "http" || (listener.protocol == "https" && var.route53 != null)
   ]
   egress_rules = ["all-all"]
   # egress_cidr_blocks = module.vpc.subnets_cidr_blocks

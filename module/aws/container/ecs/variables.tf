@@ -64,8 +64,12 @@ variable "traffics" {
   }
 
   validation {
-    condition     = length([for traffic in var.traffics : traffic.base if traffic.base != null]) <= 1
-    error_message = "traffic must at most one base"
+    condition     = length([for traffic in var.traffics : traffic.base if traffic.base == true || length(var.traffics) == 1]) == 1
+    error_message = "traffics must have exactly one base or only one element (base not required)"
+  }
+  validation {
+    condition     = length(distinct([for traffic in var.traffics : { listener = traffic.listener, target = traffic.target }])) == length(var.traffics)
+    error_message = "traffics elements cannot be similar"
   }
 }
 
@@ -73,7 +77,7 @@ resource "null_resource" "listener" {
 
   for_each = {
     for traffic in var.traffics :
-    join("-", compact([traffic.listener.protocol, traffic.listener.port])) => traffic.listener
+    join("-", compact([traffic.listener.protocol, traffic.listener.port, traffic.target.protocol, traffic.target.port])) => traffic.listener
   }
 
   lifecycle {
@@ -92,7 +96,7 @@ resource "null_resource" "target" {
 
   for_each = {
     for traffic in var.traffics :
-    join("-", compact([traffic.target.protocol, traffic.target.port])) => traffic.target
+    join("-", compact([traffic.listener.protocol, traffic.listener.port, traffic.target.protocol, traffic.target.port])) => traffic.target
   }
 
   lifecycle {

@@ -300,12 +300,15 @@ module "autoscaling_sg" {
 
 
   // only accept incoming traffic from load balancer
-  computed_ingress_with_source_security_group_id = [for traffic in var.traffics : {
+  computed_ingress_with_source_security_group_id = [for target in distinct([for traffic in local.traffics : {
+    port     = traffic.target.port
+    protocol = traffic.target.protocol
+    }]) : {
     // dynamic port mapping requires all the ports open
-    from_port                = var.service.deployment_type == "fargate" ? traffic.target.port : 32768
-    to_port                  = var.service.deployment_type == "fargate" ? traffic.target.port : 65535
-    protocol                 = "tcp"
-    description              = "Load Balancer ports"
+    from_port                = var.service.deployment_type == "fargate" ? target.port : 32768
+    to_port                  = var.service.deployment_type == "fargate" ? target.port : 65535
+    protocol                 = local.aws_security_group_rule_protocols[target.protocol]
+    description              = join(" ", ["Load", "Balancer", target.protocol, var.service.deployment_type == "fargate" ? target.port : 32768, "-", var.service.deployment_type == "fargate" ? target.port : 65535])
     source_security_group_id = module.elb_sg.security_group_id
     }
   ]

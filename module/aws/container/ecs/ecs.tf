@@ -26,10 +26,6 @@ resource "aws_cloudwatch_log_group" "cluster" {
   tags = var.tags
 }
 
-locals {
-  elb_port = element([for traffic in var.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
-}
-
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
@@ -106,30 +102,36 @@ module "ecs" {
         service = {
           target_group_arn = element(module.elb.target_group_arns, 0) // one LB per target group
           container_name   = var.name
-          container_port   = local.elb_port
+          container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
       }
 
       # security group
       subnet_ids = local.subnets
-      security_group_rules = {
-        elb_ingress = {
-          type                     = "ingress"
-          from_port                = local.elb_port
-          to_port                  = local.elb_port
-          protocol                 = "tcp"
-          description              = "Service port"
-          source_security_group_id = module.elb_sg.security_group_id
-        }
-        egress_all = {
-          type        = "egress"
-          from_port   = 0
-          to_port     = 0
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
-          description = "Allow all traffic"
-        }
-      }
+      security_group_rules = merge(
+        {
+          for target in distinct([for traffic in local.traffics : {
+            port     = traffic.target.port
+            protocol = traffic.target.protocol
+            }]) : join("-", ["elb", "ingress", target.protocol, target.port]) => {
+            type                     = "ingress"
+            from_port                = target.port
+            to_port                  = target.port
+            protocol                 = target.protocol
+            description              = "Service ${target.protocol} port ${target.port}"
+            source_security_group_id = module.elb_sg.security_group_id
+          }
+        },
+        {
+          egress_all = {
+            type        = "egress"
+            from_port   = 0
+            to_port     = 0
+            protocol    = "-1"
+            cidr_blocks = ["0.0.0.0/0"]
+            description = "Allow all traffic"
+          }
+      })
 
       #---------------------
       # Task definition
@@ -233,13 +235,14 @@ module "ecs" {
           environment = var.task_definition.environment,
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
-          port_mappings = [
-            // TODO: add all traffics ports
-            {
-              containerPort = local.elb_port
-              hostPort      = var.service.deployment_type == "fargate" ? local.elb_port : 0 // "host" network can use target port 
-              name          = "container-port"
-              protocol      = "tcp"
+          port_mappings = [for target in distinct([for traffic in local.traffics : {
+            port     = traffic.target.port
+            protocol = traffic.target.protocol
+            }]) : {
+            containerPort = target.port
+            hostPort      = var.service.deployment_type == "fargate" ? target.port : 0 // "host" network can use target port 
+            name          = join("-", ["container", target.protocol, target.port])
+            protocol      = target.protocol
             }
           ]
           memory             = var.task_definition.memory
