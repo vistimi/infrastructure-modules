@@ -233,7 +233,15 @@ jobs:
 
             docker buildx inspect multiarch --bootstrap
 
-            docker buildx build --push --builder multiarch --platform $PLATFORMS -t $ECR_REPOSITORY_URI:${IMAGE_TAG:0:8} -t $ECR_REPOSITORY_URI:latest -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
+            BUILD_TAGS=""
+            while read tag; do
+              if [[ -n "$tag" ]]; then
+                BUILD_TAGS="$BUILD_TAGS -t $ECR_REPOSITORY_URI:$tag"
+              fi
+            done <<< "$(jq -rc '.[]?' <<< "$DOCKERFILE_TAGS")"
+            echo BUILD_TAGS:: $BUILD_TAGS
+
+            docker buildx build --push --builder multiarch --platform $PLATFORMS $BUILD_TAGS -f $DOCKERFILE_PATH $DOCKERFILE_ARGS .
             aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME
             docker manifest inspect $ECR_REPOSITORY_URI
           }
@@ -284,6 +292,13 @@ jobs:
 
             DOCKERFILE_PATH=$(jq -r '.path' <<< "$dockerfile")
             echo "DOCKERFILE_PATH:: $DOCKERFILE_PATH"
+
+            DOCKERFILE_TAGS=[\"latest\",\"${IMAGE_TAG:0:8}\"]
+            tags=$(jq -r '.tags' <<< "$dockerfile")
+            if [[ -n "$tags" && $tags != null ]]; then
+              DOCKERFILE_TAGS=$tags
+            fi
+            echo DOCKERFILE_TAGS:: $DOCKERFILE_TAGS
 
             # repository extension name
             extension=$(jq -r '.extension' <<< "$dockerfile")
