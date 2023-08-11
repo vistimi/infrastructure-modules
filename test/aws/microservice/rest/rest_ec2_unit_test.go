@@ -37,6 +37,7 @@ var (
 				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
+			Base: util.Ptr(true),
 		},
 		{
 			Listener: testAwsModule.TrafficPoint{
@@ -80,7 +81,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 		"Service": serviceName,
 	}
 
-	instance := testAwsModule.G4dnXlarge
+	instance := testAwsModule.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
 
@@ -88,16 +89,17 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	for _, traffic := range Traffic {
 		traffics = append(traffics, map[string]any{
 			"listener": map[string]any{
-				"port":     traffic.Listener.Port,
+				"port":     util.Value(traffic.Listener.Port, 80),
 				"protocol": traffic.Listener.Protocol,
 				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     traffic.Target.Port,
+				"port":     util.Value(traffic.Target.Port, 80),
 				"protocol": traffic.Target.Protocol,
 				// "protocol_version":  targetProtocolVersion,
 				"health_check_path": "/",
 			},
+			"base": util.Value(traffic.Base),
 		})
 	}
 	options := &terraform.Options{
@@ -118,16 +120,16 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 					"prefix":         "ecs",
 				},
 				"task_definition": map[string]any{
-					"gpu":    aws.IntValue(instance.Gpu),
-					"cpu":    instance.Cpu,
-					"memory": instance.MemoryAllowed,
+					"cpu":                instance.Cpu,
+					"memory":             instance.MemoryAllowed,
+					"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
 
 					"entrypoint": []string{
 						"/bin/bash",
 						"-c",
 					},
 					"command": []string{
-						"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost",
+						"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost; sleep infinity",
 					},
 					"readonly_root_filesystem": false,
 
@@ -144,7 +146,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 				"ec2": map[string]map[string]any{
 					keySpot: {
 						"os":            "linux",
-						"os_version":    "2",
+						"os_version":    "2023",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
 						"key_name":      nil,
@@ -171,7 +173,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 					},
 					keyOnDemand: {
 						"os":            "linux",
-						"os_version":    "2",
+						"os_version":    "2023",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
 						"key_name":      nil,

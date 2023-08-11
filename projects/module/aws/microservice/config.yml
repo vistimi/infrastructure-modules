@@ -49,11 +49,17 @@ statements:
   - Env:
       actions: ["s3:*"]
       effect: "Allow"
-      resources: ["arn:aws:s3:::${name}-env"]
+      resources:
+        [
+          "arn:aws:s3:::${project_name}-${service_name}-${user_name}-${branch_name}-${bucket_env_name}",
+        ]
   - EnvObject:
       actions: ["s3:*"]
       effect: "Allow"
-      resources: ["arn:aws:s3:::${name}-env/*"]
+      resources:
+        [
+          "arn:aws:s3:::${project_name}-${service_name}-${user_name}-${branch_name}-env/*",
+        ]
   - EcrRead:
       actions:
         [
@@ -63,7 +69,10 @@ statements:
           "ecr:BatchGetImage",
         ]
       effect: "Allow"
-      resources: ["arn:aws:ecr:*:*:repository/${repository_name}"]
+      resources:
+        [
+          "arn:aws:ecr:*:*:repository/${project_name}-${service_name}-${branch_name}",
+        ]
   - EcrPublicRead:
       actions:
         [
@@ -71,4 +80,7 @@ statements:
           "ecr-public:BatchCheckLayerAvailability",
         ]
       effect: "Allow"
-      resources: ["arn:aws:ecr-public:::repository/${repository_name}"]
+      resources:
+        [
+          "arn:aws:ecr-public:::repository/${project_name}-${service_name}-${branch_name}",
+        ]

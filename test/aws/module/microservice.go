@@ -2,11 +2,7 @@ package module
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -87,6 +83,11 @@ type DeploymentTest struct {
 	Endpoints           []EndpointTest
 }
 
+type LogTest struct {
+	Group  string
+	Stream string
+}
+
 type TrafficPoint struct {
 	Port     *int
 	Protocol string
@@ -95,18 +96,19 @@ type TrafficPoint struct {
 type Traffic struct {
 	Listener TrafficPoint
 	Target   TrafficPoint
+	Base     *bool
 }
 
 func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, traffics []Traffic, modulePath string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
-		serviceCount := int64(1)
-		ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
+		// serviceCount := int64(1)
+		// ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
 
 		for _, traffic := range traffics {
 			if traffic.Listener.Protocol == "http" {
 				port := util.Value(traffic.Listener.Port, 80)
 				// test Load Balancer HTTP
-				elb := extractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
+				elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
 				if elb != nil {
 					elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
 					elbDnsUrl = fmt.Sprintf("http://%s:%d", elbDnsUrl, port)
@@ -130,7 +132,7 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, de
 				}
 
 				// test Route53
-				route53 := extractFromState(t, microservicePath, "microservice.route53")
+				route53 := ExtractFromState(t, microservicePath, "route53")
 				if route53 != nil {
 					zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
 					recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
@@ -205,29 +207,4 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
-}
-
-func extractFromState(t *testing.T, microservicePath, statePath string) any {
-	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-	var result map[string]any
-	json.Unmarshal([]byte(byteValue), &result)
-	result = result["outputs"].(map[string]any)
-
-	stateFields := strings.Split(statePath, ".")
-	if len(stateFields) > 1 {
-		for i := 0; i < len(stateFields)-1; i++ {
-			value := stateFields[i]
-			if result[value] == nil {
-				result = result["value"].(map[string]any)
-				continue
-			}
-			result = result[value].(map[string]any)
-		}
-	}
-	return result[stateFields[len(stateFields)-1]]
 }

@@ -49,7 +49,7 @@ var (
 		// 	},
 		// 	Target: testAwsModule.TrafficPoint{
 		// 		Port:     util.Ptr(3000),
-		// 		Protocol: "https",
+		// 		Protocol: "hTargetttps",
 		// 	},
 		// },
 	}
@@ -86,16 +86,17 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 	for _, traffic := range Traffic {
 		traffics = append(traffics, map[string]any{
 			"listener": map[string]any{
-				"port":     traffic.Listener.Port,
+				"port":     util.Value(traffic.Listener.Port),
 				"protocol": traffic.Listener.Protocol,
 				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     traffic.Target.Port,
+				"port":     util.Value(traffic.Target.Port),
 				"protocol": traffic.Target.Protocol,
 				// "protocol_version":  targetProtocolVersion,
 				"health_check_path": GithubProject.HealthCheckPath,
 			},
+			"base": util.Value(traffic.Base),
 		})
 	}
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{

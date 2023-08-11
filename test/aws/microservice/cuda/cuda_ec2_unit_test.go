@@ -81,16 +81,17 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	for _, traffic := range Traffic {
 		traffics = append(traffics, map[string]any{
 			"listener": map[string]any{
-				"port":     traffic.Listener.Port,
+				"port":     util.Value(traffic.Listener.Port),
 				"protocol": traffic.Listener.Protocol,
 				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     traffic.Target.Port,
+				"port":     util.Value(traffic.Target.Port),
 				"protocol": traffic.Target.Protocol,
 				// "protocol_version":  targetProtocolVersion,
 				"health_check_path": "/",
 			},
+			"base": util.Value(traffic.Base),
 		})
 	}
 	options := &terraform.Options{
@@ -126,7 +127,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 					"docker": map[string]any{
 						"registry": map[string]any{
-							"name": "pytorch",
 							"ecr": map[string]any{
 								"privacy":     "private",
 								"account_id":  "763104351884",

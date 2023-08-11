@@ -23,11 +23,8 @@ locals {
   )
 }
 
-resource "aws_cloudwatch_log_group" "cluster" {
-  name              = join("/", [var.log.prefix, var.name])
-  retention_in_days = var.log.retention_days
-
-  tags = var.tags
+locals {
+  log_steam_name = "test"
 }
 
 module "ecs" {
@@ -36,18 +33,18 @@ module "ecs" {
 
   cluster_name = var.name
 
-  create_cloudwatch_log_group = false
+  # create_cloudwatch_log_group            = true
   # cloudwatch_log_group_retention_in_days = var.log.retention_days
-
-  cluster_configuration = {
-    execute_command_configuration = {
-      logging = "OVERRIDE"
-      log_configuration = {
-        cloud_watch_encryption_enabled = true
-        cloud_watch_log_group_name     = aws_cloudwatch_log_group.cluster.name
-      }
-    }
-  }
+  # cloudwatch_log_group_tags              = var.tags
+  # cluster_configuration = {
+  #   execute_command_configuration = {
+  #     logging = "OVERRIDE"
+  #     log_configuration = {
+  #       cloud_watch_encryption_enabled = true
+  #       # cloud_watch_log_group_name     = local.log_steam_name
+  #     }
+  #   }
+  # }
 
   # capacity providers
   default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
@@ -162,14 +159,14 @@ module "ecs" {
             effect    = "Allow"
             resources = ["*"],
           },
-          log-group = {
-            actions = [
-              "logs:CreateLogStream",
-              "logs:PutLogEvents",
-            ]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
-          },
+          # log-group = {
+          #   actions = [
+          #     "logs:CreateLogStream",
+          #     "logs:PutLogEvents",
+          #   ]
+          #   effect    = "Allow"
+          #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}"],
+          # },
         },
         try({
           bucket-env = {
@@ -209,13 +206,13 @@ module "ecs" {
           effect    = "Allow"
           resources = ["*"],
         },
-        log-stream = {
-          actions = [
-            "logs:PutLogEvents",
-          ]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}:log-stream:*"],
-        },
+        # log-stream = {
+        #   actions = [
+        #     "logs:PutLogEvents",
+        #   ]
+        #   effect    = "Allow"
+        #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}:log-stream:*"],
+        # },
       }
 
       # Task definition
