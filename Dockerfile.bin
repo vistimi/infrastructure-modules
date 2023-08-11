@@ -51,6 +51,7 @@ RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 #     && mv inframap /usr/local/bin/inframap  \
 #     && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
 
+
 #-------------------------
 #    RUNNER
 #-------------------------
@@ -68,15 +69,6 @@ ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 RUN mkdir -p $GOPATH/src $GOPATH/bin && chmod -R 777 $GOPATH
 WORKDIR $GOPATH
 RUN go version
-
-# Golang tools
-RUN go install github.com/cweill/gotests/gotests@latest \
-    && go install github.com/fatih/gomodifytags@latest \
-    && go install github.com/josharian/impl@latest \
-    && go install github.com/haya14busa/goplay/cmd/goplay@latest \
-    && go install github.com/go-delve/delve/cmd/dlv@latest \
-    && go install honnef.co/go/tools/cmd/staticcheck@latest \
-    && go install golang.org/x/tools/gopls@latest
 
 # cloud-nuke
 COPY --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
