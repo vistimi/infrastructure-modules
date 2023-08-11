@@ -10,20 +10,21 @@ locals {
     x86_64 = "X86_64"
   }
 
-  ecr_repository_account_id  = coalesce(try(var.task_definition.docker.registry.ecr.account_id, ""), local.account_id)
-  ecr_repository_region_name = try((var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"), "")
+  ecr_repository_account_id = coalesce(try(var.task_definition.docker.registry.ecr.account_id, null), local.account_id)
+  ecr_repository_region_name = try(
+    (var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"),
+    null
+  )
 
   docker_registry_name = try(
     var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
-    var.task_definition.docker.registry.name
+    var.task_definition.docker.registry.name,
+    null
   )
 }
 
-resource "aws_cloudwatch_log_group" "cluster" {
-  name              = join("/", [var.log.prefix, var.name])
-  retention_in_days = var.log.retention_days
-
-  tags = var.tags
+locals {
+  log_steam_name = "test"
 }
 
 module "ecs" {
@@ -32,18 +33,18 @@ module "ecs" {
 
   cluster_name = var.name
 
-  create_cloudwatch_log_group = false
+  # create_cloudwatch_log_group            = true
   # cloudwatch_log_group_retention_in_days = var.log.retention_days
-
-  cluster_configuration = {
-    execute_command_configuration = {
-      logging = "OVERRIDE"
-      log_configuration = {
-        cloud_watch_encryption_enabled = true
-        cloud_watch_log_group_name     = aws_cloudwatch_log_group.cluster.name
-      }
-    }
-  }
+  # cloudwatch_log_group_tags              = var.tags
+  # cluster_configuration = {
+  #   execute_command_configuration = {
+  #     logging = "OVERRIDE"
+  #     log_configuration = {
+  #       cloud_watch_encryption_enabled = true
+  #       # cloud_watch_log_group_name     = local.log_steam_name
+  #     }
+  #   }
+  # }
 
   # capacity providers
   default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
@@ -158,14 +159,14 @@ module "ecs" {
             effect    = "Allow"
             resources = ["*"],
           },
-          log-group = {
-            actions = [
-              "logs:CreateLogStream",
-              "logs:PutLogEvents",
-            ]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}"],
-          },
+          # log-group = {
+          #   actions = [
+          #     "logs:CreateLogStream",
+          #     "logs:PutLogEvents",
+          #   ]
+          #   effect    = "Allow"
+          #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}"],
+          # },
         },
         try({
           bucket-env = {
@@ -179,7 +180,7 @@ module "ecs" {
             resources = ["arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}/*"],
           },
         }, {}),
-        var.task_definition.docker.registry.ecr != null ? {
+        try(var.task_definition.docker.registry.ecr != null, false) ? {
           ecr = {
             actions = [
               "ecr:GetAuthorizationToken",
@@ -205,13 +206,13 @@ module "ecs" {
           effect    = "Allow"
           resources = ["*"],
         },
-        log-stream = {
-          actions = [
-            "logs:PutLogEvents",
-          ]
-          effect    = "Allow"
-          resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${aws_cloudwatch_log_group.cluster.name}:log-stream:*"],
-        },
+        # log-stream = {
+        #   actions = [
+        #     "logs:PutLogEvents",
+        #   ]
+        #   effect    = "Allow"
+        #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}:log-stream:*"],
+        # },
       }
 
       # Task definition
@@ -274,10 +275,10 @@ module "ecs" {
             "cpuArchitecture"       = local.fargate_architecture[var.fargate.architecture],
           } : null
 
-          image = join("/", [
+          image = join("/", compact([
             local.docker_registry_name,
             join(":", compact([var.task_definition.docker.repository.name, try(var.task_definition.docker.image.tag, "")]))
-          ])
+          ]))
 
           essential = true
         }

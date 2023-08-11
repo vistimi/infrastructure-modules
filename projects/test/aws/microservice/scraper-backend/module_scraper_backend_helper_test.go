@@ -21,16 +21,6 @@ const (
 	projectName = "scraper"
 	serviceName = "backend"
 
-	listenerHttpPort             = 80
-	listenerHttpProtocol         = "http"
-	listenerHttpProtocolVersion  = "http1"
-	listenerHttpsPort            = 443
-	listenerHttpsProtocol        = "https"
-	listenerHttpsProtocolVersion = "http1"
-	targetPort                   = 8080
-	targetProtocol               = "http"
-	targetProtocolVersion        = "http1"
-
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-backend"
 )
@@ -42,6 +32,29 @@ var (
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
 		ImageTag:        "latest",
+	}
+
+	Traffic = []testAwsModule.Traffic{
+		{
+			Listener: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(80),
+				Protocol: "http",
+			},
+			Target: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(8080),
+				Protocol: "http",
+			},
+		},
+		// {
+		// 	Listener: testAwsModule.TrafficPoint{
+		// 		Port:     util.Ptr(443),
+		// 		Protocol: "https",
+		// 	},
+		// 	Target: testAwsModule.TrafficPoint{
+		// 		Port:     util.Ptr(8080),
+		// 		Protocol: "https",
+		// 	},
+		// },
 	}
 
 	Deployment = testAwsModule.DeploymentTest{
@@ -121,33 +134,26 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 			"requires_mfa": false,
 		},
 	})
+
+	traffics := []map[string]any{}
+	for _, traffic := range Traffic {
+		traffics = append(traffics, map[string]any{
+			"listener": map[string]any{
+				"port":     util.Value(traffic.Listener.Port),
+				"protocol": traffic.Listener.Protocol,
+				// "protocol_version": listenerHttpProtocolVersion,
+			},
+			"target": map[string]any{
+				"port":     util.Value(traffic.Target.Port),
+				"protocol": traffic.Target.Protocol,
+				// "protocol_version":  targetProtocolVersion,
+				"health_check_path": GithubProject.HealthCheckPath,
+			},
+			"base": util.Value(traffic.Base),
+		})
+	}
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffics": []map[string]any{
-			{
-				"listener": map[string]any{
-					// "port":     listenerHttpPort,
-					"protocol": listenerHttpProtocol,
-					// "protocol_version": listenerHttpProtocolVersion,
-				},
-				"target": map[string]any{
-					"port":     targetPort,
-					"protocol": targetProtocol,
-					// "protocol_version":  targetProtocolVersion,
-					"health_check_path": GithubProject.HealthCheckPath,
-				},
-				"base": true,
-			},
-			{
-				"listener": map[string]any{
-					"port":     81,
-					"protocol": listenerHttpProtocol,
-				},
-				"target": map[string]any{
-					"port":     targetPort,
-					"protocol": targetProtocol,
-				},
-			},
-		},
+		"traffics": traffics,
 	})
 	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
@@ -158,7 +164,7 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 				},
 			},
 			"repository": map[string]any{
-				"name": util.Format(GithubProject.Repository, GithubProject.Branch),
+				"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
 			},
 			"image": map[string]any{
 				"tag": GithubProject.ImageTag,

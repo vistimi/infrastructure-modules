@@ -1,10 +1,16 @@
 name: scraper-backend
 statements:
-    - Pictures:
-          actions: ["s3:*"]
-          effect: "Allow"
-          resources: ["arn:aws:s3:::${name}-${bucket_picture_name}"]
-    - Databases:
-          actions: ["dynamodb:*"]
-          effect: "Allow"
-          resources: ["arn:aws:dynamodb:*:*:table/${name}-*"]
+      - Databases:
+              actions: ["dynamodb:*"]
+              effect: "Allow"
+              resources:
+                    [
+                          "arn:aws:dynamodb:*:*:table/${project_name}-${user_name}-${branch_name}-*",
+                    ]
+      - Bucket:
+              actions: ["s3:*"]
+              effect: "Allow"
+              resources:
+                    [
+                          "arn:aws:s3:::${project_name}-${user_name}-${branch_name}-${bucket_picture_name}",
+                    ]

@@ -1,1 +1,23 @@
 name: scraper-frontend
+statements:
+  - Databases:
+      actions:
+        [
+          "dynamodb:GetItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:ConditionCheckItem",
+        ]
+      effect: "Allow"
+      resources:
+        [
+          "arn:aws:dynamodb:*:*:table/${project_name}-${user_name}-${branch_name}-*",
+        ]
+  - Bucket:
+      actions: ["s3:DescribeJob", "s3:Get*", "s3:List*"]
+      effect: "Allow"
+      resources:
+        [
+          "arn:aws:s3:::${project_name}-${user_name}-${branch_name}-${bucket_picture_name}",
+        ]

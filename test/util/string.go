@@ -1,25 +1,28 @@
 package util
 
-func Format(names ...string) (s string) {
+func Format(separator string, names ...string) (s string) {
+	names = Filter(names, func(n string) bool { return n != "" })
 	if len(names) == 0 {
 		return ""
 	}
 	s = names[0]
 	for _, name := range names[1:] {
-		s = s + "-" + name
+		s = s + separator + name
 	}
 	return
 }
 
-func Appends(pre string, names []string) []string {
+func Appends(separator string, pre string, names []string) []string {
+	names = Filter(names, func(n string) bool { return n != "" })
 	for i, name := range names {
-		names[i] = pre + "-" + name
+		names[i] = pre + separator + name
 	}
 	return names
 }
-func Preppends(names []string, post string) []string {
+func Preppends(separator string, names []string, post string) []string {
+	names = Filter(names, func(n string) bool { return n != "" })
 	for i, name := range names {
-		names[i] = name + "-" + post
+		names[i] = name + separator + post
 	}
 	return names
 }

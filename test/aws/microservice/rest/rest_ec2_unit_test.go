@@ -34,30 +34,38 @@ var (
 				Protocol: "http",
 			},
 			Target: testAwsModule.TrafficPoint{
-				Port:     util.Ptr(3000),
+				Port:     util.Ptr(80),
+				Protocol: "http",
+			},
+			Base: util.Ptr(true),
+		},
+		{
+			Listener: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(81),
+				Protocol: "http",
+			},
+			Target: testAwsModule.TrafficPoint{
+				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
 		},
-		// {
-		// 	Listener: testAwsModule.TrafficPoint{
-		// 		Port:     util.Ptr(443),
-		// 		Protocol: "https",
-		// 	},
-		// 	Target: testAwsModule.TrafficPoint{
-		// 		Port:     util.Ptr(3000),
-		// 		Protocol: "https",
-		// 	},
-		// },
 	}
 
 	Deployment = testAwsModule.DeploymentTest{
-		MaxRetries: aws.Int(20),
+		MaxRetries: aws.Int(5),
+		Endpoints: []testAwsModule.EndpointTest{
+			{
+				Path:           "/",
+				ExpectedStatus: 200,
+				MaxRetries:     aws.Int(3),
+			},
+		},
 	}
 )
 
 // https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
-func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
+func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	t.Parallel()
 
 	rand.Seed(time.Now().UnixNano())
@@ -73,20 +81,20 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 		"Service": serviceName,
 	}
 
-	instance := testAwsModule.G4dnXlarge
-	// keySpot := "spot"
+	instance := testAwsModule.T3Small
+	keySpot := "spot"
 	keyOnDemand := "on-demand"
 
 	traffics := []map[string]any{}
 	for _, traffic := range Traffic {
 		traffics = append(traffics, map[string]any{
 			"listener": map[string]any{
-				"port":     util.Value(traffic.Listener.Port),
+				"port":     util.Value(traffic.Listener.Port, 80),
 				"protocol": traffic.Listener.Protocol,
 				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     util.Value(traffic.Target.Port),
+				"port":     util.Value(traffic.Target.Port, 80),
 				"protocol": traffic.Target.Protocol,
 				// "protocol_version":  targetProtocolVersion,
 				"health_check_path": "/",
@@ -112,67 +120,60 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					"prefix":         "ecs",
 				},
 				"task_definition": map[string]any{
-					"gpu":    aws.IntValue(instance.Gpu),
-					"cpu":    instance.Cpu,
-					"memory": instance.MemoryAllowed,
+					"cpu":                instance.Cpu,
+					"memory":             instance.MemoryAllowed,
+					"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
 
 					"entrypoint": []string{
 						"/bin/bash",
 						"-c",
 					},
 					"command": []string{
-						"git clone https://github.com/pytorch/examples.git && pip install -r examples/mnist_hogwild/requirements.txt && python3 examples/mnist_hogwild/main.py --epochs 1",
+						"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost; sleep infinity",
 					},
 					"readonly_root_filesystem": false,
 
 					"docker": map[string]any{
-						"registry": map[string]any{
-							"ecr": map[string]any{
-								"privacy":     "private",
-								"account_id":  "763104351884",
-								"region_name": "us-east-1",
-							},
-						},
 						"repository": map[string]any{
-							"name": "pytorch-training",
+							"name": "ubuntu",
 						},
 						"image": map[string]any{
-							"tag": "1.8.1-gpu-py36-cu111-ubuntu18.04-v1.7",
+							"tag": "latest",
 						},
 					},
 				},
 
 				"ec2": map[string]map[string]any{
-					// keySpot: {
-					// 	"os":            "linux",
-					// 	"os_version":    "2",
-					// 	"architecture":  instance.Architecture,
-					// 	"instance_type": instance.Name,
-					// 	"key_name":      nil,
-					// 	"use_spot":      true,
-					// 	"asg": map[string]any{
-					// 		"instance_refresh": map[string]any{
-					// 			"strategy": "Rolling",
-					// 			"preferences": map[string]any{
-					// 				"checkpoint_delay":       600,
-					// 				"checkpoint_percentages": []int{35, 70, 100},
-					// 				"instance_warmup":        300,
-					// 				"min_healthy_percentage": 80,
-					// 			},
-					// 			"triggers": []string{"tag"},
-					// 		},
-					// 	},
-					// 	"capacity_provider": map[string]any{
-					// 		"base":                        nil, // no preferred instance amount
-					// 		"weight":                      50,  // 50% chance
-					// 		"target_capacity_cpu_percent": 70,
-					// 		"maximum_scaling_step_size":   1,
-					// 		"minimum_scaling_step_size":   1,
-					// 	},
-					// },
+					keySpot: {
+						"os":            "linux",
+						"os_version":    "2023",
+						"architecture":  instance.Architecture,
+						"instance_type": instance.Name,
+						"key_name":      nil,
+						"use_spot":      true,
+						"asg": map[string]any{
+							"instance_refresh": map[string]any{
+								"strategy": "Rolling",
+								"preferences": map[string]any{
+									"checkpoint_delay":       600,
+									"checkpoint_percentages": []int{35, 70, 100},
+									"instance_warmup":        300,
+									"min_healthy_percentage": 80,
+								},
+								"triggers": []string{"tag"},
+							},
+						},
+						"capacity_provider": map[string]any{
+							"base":                        nil, // no preferred instance amount
+							"weight":                      50,  // 50% chance
+							"target_capacity_cpu_percent": 70,
+							"maximum_scaling_step_size":   1,
+							"minimum_scaling_step_size":   1,
+						},
+					},
 					keyOnDemand: {
 						"os":            "linux",
-						"os_version":    "2",
+						"os_version":    "2023",
 						"architecture":  instance.Architecture,
 						"instance_type": instance.Name,
 						"key_name":      nil,
@@ -202,8 +203,8 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
 					"task_min_count":                     0,
-					"task_desired_count":                 1,
-					"task_max_count":                     1,
+					"task_desired_count":                 3,
+					"task_max_count":                     3,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required
 					"deployment_circuit_breaker": map[string]any{
 						"enable":   true,  // service deployment fail if no steady state

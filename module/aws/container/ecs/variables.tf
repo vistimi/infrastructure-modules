@@ -145,7 +145,7 @@ variable "task_definition" {
       value = string
     })), [])
     docker = object({
-      registry = object({
+      registry = optional(object({
         name = optional(string)
         ecr = optional(object({
           privacy      = string
@@ -153,7 +153,7 @@ variable "task_definition" {
           account_id   = optional(string)
           region_name  = optional(string)
         }))
-      })
+      }))
       repository = object({
         name = string
       })

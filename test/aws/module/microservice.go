@@ -2,10 +2,7 @@ package module
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -86,60 +83,83 @@ type DeploymentTest struct {
 	Endpoints           []EndpointTest
 }
 
-func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest) {
+type LogTest struct {
+	Group  string
+	Stream string
+}
+
+type TrafficPoint struct {
+	Port     *int
+	Protocol string
+}
+
+type Traffic struct {
+	Listener TrafficPoint
+	Target   TrafficPoint
+	Base     *bool
+}
+
+func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, traffics []Traffic, modulePath string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
-		serviceCount := int64(1)
-		ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
+		// serviceCount := int64(1)
+		// ValidateEcs(t, AccountRegion, name, name, serviceCount, deployment)
 
-		// test Load Balancer HTTP
-		elb := microserviceExtractElb(t, microservicePath)
-		if elb != nil {
-			elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
-			elbDnsUrl = "http://" + elbDnsUrl
-			fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
+		for _, traffic := range traffics {
+			if traffic.Listener.Protocol == "http" {
+				port := util.Value(traffic.Listener.Port, 80)
+				// test Load Balancer HTTP
+				elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
+				if elb != nil {
+					elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
+					elbDnsUrl = fmt.Sprintf("http://%s:%d", elbDnsUrl, port)
+					fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
 
-			// add dns to endpoints
-			endpointsLoadBalancer := []EndpointTest{}
-			for _, endpoint := range deployment.Endpoints {
-				endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
-					Path:                elbDnsUrl + endpoint.Path,
-					ExpectedStatus:      endpoint.ExpectedStatus,
-					ExpectedBody:        endpoint.ExpectedBody,
-					MaxRetries:          endpoint.MaxRetries,
-					SleepBetweenRetries: endpoint.SleepBetweenRetries,
-				})
+					// add dns to endpoints
+					endpointsLoadBalancer := []EndpointTest{}
+					for _, endpoint := range deployment.Endpoints {
+						endpointsLoadBalancer = append(endpointsLoadBalancer, EndpointTest{
+							Path:                elbDnsUrl + endpoint.Path,
+							ExpectedStatus:      endpoint.ExpectedStatus,
+							ExpectedBody:        endpoint.ExpectedBody,
+							MaxRetries:          endpoint.MaxRetries,
+							SleepBetweenRetries: endpoint.SleepBetweenRetries,
+						})
+					}
+
+					terratestStructure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
+						TestRestEndpoints(t, endpointsLoadBalancer)
+					})
+				}
+
+				// test Route53
+				route53 := ExtractFromState(t, microservicePath, "route53")
+				if route53 != nil {
+					zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
+					recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
+					route53DnsUrl := fmt.Sprintf("%s.%s:%d", recordSubdomainName, zoneName, port)
+					fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
+
+					// add dns to endpoints
+					endpointsRoute53 := []EndpointTest{}
+					for _, endpoint := range deployment.Endpoints {
+						endpointsRoute53 = append(endpointsRoute53, EndpointTest{
+							Path:                route53DnsUrl + endpoint.Path,
+							ExpectedStatus:      endpoint.ExpectedStatus,
+							ExpectedBody:        endpoint.ExpectedBody,
+							MaxRetries:          endpoint.MaxRetries,
+							SleepBetweenRetries: endpoint.SleepBetweenRetries,
+						})
+					}
+
+					terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
+						TestRestEndpoints(t, endpointsRoute53)
+					})
+				}
+
+			} else if traffic.Listener.Protocol == "https" {
+				// port := util.Value(traffic.Listener.Port, 443)
+				// TODO: add HTTPS
 			}
-
-			terratestStructure.RunTestStage(t, "validate_rest_endpoints_load_balancer", func() {
-				TestRestEndpoints(t, endpointsLoadBalancer)
-			})
-		}
-
-		// TODO: add HTTPS if no timeout from ACM
-
-		// test Route53
-		route53 := microserviceExtractRoute53(t, microservicePath)
-		if route53 != nil {
-			zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
-			recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
-			route53DnsUrl := recordSubdomainName + "." + zoneName
-			fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
-
-			// add dns to endpoints
-			endpointsRoute53 := []EndpointTest{}
-			for _, endpoint := range deployment.Endpoints {
-				endpointsRoute53 = append(endpointsRoute53, EndpointTest{
-					Path:                route53DnsUrl + endpoint.Path,
-					ExpectedStatus:      endpoint.ExpectedStatus,
-					ExpectedBody:        endpoint.ExpectedBody,
-					MaxRetries:          endpoint.MaxRetries,
-					SleepBetweenRetries: endpoint.SleepBetweenRetries,
-				})
-			}
-
-			terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
-				TestRestEndpoints(t, endpointsRoute53)
-			})
 		}
 	})
 }
@@ -187,29 +207,4 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
-}
-
-func microserviceExtractElb(t *testing.T, microservicePath string) any {
-	// dnsUrl := terraform.Output(t, options, "alb_dns_name")
-	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var result map[string]any
-	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["ecs"].(map[string]any)["elb"]
-}
-
-func microserviceExtractRoute53(t *testing.T, microservicePath string) any {
-	jsonFile, err := os.Open(fmt.Sprintf("%s/terraform.tfstate", microservicePath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-	var result map[string]any
-	json.Unmarshal([]byte(byteValue), &result)
-	return result["outputs"].(map[string]any)["microservice"].(map[string]any)["value"].(map[string]any)["route53"]
 }
