@@ -1,25 +1,103 @@
-ARG AWS_ECR_REGISTRY=496882976578.dkr.ecr.us-west-1.amazonaws.com
-ARG AWS_ECR_REPOSITORY=infrastructure-modules-trunk-bin
-ARG VARIANT=$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY
+ARG VARIANT=alpine:3.16
+ARG RUNNER=workflow
+ARG ALPINE_VARIANT=alpine:3.16
+ARG GO_ALPINE_VARIANT=golang:1.19.0-alpine
+ARG PYTHON_ALPINE_VARIANT=python:3.10.5-alpine
 
-FROM ${VARIANT}
+#---------------------------------
+#       BUILDER ALPINE
+#---------------------------------
+FROM ${ALPINE_VARIANT} as builder-alpine
 
-RUN apk add --no-cache shadow sudo
-ARG USERNAME=user
-ARG USER_UID=1001
-ENV USERNAME=$USERNAME
-ENV USER_UID=$USER_UID
-ENV USER_GID=$USER_UID
-RUN addgroup --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    # Add sudo support. Omit if you don't need to install software after connecting.
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-USER $USERNAME
+ARG TARGETOS TARGETARCH
 
-WORKDIR /home/$USERNAME
+RUN apk update
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
-COPY --chown=$USERNAME:$USER_GID . .
+# # rover
+# ARG ROVER_VERSION=0.3.3
+# RUN mkdir rover && cd rover && wget -q https://github.com/im2nguyen/rover/releases/download/v${ROVER_VERSION}/rover_${ROVER_VERSION}_${TARGETOS}_${TARGETARCH}.zip \
+#     && unzip rover_${ROVER_VERSION}_${TARGETOS}_${TARGETARCH}.zip && mv rover_v${ROVER_VERSION} /usr/local/bin/rover \
+#     && chmod +rx /usr/local/bin/rover && cd .. && rm -R rover
 
-RUN echo Date::; date; echo ;echo Files in home::; ls -l
-RUN echo Changes in the past 2h::; find ./ -not -path '*/.*' -type f -mmin -120 -mmin +1
+# terraform
+ARG TERRAFORM_VERSION=1.5.2
+RUN wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip \
+    && unzip terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip && mv terraform /usr/local/bin/terraform \
+    && chmod +rx /usr/local/bin/terraform && rm terraform_${TERRAFORM_VERSION}_${TARGETOS}_${TARGETARCH}.zip
+
+# terragrunt
+ARG TERRAGRUNT_VERSION=0.48.0
+RUN wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_${TARGETOS}_${TARGETARCH} \
+    && mv terragrunt_${TARGETOS}_${TARGETARCH} /usr/local/bin/terragrunt \
+    && chmod +rx /usr/local/bin/terragrunt
+
+# cloud-nuke
+ARG CLOUD_NUKE_VERSION=0.31.1
+RUN wget -q https://github.com/gruntwork-io/cloud-nuke/releases/download/v${CLOUD_NUKE_VERSION}/cloud-nuke_${TARGETOS}_${TARGETARCH} \
+    && mv cloud-nuke_${TARGETOS}_${TARGETARCH} /usr/local/bin/cloud-nuke \
+    && chmod +rx /usr/local/bin/cloud-nuke
+
+#---------------------------------
+#    BUILDER ALPINE GOLANG
+#---------------------------------
+FROM ${GO_ALPINE_VARIANT} as builder-alpine-go
+
+RUN apk update
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget
+
+# # inframap
+# RUN git clone https://github.com/cycloidio/inframap && cd inframap && go mod download && make build \
+#     && mv inframap /usr/local/bin/inframap  \
+#     && chmod +rx /usr/local/bin/inframap && cd .. && rm -R inframap
+
+
+#-------------------------
+#    RUNNER
+#-------------------------
+FROM ${VARIANT} as runner
+
+RUN apk update
+# coreutils for docker inspect
+RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq jq github-cli aws-cli
+
+# Golang setup
+COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
+COPY --from=builder-alpine-go /go/ /go/
+ENV GOPATH /go
+ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
+RUN mkdir -p $GOPATH/src $GOPATH/bin && chmod -R 777 $GOPATH
+WORKDIR $GOPATH
+RUN go version
+
+# cloud-nuke
+COPY --from=builder-alpine /usr/local/bin/cloud-nuke /usr/local/bin/cloud-nuke
+RUN cloud-nuke --version
+
+# # rover
+# RUN apk add -q --no-cache chromium
+# COPY --from=builder-alpine /usr/local/bin/rover /usr/local/bin/rover
+# RUN rover --version
+
+# # inframap
+# RUN apk add -q --no-cache graphviz
+# COPY --from=builder-alpine-go /usr/local/bin/inframap /usr/local/bin/inframap
+# RUN inframap version
+
+# terraform
+COPY --from=builder-alpine /usr/local/bin/terraform /usr/local/bin/terraform
+RUN terraform --version
+
+# terragrunt
+COPY --from=builder-alpine /usr/local/bin/terragrunt /usr/local/bin/terragrunt
+RUN terragrunt --version
+
+# tflint
+COPY --from=ghcr.io/terraform-linters/tflint:latest /usr/local/bin/tflint /usr/local/bin/tflint
+RUN tflint --version
+
+# github cli
+RUN gh --version
+
+# aws cli
+RUN aws --version
