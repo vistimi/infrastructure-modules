@@ -21,7 +21,7 @@ const (
 	projectName = "scraper"
 	serviceName = "be"
 
-	Rootpath         = "../../../.."
+	Rootpath         = "../../../../.."
 	MicroservicePath = Rootpath + "/module/aws/projects/scraper/backend"
 )
 

@@ -1,6 +1,6 @@
 locals {
-  config_vars = yamldecode(file("./config.yml"))
-  name        = lower(join("-", compact([var.name_prefix, local.config_vars.project_name, local.config_vars.service_name, var.name_suffix])))
+  repository_config_vars = yamldecode(file("./repository.yml"))
+  name                   = lower(join("-", compact([var.name_prefix, local.repository_config_vars.project_name, local.repository_config_vars.service_name, var.name_suffix])))
 
   iam = {
     scope       = var.iam.scope
@@ -12,7 +12,7 @@ locals {
 module "bucket_label" {
   source = "../../../../../../module/aws/data/bucket"
 
-  name          = "${local.name}-${local.config_vars.bucket_label_name}"
+  name          = "${local.name}-${local.repository_config_vars.bucket_label_name}"
   force_destroy = var.bucket_label.force_destroy
   versioning    = var.bucket_label.versioning
   iam           = local.iam
@@ -76,7 +76,7 @@ module "labelstudio" {
   source = "git::https://github.com/HumanSignal/label-studio-terraform.git//terraform/aws/env?ref=master"
 
   name             = lower(var.name_suffix)
-  environment      = lower(join("-", compact([var.name_prefix, local.config_vars.project_name, local.config_vars.service_name])))
+  environment      = lower(join("-", compact([var.name_prefix, local.repository_config_vars.project_name, local.repository_config_vars.service_name])))
   region           = local.region_name
   instance_type    = var.labelstudio.instance_type
   desired_capacity = var.labelstudio.desired_capacity

@@ -19,7 +19,7 @@ const (
 	projectName = "scraper"
 	serviceName = "ls"
 
-	Rootpath         = "../../../.."
+	Rootpath         = "../../../../.."
 	MicroservicePath = Rootpath + "/module/aws/projects/scraper/labelstudio"
 )
 

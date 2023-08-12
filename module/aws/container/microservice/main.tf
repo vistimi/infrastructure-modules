@@ -16,12 +16,11 @@ module "ecs" {
 
   service  = var.ecs.service
   traffics = var.ecs.traffics
-  log      = var.ecs.log
 
   task_definition = merge(var.ecs.task_definition,
     var.bucket_env != null ? {
       env_file = {
-        bucket_name = module.bucket_env.bucket.name
+        bucket_name = one(module.bucket_env[*].bucket.name)
         file_name   = var.bucket_env.file_key
       }
   } : {})

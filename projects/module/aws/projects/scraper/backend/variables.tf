@@ -28,7 +28,6 @@ variable "microservice" {
       })
     }))
     bucket_env = object({
-      name          = string
       force_destroy = bool
       versioning    = bool
       file_path     = string

@@ -6,9 +6,8 @@ MAKEFLAGS += --warn-undefined-variables
 
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-PATH_AWS=module/aws
-PATH_AWS_MICROSERVICE=module/aws/microservice
-PATH_TEST_AWS_MICROSERVICE=test/aws/microservice
+PATH_AWS_PROJECTS=module/aws/projects
+PATH_TEST_AWS_PROJECTS=test/aws/projects
 
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
@@ -56,32 +55,31 @@ prepare-account-aws:
 prepare-global-level:
 	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
-prepare-aws-external-scraper-labelstudio:
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/external/scraper-labelstudio
+prepare-aws-scraper-labelstudio:
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
 
 BRANCH_NAME ?= trunk
-prepare-aws-microservice-scraper-backend:
+prepare-aws-scraper-backend:
 	$(eval GIT_NAME=github.com)
 	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=backend)
-	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
-	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_MICROSERVICE}/${REPOSITORY_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME})
 	$(eval COMMON_NAME="")
 	$(eval CLOUD_HOST=aws)
 	make -C ../ -f Makefile_infra gh-load-folder \
 		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
-		REPOSITORY_NAME=${REPOSITORY_NAME} \
+		REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-microservice-scraper-backend-env \
+	make prepare-scraper-backend-env \
 		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
-		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME} \
+		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST}
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-make prepare-microservice-scraper-backend-env:
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
+make prepare-scraper-backend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
 	make -C ../ -f projects/${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
@@ -96,24 +94,23 @@ make prepare-microservice-scraper-backend-env:
 		PACKAGE_NAME=microservice_scraper_backend_test \
 
 BRANCH_NAME ?= trunk
-prepare-aws-microservice-scraper-frontend:
+prepare-aws-scraper-frontend:
 	$(eval GIT_NAME=github.com)
 	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=frontend)
-	$(eval REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME})
-	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_MICROSERVICE}/${REPOSITORY_NAME})
+	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME})
 	make -C ../ -f Makefile_infra gh-load-folder \
 		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
-		REPOSITORY_NAME=${REPOSITORY_NAME} \
+		REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-microservice-scraper-frontend-env \
+	make prepare-scraper-frontend-env \
 		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
-		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_MICROSERVICE}/${REPOSITORY_NAME}
-prepare-microservice-scraper-frontend-env:
+		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
+prepare-scraper-frontend-env:
 	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
 	make -C ../ -f projects/${MAKEFILE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \

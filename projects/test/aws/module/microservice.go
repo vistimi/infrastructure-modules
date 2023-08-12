@@ -57,7 +57,6 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 					"task_definition": map[string]any{},
 				},
 				"bucket_env": map[string]any{
-					"name":          "env",
 					"force_destroy": true,
 					"versioning":    false,
 				},

@@ -31,7 +31,7 @@ locals {
     for project_name, project in try(yamldecode(file("${local.projects_path}/projects.yml")).projects, local.project_lists.projects) : project_name => {
       for service_name, service in try(project.services, local.project_lists[project_name].services) : service_name => {
         repository = yamldecode(
-          templatefile("${try(service.path, local.project_lists[project_name].services[service_name].path)}/config.yml", local.template_vars)
+          templatefile("${try(service.path, local.project_lists[project_name].services[service_name].path)}/repository.yml", local.template_vars)
         )
       }
     }
