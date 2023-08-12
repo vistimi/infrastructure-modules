@@ -1,4 +1,4 @@
-package microservice_scraper_backend_test
+package microservice_scraper_frontend_test
 
 import (
 	"testing"
@@ -11,11 +11,9 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
-	// t.Parallel()
+func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
+	t.Parallel()
 	optionsProject, nameSuffix := SetupOptionsRepository(t)
-
-	maxTaskCount := 3
 
 	instance := testAwsModule.T3Small
 	keySpot := "spot"
@@ -81,8 +79,8 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 		"service": map[string]any{
 			"deployment_type":                    "ec2",
 			"task_min_count":                     0,
-			"task_desired_count":                 maxTaskCount,
-			"task_max_count":                     maxTaskCount,
+			"task_desired_count":                 3,
+			"task_max_count":                     3,
 			"deployment_minimum_healthy_percent": 66, // % tasks running required
 			"deployment_circuit_breaker": map[string]any{
 				"enable":   true,  // service deployment fail if no steady state
@@ -111,7 +109,7 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		name := util.Format("-", "scraper-backend", nameSuffix)
+		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
 		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
 	})
 }

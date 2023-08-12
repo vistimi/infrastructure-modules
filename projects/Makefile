@@ -56,6 +56,9 @@ prepare-account-aws:
 prepare-global-level:
 	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
+prepare-aws-external-scraper-labelstudio:
+	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/external/scraper-labelstudio
+
 BRANCH_NAME ?= trunk
 prepare-aws-microservice-scraper-backend:
 	$(eval GIT_NAME=github.com)

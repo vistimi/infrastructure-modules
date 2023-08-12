@@ -21,7 +21,7 @@ module "ecs" {
   task_definition = merge(var.ecs.task_definition,
     var.bucket_env != null ? {
       env_file = {
-        bucket_name = join("-", [var.name, var.bucket_env.name])
+        bucket_name = module.bucket_env.bucket.name
         file_name   = var.bucket_env.file_key
       }
   } : {})

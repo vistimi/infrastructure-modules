@@ -46,10 +46,6 @@ variable "microservice" {
           rollback = bool
         }))
       })
-      log = object({
-        retention_days = number
-        prefix         = optional(string)
-      })
       traffics = list(object({
         listener = object({
           protocol         = string
@@ -130,51 +126,6 @@ variable "microservice" {
         })
       })))
     })
-  })
-}
-
-#--------------
-# Dynamodb
-#--------------
-
-variable "dynamodb_tables" {
-  description = "The mapping of the DynamoDB tables"
-  type = list(object({
-    name                 = string
-    primary_key_name     = string
-    primary_key_type     = string
-    sort_key_name        = string
-    sort_key_type        = string
-    predictable_workload = bool
-    predictable_capacity = optional(object({
-      autoscaling = bool
-      read = optional(object({
-        capacity           = number
-        scale_in_cooldown  = number
-        scale_out_cooldown = number
-        target_value       = number
-        max_capacity       = number
-      }))
-      write = optional(object({
-        capacity           = number
-        scale_in_cooldown  = number
-        scale_out_cooldown = number
-        target_value       = number
-        max_capacity       = number
-      }))
-    }))
-  }))
-}
-
-#--------------
-# Pictures
-#--------------
-
-variable "bucket_picture" {
-  type = object({
-    name          = string
-    force_destroy = bool
-    versioning    = bool
   })
 }
 

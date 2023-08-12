@@ -19,7 +19,7 @@ import (
 
 const (
 	projectName = "scraper"
-	serviceName = "backend"
+	serviceName = "be"
 
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-backend"

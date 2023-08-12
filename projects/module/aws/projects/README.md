@@ -1,0 +1,1 @@
+Default directory where all the repos should be stores. If not here, override the default lookup with `projects.yml`

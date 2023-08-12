@@ -72,8 +72,8 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 
 	// global variables
 	id := util.RandomID(4)
-	commonName := util.Format("-", projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
-	commonTags := map[string]string{
+	name := util.Format("-", projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
+	tags := map[string]string{
 		"TestID":  id,
 		"Account": AccountName,
 		"Region":  AccountRegion,
@@ -105,8 +105,8 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: MicroservicePath,
 		Vars: map[string]any{
-			"name": commonName,
-			"tags": commonTags,
+			"name": name,
+			"tags": tags,
 
 			"vpc": map[string]any{
 				"id":   "vpc-0d5c1d5379f616e2f",
@@ -236,6 +236,6 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, commonName, MicroservicePath, Deployment, Traffic, "")
+		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "")
 	})
 }

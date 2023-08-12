@@ -115,17 +115,6 @@ resource "null_resource" "target" {
 # ECS
 #--------------
 
-variable "log" {
-  type = object({
-    retention_days = number
-    prefix         = optional(string)
-  })
-  default = {
-    retention_days = 30
-    prefix         = "ecs"
-  }
-}
-
 # inference_accelerators = optional(list(object({
 # deviceName = string
 # deviceType = string

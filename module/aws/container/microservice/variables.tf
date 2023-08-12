@@ -43,10 +43,6 @@ variable "ecs" {
         rollback = bool
       }))
     })
-    log = object({
-      retention_days = number
-      prefix         = optional(string)
-    })
     traffics = list(object({
       listener = object({
         protocol         = string

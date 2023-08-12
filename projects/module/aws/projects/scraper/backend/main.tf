@@ -16,14 +16,6 @@ module "microservice" {
   tags = var.tags
 }
 
-locals {
-  iam = {
-    scope       = var.microservice.iam.scope
-    account_ids = var.microservice.iam.account_ids
-    vpc_ids     = var.microservice.iam.vpc_ids
-  }
-}
-
 module "dynamodb_table" {
   source = "../../../../../module/aws/data/dynamodb"
 
@@ -41,7 +33,7 @@ module "dynamodb_table" {
   predictable_workload         = each.value.predictable_workload
   predictable_capacity         = each.value.predictable_capacity
   table_attachement_role_names = [module.microservice.ecs.service.task_iam_role_name]
-  iam                          = local.iam
+  iam                          = var.microservice.iam
 
   tags = var.tags
 }
@@ -53,7 +45,7 @@ module "bucket_picture" {
   force_destroy                 = var.bucket_picture.force_destroy
   versioning                    = var.bucket_picture.versioning
   bucket_attachement_role_names = [module.microservice.ecs.service.task_iam_role_name]
-  iam                           = local.iam
+  iam                           = var.microservice.iam
 
   tags = var.tags
 }

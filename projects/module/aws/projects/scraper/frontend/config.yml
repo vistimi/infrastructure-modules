@@ -1,4 +1,6 @@
-name: scraper-frontend
+project_name: scraper
+service_name: fe
+deployment_type: microservice
 statements:
   - Databases:
       actions:
@@ -11,13 +13,11 @@ statements:
         ]
       effect: "Allow"
       resources:
-        [
-          "arn:aws:dynamodb:*:*:table/${project_name}-${user_name}-${branch_name}-*",
-        ]
+        ["arn:aws:dynamodb:*:*:table/scraper-${user_name}-${branch_name}-*"]
   - Bucket:
       actions: ["s3:DescribeJob", "s3:Get*", "s3:List*"]
       effect: "Allow"
       resources:
         [
-          "arn:aws:s3:::${project_name}-${user_name}-${branch_name}-${bucket_picture_name}",
+          "arn:aws:s3:::scraper-${user_name}-${branch_name}-${bucket_picture_name}",
         ]
