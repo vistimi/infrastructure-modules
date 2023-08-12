@@ -2,6 +2,10 @@ output "statements" {
   value = local.statements
 }
 
+output "project_lists" {
+  value = local.project_lists
+}
+
 output "repository_file_exists" {
   value = local.repository_file_exists
 }

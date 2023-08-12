@@ -19,7 +19,7 @@ locals {
     },
   }
 
-  repository_file_exists = flatten([for project_name, project in local.project_lists.projects : [for service_name, service in project.services : { "${service.path}/repository.yml" : fileexists("${service.path}/repository.yml") }]])
+  repository_file_exists = flatten([for project_name, project in local.project_lists.projects : { for service_name, service in project.services : "${service.path}/repository.yml" => fileexists("${service.path}/repository.yml") }])
 
   microservice_file_exist = { "${local.projects_path}/microservice.yml" : fileexists("${local.projects_path}/microservice.yml") }
 }
@@ -27,7 +27,7 @@ locals {
 resource "null_resource" "path" {
   lifecycle {
     precondition {
-      condition     = alltrue(flatten([for key, exist in local.repository_file_exists : exist]))
+      condition     = alltrue(flatten([for obj in local.repository_file_exists : values(obj)]))
       error_message = "repository files do not exist: ${jsonencode(local.repository_file_exists)}"
     }
 
