@@ -1,3 +1,9 @@
+variable "name_prefix" {
+  description = "The name prefix that comes after the microservice name"
+  type        = string
+  default     = ""
+}
+
 variable "name_suffix" {
   description = "The name suffix that comes after the microservice name"
   type        = string

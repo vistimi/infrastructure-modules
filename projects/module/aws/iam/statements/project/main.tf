@@ -20,8 +20,7 @@ locals {
   }
 
   template_vars = {
-    project_name        = "scraper"
-    service_name        = "frontend"
+    name_prefix         = length(var.name_prefix) > 0 ? "${var.name_prefix}-" : ""
     user_name           = var.user_name
     branch_name         = var.branch_name
     bucket_picture_name = "picture"

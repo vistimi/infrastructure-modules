@@ -1,6 +1,6 @@
 locals {
   config_vars = yamldecode(file("./config.yml"))
-  name        = lower(join("-", [local.config_vars.name, var.name_suffix]))
+  name        = lower(join("-", compact([var.name_prefix, local.config_vars.project_name, local.config_vars.service_name, var.name_suffix])))
 }
 
 module "microservice" {
@@ -17,7 +17,7 @@ module "microservice" {
 }
 
 module "dynamodb_table" {
-  source = "../../../../../module/aws/data/dynamodb"
+  source = "../../../../../../module/aws/data/dynamodb"
 
   for_each = {
     for index, dt in var.dynamodb_tables :
@@ -39,7 +39,7 @@ module "dynamodb_table" {
 }
 
 module "bucket_picture" {
-  source = "../../../../../module/aws/data/bucket"
+  source = "../../../../../../module/aws/data/bucket"
 
   name                          = "${local.name}-${var.bucket_picture.name}"
   force_destroy                 = var.bucket_picture.force_destroy

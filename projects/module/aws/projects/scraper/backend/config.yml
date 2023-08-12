@@ -7,12 +7,12 @@ statements:
               effect: "Allow"
               resources:
                     [
-                          "arn:aws:dynamodb:*:*:table/scraper-${user_name}-${branch_name}-*",
+                          "arn:aws:dynamodb:*:*:table/${name_prefix}scraper-${user_name}-${branch_name}-*",
                     ]
       - Bucket:
               actions: ["s3:*"]
               effect: "Allow"
               resources:
                     [
-                          "arn:aws:s3:::scraper-${user_name}-${branch_name}-${bucket_picture_name}",
+                          "arn:aws:s3:::${name_prefix}scraper-${user_name}-${branch_name}-${bucket_picture_name}",
                     ]

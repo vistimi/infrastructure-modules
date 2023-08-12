@@ -19,7 +19,7 @@ const (
 	serviceName = "fe"
 
 	Rootpath         = "../../../.."
-	MicroservicePath = Rootpath + "/module/aws/microservice/scraper-frontend"
+	MicroservicePath = Rootpath + "/module/aws/projects/scraper/frontend"
 )
 
 var (

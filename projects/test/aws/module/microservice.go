@@ -27,6 +27,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
+	namePrefix := "vi"
 	id := util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
@@ -39,6 +40,7 @@ func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*t
 
 	options := &terraform.Options{
 		Vars: map[string]any{
+			"name_prefix": namePrefix,
 			"name_suffix": nameSuffix,
 
 			"vpc": map[string]any{

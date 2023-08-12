@@ -51,14 +51,14 @@ statements:
       effect: "Allow"
       resources:
         [
-          "arn:aws:s3:::${project_name}-${service_name}-${user_name}-${branch_name}-${bucket_env_name}",
+          "arn:aws:s3:::${name_prefix}${project_name}-${service_name}-${user_name}-${branch_name}-${bucket_env_name}",
         ]
   - EnvObject:
       actions: ["s3:*"]
       effect: "Allow"
       resources:
         [
-          "arn:aws:s3:::${project_name}-${service_name}-${user_name}-${branch_name}-env/*",
+          "arn:aws:s3:::${name_prefix}${project_name}-${service_name}-${user_name}-${branch_name}-env/*",
         ]
   - EcrRead:
       actions:
@@ -71,7 +71,7 @@ statements:
       effect: "Allow"
       resources:
         [
-          "arn:aws:ecr:*:*:repository/${project_name}-${service_name}-${branch_name}",
+          "arn:aws:ecr:*:*:repository/${name_prefix}${project_name}-${service_name}-${branch_name}",
         ]
   - EcrPublicRead:
       actions:
@@ -82,5 +82,5 @@ statements:
       effect: "Allow"
       resources:
         [
-          "arn:aws:ecr-public:::repository/${project_name}-${service_name}-${branch_name}",
+          "arn:aws:ecr-public:::repository/${name_prefix}${project_name}-${service_name}-${branch_name}",
         ]

@@ -20,7 +20,7 @@ const (
 	serviceName = "ls"
 
 	Rootpath         = "../../../.."
-	MicroservicePath = Rootpath + "/module/aws/external/scraper-labelstudio"
+	MicroservicePath = Rootpath + "/module/aws/projects/scraper/labelstudio"
 )
 
 var (
@@ -59,6 +59,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
+	namePrefix := "vi"
 	id := util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
@@ -73,6 +74,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: MicroservicePath,
 		Vars: map[string]any{
+			"name_prefix": namePrefix,
 			"name_suffix": nameSuffix,
 			"labelstudio": map[string]any{
 				"instance_type":    instance.Name,
