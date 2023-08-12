@@ -2,6 +2,10 @@ output "statements" {
   value = local.statements
 }
 
+output "services" {
+  value = local.services
+}
+
 output "project_lists" {
   value = local.project_lists
 }
