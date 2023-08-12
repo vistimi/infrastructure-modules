@@ -1,3 +1,9 @@
+variable "name_prefix" {
+  description = "The name prefix that comes after the microservice name"
+  type        = string
+  default     = ""
+}
+
 variable "aws" {
   type = object({
     levels = optional(list(object({

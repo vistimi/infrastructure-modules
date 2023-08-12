@@ -19,10 +19,10 @@ func Test_Unit_Global_Level(t *testing.T) {
 	// t.Parallel()
 	rand.Seed(time.Now().UnixNano())
 
+	namePrefix := ""
 	id := util.RandomID(4)
-
-	orgName := "org" + id
-	teamName := "team" + id
+	orgName := util.Format("-", "org", id)
+	teamName := util.Format("-", "team", id)
 
 	userStatements := []map[string]any{
 		{
@@ -86,6 +86,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 	options := &terraform.Options{
 		TerraformDir: pathLevel,
 		Vars: map[string]any{
+			"name_prefix": namePrefix,
 			"aws": map[string]any{
 				"levels": []map[string]any{
 					{

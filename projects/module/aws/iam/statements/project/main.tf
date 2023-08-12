@@ -18,7 +18,23 @@ locals {
       }
     },
   }
+}
 
+resource "null_resource" "path" {
+  lifecycle {
+    precondition {
+      condition     = alltrue(flatten([for project_name, project in local.project_lists.projects : [for service_name, service in project.services : fileexists("${service.path}/repository.yml")]]))
+      error_message = "repository files do not exist: ${jsonencode(flatten([for project_name, project in local.project_lists.projects : [for service_name, service in project.services : { "${service.path}/repository.yml" : fileexists("${service.path}/repository.yml") }]]))}"
+    }
+
+    precondition {
+      condition     = fileexists("${local.projects_path}/microservice.yml")
+      error_message = "microservice file does not exist: ${jsonencode(flatten([for project_name, project in local.project_lists.projects : [for service_name, service in project.services : { "${local.projects_path}/microservice.yml" : fileexists("${local.projects_path}/microservice.yml") }]]))}"
+    }
+  }
+}
+
+locals {
   template_vars = {
     name_prefix         = length(var.name_prefix) > 0 ? "${var.name_prefix}-" : ""
     user_name           = var.user_name

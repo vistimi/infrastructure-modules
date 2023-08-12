@@ -20,6 +20,7 @@ module "group_user_project_statements" {
     ) if length(value.project_names) > 0
   ]...)
 
+  name_prefix   = var.name_prefix
   root_path     = "../../../.."
   project_names = each.value.project_names
   user_name     = each.value.user_name
@@ -59,9 +60,9 @@ module "github_environments" {
   source = "../../../../module/github/environments"
 
   for_each = merge([
-    for group_name, group in module.aws_level.groups : merge({
+    for group_name, group in module.aws_level.groups : {
       for user_name, value in group.users : user_name => value.user if var.aws.groups[group_name].github_store_environment
-    })
+    }
   ]...)
 
   name             = each.value.iam_user_name
