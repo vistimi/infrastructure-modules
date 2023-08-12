@@ -11,7 +11,7 @@ locals {
     projects = {
       for project_name in compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "**")) : try(regex("^(?P<dir>[0-9A-Za-z!_-]+)/+.*", dirname(v)).dir, "")]))) : project_name => {
         services = {
-          for service_name in compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "${project_name}/**")) : try(regex("^${project_name}/(?P<dir>[0-9A-Za-z!_-]+)/+.*", dirname(v)).dir, "")]))) : service_name => {
+          for service_name in compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "${project_name}/**")) : try(regex("^${project_name}/(?P<dir>[0-9A-Za-z!_-]+)/*.*", dirname(v)).dir, "")]))) : service_name => {
             path = "${local.projects_path}/${project_name}/${service_name}"
           }
         }
@@ -20,7 +20,7 @@ locals {
   }
 
   services = {
-    for project_name in compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "**")) : try(regex("^(?P<dir>[0-9A-Za-z!_-]+)/+.*", dirname(v)).dir, "")]))) : project_name => flatten(fileset(local.projects_path, "${project_name}/**"))
+    for project_name in compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "**")) : try(regex("^(?P<dir>[0-9A-Za-z!_-]+)/+.*", dirname(v)).dir, "")]))) : project_name => compact(distinct(flatten([for _, v in flatten(fileset(local.projects_path, "${project_name}/**")) : try(regex("^${project_name}/(?P<dir>[0-9A-Za-z!_-]+)/*.*", dirname(v)).dir, "")])))
   }
 
   repository_file_exists = flatten([for project_name, project in local.project_lists.projects : { for service_name, service in project.services : "${service.path}/repository.yml" => fileexists("${service.path}/repository.yml") }])
