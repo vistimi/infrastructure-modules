@@ -85,3 +85,7 @@ statements:
         [
           "arn:aws:ecr-public:::repository/${name_prefix}${project_name}-${service_name}-${branch_name}",
         ]
+  - SecurityToken:
+      actions: ["sts:GetCallerIdentity"]
+      effect: "Allow"
+      resources: ["*"]

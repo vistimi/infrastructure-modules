@@ -23,7 +23,7 @@ const (
 	ECSReservedMemory = 100
 )
 
-func SetupOptionsMicroservice(t *testing.T, projectName, serviceName string) (*terraform.Options, string) {
+func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (*terraform.Options, string) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
