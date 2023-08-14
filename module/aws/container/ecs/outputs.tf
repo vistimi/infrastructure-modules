@@ -99,36 +99,36 @@ output "cluster" {
 output "service" {
   value = {
     # service
-    id   = module.ecs.services[var.name].id
-    name = module.ecs.services[var.name].name
+    id   = module.ecs.services["unique"].id
+    name = module.ecs.services["unique"].name
     # service iam role
-    iam_role_arn       = module.ecs.services[var.name].iam_role_arn
-    iam_role_name      = module.ecs.services[var.name].iam_role_name
-    iam_role_unique_id = module.ecs.services[var.name].iam_role_unique_id
+    iam_role_arn       = module.ecs.services["unique"].iam_role_arn
+    iam_role_name      = module.ecs.services["unique"].iam_role_name
+    iam_role_unique_id = module.ecs.services["unique"].iam_role_unique_id
     # container
-    container_definitions = module.ecs.services[var.name].container_definitions
+    container_definitions = module.ecs.services["unique"].container_definitions
     # task definition
-    task_definition_arn      = module.ecs.services[var.name].task_definition_arn
-    task_definition_revision = module.ecs.services[var.name].task_definition_revision
-    task_definition_family   = module.ecs.services[var.name].task_definition_family
+    task_definition_arn      = module.ecs.services["unique"].task_definition_arn
+    task_definition_revision = module.ecs.services["unique"].task_definition_revision
+    task_definition_family   = module.ecs.services["unique"].task_definition_family
     # task execution iam role
-    task_exec_iam_role_name      = module.ecs.services[var.name].task_exec_iam_role_name
-    task_exec_iam_role_arn       = module.ecs.services[var.name].task_exec_iam_role_arn
-    task_exec_iam_role_unique_id = module.ecs.services[var.name].task_exec_iam_role_unique_id
+    task_exec_iam_role_name      = module.ecs.services["unique"].task_exec_iam_role_name
+    task_exec_iam_role_arn       = module.ecs.services["unique"].task_exec_iam_role_arn
+    task_exec_iam_role_unique_id = module.ecs.services["unique"].task_exec_iam_role_unique_id
     # task iam role
-    task_iam_role_arn       = module.ecs.services[var.name].tasks_iam_role_arn
-    task_iam_role_name      = module.ecs.services[var.name].tasks_iam_role_name
-    task_iam_role_unique_id = module.ecs.services[var.name].tasks_iam_role_unique_id
+    task_iam_role_arn       = module.ecs.services["unique"].tasks_iam_role_arn
+    task_iam_role_name      = module.ecs.services["unique"].tasks_iam_role_name
+    task_iam_role_unique_id = module.ecs.services["unique"].tasks_iam_role_unique_id
     # task set
-    task_set_id               = module.ecs.services[var.name].task_set_id
-    task_set_arn              = module.ecs.services[var.name].task_set_arn
-    task_set_stability_status = module.ecs.services[var.name].task_set_stability_status
-    task_set_status           = module.ecs.services[var.name].task_set_status
+    task_set_id               = module.ecs.services["unique"].task_set_id
+    task_set_arn              = module.ecs.services["unique"].task_set_arn
+    task_set_stability_status = module.ecs.services["unique"].task_set_stability_status
+    task_set_status           = module.ecs.services["unique"].task_set_status
     # autoscaling
-    autoscaling_policies          = module.ecs.services[var.name].autoscaling_policies
-    autoscaling_scheduled_actions = module.ecs.services[var.name].autoscaling_scheduled_actions
+    autoscaling_policies          = module.ecs.services["unique"].autoscaling_policies
+    autoscaling_scheduled_actions = module.ecs.services["unique"].autoscaling_scheduled_actions
     # security group
-    security_group_arn = module.ecs.services[var.name].security_group_arn
-    security_group_id  = module.ecs.services[var.name].security_group_id
+    security_group_arn = module.ecs.services["unique"].security_group_arn
+    security_group_id  = module.ecs.services["unique"].security_group_id
   }
 }

@@ -21,7 +21,8 @@ module "bucket_label" {
 }
 
 module "kms" {
-  source = "terraform-aws-modules/kms/aws"
+  source  = "terraform-aws-modules/kms/aws"
+  version = "1.5.0"
 
   description = "Label Studio key usage"
   key_usage   = "ENCRYPT_DECRYPT"
@@ -36,40 +37,47 @@ module "kms" {
   key_hmac_users                         = [local.account_arn]
   key_asymmetric_public_encryption_users = [local.account_arn]
   key_asymmetric_sign_verify_users       = [local.account_arn]
-  key_statements = [
-    {
-      sid = "CloudWatchLogs"
-      actions = [
-        "kms:Encrypt*",
-        "kms:Decrypt*",
-        "kms:ReEncrypt*",
-        "kms:GenerateDataKey*",
-        "kms:Describe*"
-      ]
-      resources = ["*"]
+  # key_statements = [
+  #   {
+  #     sid = "CloudWatchLogs"
+  #     actions = [
+  #       "kms:Encrypt*",
+  #       "kms:Decrypt*",
+  #       "kms:ReEncrypt*",
+  #       "kms:GenerateDataKey*",
+  #       "kms:Describe*"
+  #     ]
+  #     resources = ["*"]
 
-      principals = [
-        {
-          type        = "Service"
-          identifiers = ["logs.${local.region_name}.amazonaws.com"]
-        }
-      ]
+  #     principals = [
+  #       {
+  #         type        = "Service"
+  #         identifiers = ["logs.${local.region_name}.amazonaws.com"]
+  #       }
+  #     ]
 
-      conditions = [
-        {
-          test     = "ArnLike"
-          variable = "kms:EncryptionContext:aws:logs:arn"
-          values = [
-            "arn:aws:logs:${local.region_name}:${local.account_id}:log-group:*",
-          ]
-        }
-      ]
-    }
-  ]
+  #     conditions = [
+  #       {
+  #         test     = "ArnLike"
+  #         variable = "kms:EncryptionContext:aws:logs:arn"
+  #         values = [
+  #           "arn:aws:logs:${local.region_name}:${local.account_id}:log-group:*",
+  #         ]
+  #       }
+  #     ]
+  #   }
+  # ]
 
   aliases = [local.name]
 
   tags = var.tags
+}
+
+locals {
+  subnets = {
+    for i, tier in concat(var.vpc.existing_tiers, ["ls-private", "ls-public"]) :
+    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(data.aws_vpc.current.cidr_block, 4, i * length(data.aws_availability_zones.available.names) + az_idx)] if i >= length(var.vpc.existing_tiers)
+  }
 }
 
 module "labelstudio" {
@@ -82,12 +90,7 @@ module "labelstudio" {
   desired_capacity = var.labelstudio.desired_capacity
   max_size         = var.labelstudio.max_size
   min_size         = var.labelstudio.min_size
-  # public_cidr_block                     = [for s in data.aws_subnet.public : s.cidr_block]
-  # private_cidr_block                    = [for s in data.aws_subnet.private : s.cidr_block]
-  create_r53_zone                       = false
-  create_acm_certificate                = var.labelstudio.create_acm_certificate
-  domain_name                           = try(var.route53.zone.name, null)
-  record_name                           = try(var.route53.record.subdomain_name, null)
+
   eks_capacity_type                     = var.labelstudio.eks_capacity_type
   ingress_namespace                     = var.labelstudio.ingress_namespace
   monitoring_namespace                  = var.labelstudio.monitoring_namespace
@@ -128,16 +131,30 @@ module "labelstudio" {
   redis_tls_crt_file                    = var.labelstudio.redis_tls_crt_file
   redis_tls_key_file                    = var.labelstudio.redis_tls_key_file
   lets_encrypt_email                    = var.labelstudio.lets_encrypt_email
-  predefined_vpc_id                     = var.vpc.id
-  cluster_endpoint_public_access_cidrs  = var.labelstudio.cluster_endpoint_public_access_cidrs
+
+  # dns
+  create_r53_zone        = false
+  create_acm_certificate = var.labelstudio.create_acm_certificate
+  domain_name            = try(var.route53.zone.name, null)
+  record_name            = try(var.route53.record.subdomain_name, null)
+
+  # s3
   predefined_s3_bucket = {
     name : module.bucket_label.bucket.name
     region : local.region_name
     folder : "/"
     kms_arn : module.kms.key_arn
   }
-  create_internet_gateway = false
-  vpc_cidr_block          = null
+
+  # vpc
+  predefined_vpc_id                    = var.vpc.id
+  cluster_endpoint_public_access_cidrs = var.labelstudio.cluster_endpoint_public_access_cidrs
+  create_internet_gateway              = false
+  vpc_cidr_block                       = null
+  # public_cidr_block                     = [for s in data.aws_subnet.public : s.cidr_block]
+  # private_cidr_block                    = [for s in data.aws_subnet.private : s.cidr_block]
+  public_cidr_block  = local.subnets["ls-public"]
+  private_cidr_block = local.subnets["ls-private"]
 }
 
 data "aws_eks_cluster" "eks" {

@@ -170,8 +170,8 @@ variable "task_definition" {
   }
 
   validation {
-    condition     = try(contains(["public", "private"], var.task_definition.docker.registry.ecr.privacy), true)
-    error_message = "docker repository privacy must be one of [public, private]"
+    condition     = try(contains(["private", "public", "intra"], var.task_definition.docker.registry.ecr.privacy), true)
+    error_message = "docker repository privacy must be one of [public, private, intra]"
   }
 
   validation {
@@ -306,8 +306,8 @@ resource "null_resource" "ec2_architecture" {
       os              = value.os
       architecture    = value.architecture
       instance_type   = value.instance_type
-      instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)
-      instance_family = try(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)?", value.instance_type)), substr(value.instance_type, 0, 1))
+      instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type)
+      instance_family = try(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type)), substr(value.instance_type, 0, 1))
     }
     if var.service.deployment_type == "ec2"
   }

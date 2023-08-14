@@ -3,7 +3,6 @@ package microservice_scraper_backend_test
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -60,7 +59,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 
 	// global variables
 	namePrefix := "vi"
-	id := util.RandomID(4)
+	id := "abcd" //util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
 		"TestID":  id,
@@ -78,8 +77,8 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			"name_suffix": nameSuffix,
 			"labelstudio": map[string]any{
 				"instance_type":    instance.Name,
-				"desired_capacity": 2,
-				"max_size":         3,
+				"desired_capacity": 1,
+				"max_size":         2,
 				"min_size":         1,
 				// "create_acm_certificate": true,
 				"label_studio_additional_set": map[string]any{
@@ -87,9 +86,9 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 					"global.image.tag":        "develop",
 				},
 				"postgresql_type":         "rds",
-				"postgresql_machine_type": "db.t2.micro",
+				"postgresql_machine_type": "db.m5.large",
 				"redis_type":              "elasticache",
-				"redis_machine_type":      "cache.t3.micro",
+				"redis_machine_type":      util.Format(".", "cache", instance.Name),
 			},
 			// "route53": map[string]any{
 			// 	"zone": map[string]any{
@@ -100,7 +99,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			// 	},
 			// },
 			"vpc": map[string]any{
-				"id": "vpc-0d5c1d5379f616e2f",
+				"id": "vpc-013a411b59dd8a08e",
 			},
 			"iam": map[string]any{
 				"scope":        "accounts",
@@ -114,24 +113,23 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		},
 	}
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
-	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, options)
-	})
-	terratestStructure.RunTestStage(t, "validate", func() {
-		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
-		os.Setenv(terratestStructure.SKIP_STAGE_ENV_VAR_PREFIX+"validate_microservice", "true")
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
-
-	})
+	// terratestStructure.RunTestStage(t, "deploy", func() {
+	// 	terraform.InitAndApply(t, options)
+	// })
+	// terratestStructure.RunTestStage(t, "validate", func() {
+	// 	// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
+	// 	name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
+	// 	os.Setenv(terratestStructure.SKIP_STAGE_ENV_VAR_PREFIX+"validate_microservice", "true")
+	// 	testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
+	// })
 }

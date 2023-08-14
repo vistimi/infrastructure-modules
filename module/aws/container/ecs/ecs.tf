@@ -33,6 +33,7 @@ module "ecs" {
 
   cluster_name = var.name
 
+  # cluster logging
   # create_cloudwatch_log_group            = true
   # cloudwatch_log_group_retention_in_days = var.log.retention_days
   # cloudwatch_log_group_tags              = var.tags
@@ -81,7 +82,7 @@ module "ecs" {
   }
 
   services = {
-    "${var.name}" = {
+    unique = {
       #------------
       # Service
       #------------
@@ -226,8 +227,14 @@ module "ecs" {
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
-        "${var.name}" = {
-          name = var.name
+        unique = {
+
+          # enable_cloudwatch_logging              = true
+          # create_cloudwatch_log_group            = true
+          # cloudwatch_log_group_retention_in_days = 30
+          # cloudwatch_log_group_kms_key_id        = null
+
+          # name = var.name
           environment_files = try([{
             "value" = "arn:${local.partition}:s3:::${var.task_definition.env_file.bucket_name}/${var.task_definition.env_file.file_name}",
             "type"  = "s3"

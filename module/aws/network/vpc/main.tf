@@ -1,6 +1,8 @@
 locals {
-  tier_tags = ["private", "public"]
-  # # increment from `0.0.0.0/16` to `0.0.16.0/16`
+  # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/5.1.1?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#private-versus-intra-subnets
+  tier_tags = ["private", "public", "intra"]
+
+  # increment from `0.0.0.0/16` to `0.0.16.0/16`
   subnets = {
     for i, tier in local.tier_tags :
     "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]

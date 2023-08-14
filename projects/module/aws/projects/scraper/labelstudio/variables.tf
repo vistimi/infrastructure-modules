@@ -11,9 +11,8 @@ variable "name_suffix" {
 
 variable "vpc" {
   type = object({
-    id           = string
-    public_tier  = optional(string, "public")
-    private_tier = optional(string, "private")
+    id             = string
+    existing_tiers = optional(list(string), ["private", "public", "intra"])
   })
 }
 
@@ -73,7 +72,7 @@ variable "labelstudio" {
     enterprise                            = optional(bool, false)
     deploy_label_studio                   = optional(bool, true)
     license_literal                       = optional(string)
-    postgresql_type                       = optional(string, "internal")
+    postgresql_type                       = optional(string, "rds")
     postgresql_machine_type               = optional(string, "db.m5.large")
     postgresql_database                   = optional(string, "labelstudio")
     postgresql_host                       = optional(string, "")
@@ -84,7 +83,7 @@ variable "labelstudio" {
     postgresql_tls_key_file               = optional(string)
     postgresql_tls_crt_file               = optional(string)
     postgresql_ca_crt_file                = optional(string)
-    redis_type                            = optional(string, "internal")
+    redis_type                            = optional(string, "elasticache")
     redis_machine_type                    = optional(string, "cache.t3.micro")
     redis_host                            = optional(string, "")
     redis_port                            = optional(number, 6379)
@@ -96,6 +95,16 @@ variable "labelstudio" {
     lets_encrypt_email                    = optional(string)
     cluster_endpoint_public_access_cidrs  = optional(list(string), ["0.0.0.0/0"])
   })
+
+  validation {
+    condition     =  contains(["rds"], var.labelstudio.postgresql_type) ? regex("^(?:(?P<usecase>\\w+)\\.)?(?P<prefix>\\w+)\\.(?P<size>\\w+)$", var.labelstudio.postgresql_machine_type).usecase == "db" : true
+    error_message = "postgresql machine type needs to be of type db.<family>.<size>, got ${var.labelstudio.postgresql_machine_type}"
+  }
+
+  validation {
+    condition     = contains(["elasticache"], var.labelstudio.postgresql_type) ? regex("^(?:(?P<usecase>\\w+)\\.)?(?P<prefix>\\w+)\\.(?P<size>\\w+)$", var.labelstudio.redis_machine_type).usecase == "cache" : true
+    error_message = "redis machine type needs to be of type db.<family>.<size>, got ${var.labelstudio.redis_machine_type}"
+  }
 }
 
 variable "tags" {

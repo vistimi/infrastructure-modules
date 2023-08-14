@@ -8,8 +8,8 @@ variable "cidr_ipv4" {
   type        = string
 
   validation {
-    condition     = regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)?", var.cidr_ipv4).size == "16"
-    error_message = "cidr ${jsonencode(regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)?", var.cidr_ipv4))} must have a block of size 16"
+    condition     = regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)$", var.cidr_ipv4).size == "16"
+    error_message = "cidr ${jsonencode(regex("^(?P<ip>[\\d\\.]+)\\/(?P<size>\\d+)$", var.cidr_ipv4))} must have a block of size 16"
   }
 }
 

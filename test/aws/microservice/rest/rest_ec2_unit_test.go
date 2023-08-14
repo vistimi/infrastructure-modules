@@ -109,7 +109,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 			"tags": tags,
 
 			"vpc": map[string]any{
-				"id":   "vpc-0d5c1d5379f616e2f",
+				"id":   "vpc-013a411b59dd8a08e",
 				"tier": "public",
 			},
 

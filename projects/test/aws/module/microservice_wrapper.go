@@ -44,7 +44,7 @@ func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName stri
 			"name_suffix": nameSuffix,
 
 			"vpc": map[string]any{
-				"id":   "vpc-0d5c1d5379f616e2f",
+				"id":   "vpc-013a411b59dd8a08e",
 				"tier": "public",
 			},
 

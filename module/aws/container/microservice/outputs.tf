@@ -10,5 +10,5 @@ output "ecs" {
 }
 
 output "bucket_env" {
-  value = { for key, value in module.bucket_env : key => value.bucket }
+  value = one(values(module.bucket_env))
 }

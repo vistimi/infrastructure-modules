@@ -26,8 +26,8 @@ variable "privacy" {
   type        = string
 
   validation {
-    condition     = contains(["public", "private"], var.privacy)
-    error_message = "repository privacy must be one of [public, private]"
+    condition     = contains(["private", "public", "intra"], var.privacy)
+    error_message = "repository privacy must be one of [public, private, intra]"
   }
 }
 

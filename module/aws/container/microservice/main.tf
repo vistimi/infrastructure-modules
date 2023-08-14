@@ -37,7 +37,7 @@ module "ecs" {
 module "bucket_env" {
   source = "../../../../module/aws/data/bucket"
 
-  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+  for_each = var.bucket_env != null ? { unique = {} } : {}
 
   name          = join("-", [var.name, var.bucket_env.name])
   force_destroy = var.bucket_env.force_destroy
@@ -55,7 +55,7 @@ module "bucket_env" {
 }
 
 resource "aws_s3_object" "env" {
-  for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
+  for_each = var.bucket_env != null ? { unique = {} } : {}
 
   key                    = var.bucket_env.file_key
   bucket                 = module.bucket_env[each.key].bucket.name
