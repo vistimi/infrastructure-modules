@@ -23,11 +23,15 @@ resource "null_resource" "cidr_ipv4" {
   }
 }
 
-variable "enable_nat" {
+variable "nat" {
   description = "Enable the NAT gateway"
-  type        = bool
-  nullable    = false
-  default     = false
+  type        = string
+  default     = null
+
+  validation {
+    condition     = contains(["vpc", "az", "subnet"], var.nat)
+    error_message = "nat must be in [vpc, az, subnet] or null"
+  }
 }
 
 variable "tier_tags" {
@@ -35,13 +39,4 @@ variable "tier_tags" {
   type        = list(string)
 
   default = ["private", "public"]
-}
-
-resource "null_resource" "tier_tag_names" {
-  lifecycle {
-    precondition {
-      condition     = contains(var.tier_tags, var.tier)
-      error_message = "vpc tier must be one of ${jsonencode(var.tier_tags)}"
-    }
-  }
 }

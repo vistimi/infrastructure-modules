@@ -16,10 +16,10 @@ module "vpc" {
   name = var.name
   cidr = var.cidr_ipv4
 
-  # only one NAT
-  enable_nat_gateway     = var.enable_nat
-  single_nat_gateway     = var.enable_nat
-  one_nat_gateway_per_az = false
+  # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/5.1.1?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#nat-gateway-scenarios
+  enable_nat_gateway     = var.nat != null ? true : false
+  single_nat_gateway     = var.nat == "vpc" ? true : false
+  one_nat_gateway_per_az = var.nat == "az" ? true : false
 
   azs             = data.aws_availability_zones.available.names
   public_subnets  = local.subnets["public"]

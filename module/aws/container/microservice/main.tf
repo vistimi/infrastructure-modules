@@ -20,7 +20,7 @@ module "ecs" {
   task_definition = merge(var.ecs.task_definition,
     var.bucket_env != null ? {
       env_file = {
-        bucket_name = one(module.bucket_env[*].bucket.name)
+        bucket_name = one(values(module.bucket_env)).bucket.name
         file_name   = var.bucket_env.file_key
       }
   } : {})
@@ -58,7 +58,7 @@ resource "aws_s3_object" "env" {
   for_each = var.bucket_env != null ? { "${var.bucket_env.name}" = {} } : {}
 
   key                    = var.bucket_env.file_key
-  bucket                 = module.bucket_env[each.key].bucket.id
+  bucket                 = module.bucket_env[each.key].bucket.name
   source                 = var.bucket_env.file_path
   server_side_encryption = "aws:kms"
 }
