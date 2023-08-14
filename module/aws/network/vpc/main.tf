@@ -1,7 +1,8 @@
 locals {
+  tier_tags = ["private", "public"]
   # # increment from `0.0.0.0/16` to `0.0.16.0/16`
   subnets = {
-    for i, tier in var.tier_tags :
+    for i, tier in local.tier_tags :
     "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
   }
 }
