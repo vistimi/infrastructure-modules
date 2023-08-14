@@ -19,7 +19,7 @@ variable "nat" {
   default     = null
 
   validation {
-    condition     = contains(["vpc", "az", "subnet"], var.nat)
+    condition     = var.nat != null ? contains(["vpc", "az", "subnet"], var.nat) : true
     error_message = "nat must be in [vpc, az, subnet] or null"
   }
 }
