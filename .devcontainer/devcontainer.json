@@ -14,6 +14,7 @@
 	"mounts": [
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
 	],
+	"postCreateCommand": "go install github.com/cweill/gotests/gotests@latest && go install github.com/fatih/gomodifytags@latest &&    && go install github.comjosharian/impl@latest    && go install github.com/haya14busa/goplay/cmd/goplay@latest    && go install github.com/go-delve/delve/cmd/dlv@latest    && go install honnef.co/go/tools/cmd/staticcheck@latest    && go install golang.org/x/tools/gopls@latest",
 	"postStartCommand": "export $(grep -v '^#' .devcontainer/devcontainer.env | xargs) && make aws-auth && tflint --init && sudo go mod download",
 	"customizations": {
 		"vscode": {
