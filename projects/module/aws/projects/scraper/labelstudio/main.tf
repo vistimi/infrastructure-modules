@@ -100,9 +100,9 @@ module "labelstudio" {
     username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
     # username = "system:node:{{EC2PrivateDNSName}}"
     groups = [
-      "system:masters",
-      # "system:bootstrappers",
-      # "system:nodes",
+      # "system:masters",
+      "system:bootstrappers",
+      "system:nodes",
     ]
   }])
   aws_auth_accounts                     = var.labelstudio.aws_auth_accounts
