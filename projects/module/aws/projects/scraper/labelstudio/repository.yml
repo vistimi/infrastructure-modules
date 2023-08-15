@@ -24,6 +24,9 @@ statements:
           "iam:*",
           "kms:*",
           "elasticloadbalancing:*",
+          "iam:ListAttachedRolePolicies",
+          "iam:CreateServiceLinkedRole",
+          "iam:PassRole",
         ]
         # "iam:CreatePolicy", "kms:DescribeKey", "elasticloadbalancing:CreateLoadBalancer", "application-autoscaling:RegisterScalableTarget"
         # "cloudwatch:PutMetricStream",
@@ -56,3 +59,12 @@ statements:
       actions: ["acm:*"]
       effect: "Allow"
       resources: ["*"]
+
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSClusterPolicy.html
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSServicePolicy.html
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSVPCResourceController.html
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSWorkerNodePolicy.html
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKS_CNI_Policy.html
+  # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEC2ContainerRegistryReadOnly.html
+  # https://docs.aws.amazon.com/eks/latest/userguide/security_iam_id-based-policy-examples.html
+  # https://docs.aws.amazon.com/eks/latest/userguide/security-iam-awsmanpol.html

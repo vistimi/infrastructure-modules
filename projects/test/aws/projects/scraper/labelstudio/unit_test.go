@@ -3,6 +3,7 @@ package microservice_scraper_backend_test
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -113,23 +114,23 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratestStructure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
-	// terratestStructure.RunTestStage(t, "deploy", func() {
-	// 	terraform.InitAndApply(t, options)
-	// })
-	// terratestStructure.RunTestStage(t, "validate", func() {
-	// 	// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-	// 	name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
-	// 	os.Setenv(terratestStructure.SKIP_STAGE_ENV_VAR_PREFIX+"validate_microservice", "true")
-	// 	testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
-	// })
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.InitAndApply(t, options)
+	})
+	terratestStructure.RunTestStage(t, "validate", func() {
+		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
+		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
+		os.Setenv(terratestStructure.SKIP_STAGE_ENV_VAR_PREFIX+"validate_microservice", "true")
+		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
+	})
 }

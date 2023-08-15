@@ -28,15 +28,15 @@ module "kms" {
   key_usage   = "ENCRYPT_DECRYPT"
 
   # Policy
-  key_owners                             = [local.account_arn]
-  key_administrators                     = [local.account_arn]
-  key_users                              = [local.account_arn]
-  key_service_users                      = [local.account_arn]
-  key_service_roles_for_autoscaling      = ["arn:aws:iam::${local.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"]
-  key_symmetric_encryption_users         = [local.account_arn]
-  key_hmac_users                         = [local.account_arn]
-  key_asymmetric_public_encryption_users = [local.account_arn]
-  key_asymmetric_sign_verify_users       = [local.account_arn]
+  # key_owners         = [local.account_arn]
+  # key_administrators = [local.account_arn]
+  # key_users          = [local.account_arn]
+  # key_service_users  = [local.account_arn]
+  # key_service_roles_for_autoscaling      = ["arn:aws:iam::${local.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"]
+  # key_symmetric_encryption_users         = [local.account_arn]
+  # key_hmac_users                         = [local.account_arn]
+  # key_asymmetric_public_encryption_users = [local.account_arn]
+  # key_asymmetric_sign_verify_users       = [local.account_arn]
   # key_statements = [
   #   {
   #     sid = "CloudWatchLogs"
@@ -91,11 +91,20 @@ module "labelstudio" {
   max_size         = var.labelstudio.max_size
   min_size         = var.labelstudio.min_size
 
-  eks_capacity_type                     = var.labelstudio.eks_capacity_type
-  ingress_namespace                     = var.labelstudio.ingress_namespace
-  monitoring_namespace                  = var.labelstudio.monitoring_namespace
-  aws_auth_roles                        = var.labelstudio.aws_auth_roles
-  aws_auth_users                        = var.labelstudio.aws_auth_users
+  eks_capacity_type    = var.labelstudio.eks_capacity_type
+  ingress_namespace    = var.labelstudio.ingress_namespace
+  monitoring_namespace = var.labelstudio.monitoring_namespace
+  aws_auth_roles       = var.labelstudio.aws_auth_roles
+  aws_auth_users = concat(var.labelstudio.aws_auth_users, [{
+    userarn  = data.aws_caller_identity.current.arn
+    username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
+    # username = "system:node:{{EC2PrivateDNSName}}"
+    groups = [
+      "system:masters",
+      # "system:bootstrappers",
+      # "system:nodes",
+    ]
+  }])
   aws_auth_accounts                     = var.labelstudio.aws_auth_accounts
   label_studio_helm_chart_repo          = var.labelstudio.label_studio_helm_chart_repo
   label_studio_helm_chart_repo_username = var.labelstudio.label_studio_helm_chart_repo_username
