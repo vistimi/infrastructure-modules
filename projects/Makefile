@@ -5,6 +5,8 @@ MAKEFLAGS += --warn-undefined-variables
 .ONESHELL:
 
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+FILE_NAME=$(shell basename $(MAKEFILE_LIST))
+INFRA_FILE_NAME=Makefile_infra
 
 PATH_AWS_PROJECTS=module/aws/projects
 PATH_TEST_AWS_PROJECTS=test/aws/projects
@@ -29,20 +31,15 @@ fmt: ## Format all files
 	terraform fmt -recursive
 
 aws-auth:
-	make -C ../ -f Makefile_infra aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
 	aws configure list
 
-test: ## Setup the test environment, run the tests and clean the environment
-	make test-prepare; \
-	# # p1 will not mix the logs when multiple tests are used
-	# go test -timeout 30m -p 1 -v -cover ./...; \
-	make clean;
 test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/_global
-	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/_global
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -53,10 +50,10 @@ prepare-account-aws:
 	EOF
 
 prepare-global-level:
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
 prepare-aws-scraper-labelstudio:
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
 
 BRANCH_NAME ?= trunk
 prepare-aws-scraper-backend:
@@ -64,26 +61,25 @@ prepare-aws-scraper-backend:
 	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=backend)
-	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME})
 	$(eval COMMON_NAME="")
 	$(eval CLOUD_HOST=aws)
-	make -C ../ -f Makefile_infra gh-load-folder \
-		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} gh-load-folder \
+		TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
 		REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-scraper-backend-env \
-		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-scraper-backend-env \
+		REPOSITORY_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST}
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
 make prepare-scraper-backend-env:
-	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
-	make -C ../ -f projects/${MAKEFILE} prepare \
+	$(eval MAKEFILE_OVERRIDE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
+	make -f ${MAKEFILE_OVERRIDE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
-		CONFIG_FOLDER_PATH=projects/${REPOSITORY_CONFIG_PATH} \
+		CONFIG_FOLDER_PATH=${REPOSITORY_CONFIG_PATH} \
 		COMMON_NAME=${COMMON_NAME} \
 		CLOUD_HOST=${CLOUD_HOST} \
 		FLICKR_PRIVATE_KEY=123 \
@@ -99,32 +95,32 @@ prepare-aws-scraper-frontend:
 	$(eval ORGANIZATION_NAME=dresspeng)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=frontend)
-	$(eval OUTPUT_FOLDER=${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME})
-	make -C ../ -f Makefile_infra gh-load-folder \
-		TERRAGRUNT_CONFIG_PATH=projects/${OUTPUT_FOLDER} \
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} gh-load-folder \
+		TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		ORGANIZATION_NAME=${ORGANIZATION_NAME} \
 		REPOSITORY_NAME=${PROJECT_NAME}-${SERVICE_NAME} \
 		BRANCH_NAME=${BRANCH_NAME} \
 		REPOSITORY_CONFIG_PATH_FOLDER=config
-	make prepare-scraper-frontend-env \
-		REPOSITORY_CONFIG_PATH=${OUTPUT_FOLDER} \
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-scraper-frontend-env \
+		REPOSITORY_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_TEST_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME} \
 		ENV_FOLDER_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
-	make -C ../ -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_PROJECTS}/${PROJECT_NAME}/${SERVICE_NAME}
 prepare-scraper-frontend-env:
-	$(eval MAKEFILE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
-	make -C ../ -f projects/${MAKEFILE} prepare \
+	echo ${REPOSITORY_CONFIG_PATH}
+	$(eval MAKEFILE_OVERRIDE=$(shell find ${REPOSITORY_CONFIG_PATH} -type f -name "*Makefile*"))
+	make -f ${MAKEFILE_OVERRIDE} prepare \
 		ENV_FOLDER_PATH=${ENV_FOLDER_PATH} \
 		NEXT_PUBLIC_API_URL="http://not-needed.com" \
 		PORT=$(shell yq eval '.port' ${REPOSITORY_CONFIG_PATH}/config_${OVERRIDE_EXTENSION}.yml)
 
 clean: ## Clean the test environment
-	make -C ../ -f Makefile_infra nuke-region
-	make -C ../ -f Makefile_infra nuke-vpc
-	make -C ../ -f Makefile_infra nuke-global
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-region
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-vpc
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-global
 
-	make -C ../ -f Makefile_infra clean-task-definition
-	make -C ../ -f Makefile_infra clean-elb
-	make -C ../ -f Makefile_infra clean-ecs
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-task-definition
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-elb
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-ecs
 
 	make clean-local
 

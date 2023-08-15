@@ -5,6 +5,8 @@ MAKEFLAGS += --warn-undefined-variables
 .ONESHELL:
 
 PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+FILE_NAME=$(shell basename $(MAKEFILE_LIST))
+INFRA_FILE_NAME=Makefile_infra
 
 PATH_AWS=module/aws
 PATH_AWS_IAM=module/aws/iam
@@ -31,19 +33,14 @@ fmt: ## Format all files
 	terraform fmt -recursive
 
 aws-auth:
-	make -f Makefile_infra aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} aws-auth AWS_PROFILE_NAME=${AWS_PROFILE_NAME} AWS_REGION_NAME=${AWS_REGION_NAME} AWS_ACCESS_KEY=${AWS_ACCESS_KEY} AWS_SECRET_KEY=${AWS_SECRET_KEY}
 	aws configure list
 
-test: ## Setup the test environment, run the tests and clean the environment
-	make test-prepare; \
-	# # p1 will not mix the logs when multiple tests are used
-	# go test -timeout 30m -p 1 -v -cover ./...; \
-	make clean;
 test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -54,22 +51,22 @@ prepare-account-aws:
 	EOF
 
 prepare-aws-microservice:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
 
 prepare-aws-iam-level:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level
 prepare-aws-iam-group:
-	make -f Makefile_infra init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/group
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/group
 
 
 clean: ## Clean the test environment
-	make -f Makefile_infra nuke-region
-	make -f Makefile_infra nuke-vpc
-	make -f Makefile_infra nuke-global
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-region
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-vpc
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-global
 
-	make -f Makefile_infra clean-task-definition
-	make -f Makefile_infra clean-elb
-	make -f Makefile_infra clean-ecs
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-task-definition
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-elb
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} clean-ecs
 
 	make clean-local
 
