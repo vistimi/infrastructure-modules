@@ -59,6 +59,10 @@ statements:
       actions: ["acm:*"]
       effect: "Allow"
       resources: ["*"]
+  - S3Full:
+      actions: ["s3:*"]
+      effect: "Allow"
+      resources: ["*"]
 
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSClusterPolicy.html
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSServicePolicy.html

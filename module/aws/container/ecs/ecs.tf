@@ -25,6 +25,7 @@ locals {
 
 locals {
   log_steam_name = "test"
+  container_name = "unique"
 }
 
 module "ecs" {
@@ -103,7 +104,7 @@ module "ecs" {
       load_balancer = {
         service = {
           target_group_arn = element(module.elb.target_group_arns, 0) // one LB per target group
-          container_name   = var.name
+          container_name   = local.container_name
           container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
       }
@@ -119,7 +120,7 @@ module "ecs" {
             type                     = "ingress"
             from_port                = target.port
             to_port                  = target.port
-            protocol                 = target.protocol
+            protocol                 = local.aws_security_group_rule_protocols[target.protocol]
             description              = "Service ${target.protocol} port ${target.port}"
             source_security_group_id = module.elb_sg.security_group_id
           }
@@ -227,7 +228,7 @@ module "ecs" {
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
-        unique = {
+        "${local.container_name}" = {
 
           # enable_cloudwatch_logging              = true
           # create_cloudwatch_log_group            = true

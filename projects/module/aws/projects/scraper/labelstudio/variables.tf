@@ -97,7 +97,7 @@ variable "labelstudio" {
   })
 
   validation {
-    condition     =  contains(["rds"], var.labelstudio.postgresql_type) ? regex("^(?:(?P<usecase>\\w+)\\.)?(?P<prefix>\\w+)\\.(?P<size>\\w+)$", var.labelstudio.postgresql_machine_type).usecase == "db" : true
+    condition     = contains(["rds"], var.labelstudio.postgresql_type) ? regex("^(?:(?P<usecase>\\w+)\\.)?(?P<prefix>\\w+)\\.(?P<size>\\w+)$", var.labelstudio.postgresql_machine_type).usecase == "db" : true
     error_message = "postgresql machine type needs to be of type db.<family>.<size>, got ${var.labelstudio.postgresql_machine_type}"
   }
 

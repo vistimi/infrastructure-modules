@@ -13,7 +13,7 @@ import (
 
 func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
 	t.Parallel()
-	optionsProject, nameSuffix := SetupOptionsRepository(t)
+	optionsProject, namePrefix, nameSuffix := SetupOptionsRepository(t)
 
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
@@ -61,7 +61,7 @@ func Test_Unit_Microservice_ScraperFrontend_Fargate(t *testing.T) {
 		terraform.InitAndApply(t, optionsProject)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
-		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
+		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
 		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
 	})
 }

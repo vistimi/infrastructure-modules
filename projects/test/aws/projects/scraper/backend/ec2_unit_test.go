@@ -13,7 +13,7 @@ import (
 
 func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	// t.Parallel()
-	optionsProject, nameSuffix := SetupOptionsRepository(t)
+	optionsProject, namePrefix, nameSuffix := SetupOptionsRepository(t)
 
 	maxTaskCount := 3
 
@@ -111,7 +111,7 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
+		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
 		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
 	})
 }

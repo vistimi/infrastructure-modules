@@ -23,7 +23,7 @@ const (
 	ECSReservedMemory = 100
 )
 
-func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (*terraform.Options, string) {
+func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (*terraform.Options, string, string) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
@@ -65,5 +65,5 @@ func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName stri
 			"tags": tags,
 		},
 	}
-	return options, nameSuffix
+	return options, namePrefix, nameSuffix
 }

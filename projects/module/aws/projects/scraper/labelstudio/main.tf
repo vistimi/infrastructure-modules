@@ -74,9 +74,13 @@ module "kms" {
 }
 
 locals {
+  # cidr_block = data.aws_vpc.current.cidr_block
+  # tiers = concat(var.vpc.existing_tiers, ["ls-private", "ls-public"])
+  cidr_block = "10.0.0.0/16"
+  tiers      = ["ls-private", "ls-public"]
   subnets = {
-    for i, tier in concat(var.vpc.existing_tiers, ["ls-private", "ls-public"]) :
-    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(data.aws_vpc.current.cidr_block, 4, i * length(data.aws_availability_zones.available.names) + az_idx)] if i >= length(var.vpc.existing_tiers)
+    for i, tier in local.tiers :
+    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(local.cidr_block, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
   }
 }
 
@@ -91,21 +95,31 @@ module "labelstudio" {
   max_size         = var.labelstudio.max_size
   min_size         = var.labelstudio.min_size
 
-  eks_capacity_type    = var.labelstudio.eks_capacity_type
-  ingress_namespace    = var.labelstudio.ingress_namespace
-  monitoring_namespace = var.labelstudio.monitoring_namespace
-  aws_auth_roles       = var.labelstudio.aws_auth_roles
-  aws_auth_users = concat(var.labelstudio.aws_auth_users, [{
-    userarn  = data.aws_caller_identity.current.arn
-    username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
-    # username = "system:node:{{EC2PrivateDNSName}}"
-    groups = [
-      # "system:masters",
-      "system:bootstrappers",
-      "system:nodes",
-    ]
-  }])
-  aws_auth_accounts                     = var.labelstudio.aws_auth_accounts
+  eks_capacity_type = var.labelstudio.eks_capacity_type
+  # ingress_namespace    = var.labelstudio.ingress_namespace
+  # monitoring_namespace = var.labelstudio.monitoring_namespace
+  # aws_auth_roles       = var.labelstudio.aws_auth_roles
+  aws_auth_users = concat(var.labelstudio.aws_auth_users, [
+    # {
+    #   userarn = data.aws_caller_identity.current.arn
+    #   # userarn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name}-user-scope"
+    #   username = "system:node:{{EC2PrivateDNSName}}"
+    #   groups = [
+    #     # "system:masters",
+    #     "system:bootstrappers",
+    #     "system:nodes",
+    #   ]
+    # },
+    {
+      userarn  = data.aws_caller_identity.current.arn
+      username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
+      groups = [
+        "system:masters",
+      ]
+    }
+  ])
+  # aws_auth_users                        = []
+  # aws_auth_accounts                     = var.labelstudio.aws_auth_accounts
   label_studio_helm_chart_repo          = var.labelstudio.label_studio_helm_chart_repo
   label_studio_helm_chart_repo_username = var.labelstudio.label_studio_helm_chart_repo_username
   label_studio_helm_chart_repo_password = sensitive(var.labelstudio.label_studio_helm_chart_repo_password)
@@ -125,21 +139,23 @@ module "labelstudio" {
   postgresql_host                       = var.labelstudio.postgresql_host
   postgresql_port                       = var.labelstudio.postgresql_port
   postgresql_username                   = var.labelstudio.postgresql_username
-  postgresql_password                   = sensitive(var.labelstudio.postgresql_password)
-  postgresql_ssl_mode                   = var.labelstudio.postgresql_ssl_mode
-  postgresql_tls_key_file               = var.labelstudio.postgresql_tls_key_file
-  postgresql_tls_crt_file               = var.labelstudio.postgresql_tls_crt_file
-  postgresql_ca_crt_file                = var.labelstudio.postgresql_ca_crt_file
-  redis_type                            = var.labelstudio.redis_type
-  redis_machine_type                    = var.labelstudio.redis_machine_type
-  redis_host                            = var.labelstudio.redis_host
-  redis_port                            = var.labelstudio.redis_port
-  redis_password                        = sensitive(var.labelstudio.redis_password)
-  redis_ssl_mode                        = var.labelstudio.redis_ssl_mode
-  redis_ca_crt_file                     = var.labelstudio.redis_ca_crt_file
-  redis_tls_crt_file                    = var.labelstudio.redis_tls_crt_file
-  redis_tls_key_file                    = var.labelstudio.redis_tls_key_file
-  lets_encrypt_email                    = var.labelstudio.lets_encrypt_email
+  # postgresql_password                   = sensitive(var.labelstudio.postgresql_password)
+  postgresql_password     = "12345678"
+  postgresql_ssl_mode     = var.labelstudio.postgresql_ssl_mode
+  postgresql_tls_key_file = var.labelstudio.postgresql_tls_key_file
+  postgresql_tls_crt_file = var.labelstudio.postgresql_tls_crt_file
+  postgresql_ca_crt_file  = var.labelstudio.postgresql_ca_crt_file
+  redis_type              = var.labelstudio.redis_type
+  redis_machine_type      = var.labelstudio.redis_machine_type
+  redis_host              = var.labelstudio.redis_host
+  redis_port              = var.labelstudio.redis_port
+  # redis_password                        = sensitive(var.labelstudio.redis_password)
+  redis_password     = "12345678"
+  redis_ssl_mode     = var.labelstudio.redis_ssl_mode
+  redis_ca_crt_file  = var.labelstudio.redis_ca_crt_file
+  redis_tls_crt_file = var.labelstudio.redis_tls_crt_file
+  redis_tls_key_file = var.labelstudio.redis_tls_key_file
+  lets_encrypt_email = var.labelstudio.lets_encrypt_email
 
   # dns
   create_r53_zone        = false
@@ -147,21 +163,23 @@ module "labelstudio" {
   domain_name            = try(var.route53.zone.name, null)
   record_name            = try(var.route53.record.subdomain_name, null)
 
-  # s3
-  predefined_s3_bucket = {
-    name : module.bucket_label.bucket.name
-    region : local.region_name
-    folder : "/"
-    kms_arn : module.kms.key_arn
-  }
+  # # s3
+  # predefined_s3_bucket = {
+  #   name : module.bucket_label.bucket.name
+  #   region : local.region_name
+  #   folder : "/"
+  #   kms_arn : module.kms.key_arn
+  # }
 
-  # vpc
-  predefined_vpc_id                    = var.vpc.id
-  cluster_endpoint_public_access_cidrs = var.labelstudio.cluster_endpoint_public_access_cidrs
-  create_internet_gateway              = false
-  vpc_cidr_block                       = null
-  # public_cidr_block                     = [for s in data.aws_subnet.public : s.cidr_block]
-  # private_cidr_block                    = [for s in data.aws_subnet.private : s.cidr_block]
+  # # vpc
+  # predefined_vpc_id                    = var.vpc.id
+  # cluster_endpoint_public_access_cidrs = var.labelstudio.cluster_endpoint_public_access_cidrs
+  # create_internet_gateway              = false
+  # vpc_cidr_block                       = null
+  # # public_cidr_block                     = [for s in data.aws_subnet.public : s.cidr_block]
+  # # private_cidr_block                    = [for s in data.aws_subnet.private : s.cidr_block]
+  # public_cidr_block  = local.subnets["ls-public"]
+  # private_cidr_block = local.subnets["ls-private"]
   public_cidr_block  = local.subnets["ls-public"]
   private_cidr_block = local.subnets["ls-private"]
 }

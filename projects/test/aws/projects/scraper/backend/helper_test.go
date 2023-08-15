@@ -76,8 +76,8 @@ var (
 	}
 )
 
-func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
-	optionsMicroservice, nameSuffix := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
+func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
+	optionsMicroservice, namePrefix, nameSuffix := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
@@ -176,5 +176,5 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string) {
 		"file_path": "override.env",
 	})
 
-	return optionsProject, nameSuffix
+	return optionsProject, namePrefix, nameSuffix
 }
