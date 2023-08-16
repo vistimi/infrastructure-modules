@@ -14,6 +14,7 @@ statements:
         [
           "eks:*",
           "rds:*",
+          "elasticache:*",
           "ec2:*",
           "autoscaling:*",
           "autoscaling-plans:*",

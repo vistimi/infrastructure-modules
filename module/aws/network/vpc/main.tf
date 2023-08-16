@@ -27,6 +27,7 @@ module "vpc" {
   azs             = data.aws_availability_zones.available.names
   public_subnets  = local.subnets["public"]
   private_subnets = local.subnets["private"]
+  intra_subnets   = local.subnets["intra"]
 
   private_subnet_tags = { Tier = "private" }
   public_subnet_tags  = { Tier = "public" }

@@ -59,7 +59,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 
 	// global variables
 	namePrefix := "vi"
-	id := "1234" //util.RandomID(4)
+	id := util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
 		"TestID":  id,

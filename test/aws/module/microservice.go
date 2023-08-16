@@ -102,7 +102,7 @@ type Traffic struct {
 func ValidateMicroservice(t *testing.T, name string, microservicePath string, deployment DeploymentTest, traffics []Traffic, modulePath string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		serviceName := "unique"
+		serviceName := util.Format("-", name, "service")
 		ValidateEcs(t, AccountRegion, name, serviceName, serviceCount, deployment)
 
 		for _, traffic := range traffics {

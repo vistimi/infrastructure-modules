@@ -23,30 +23,11 @@ locals {
   )
 }
 
-locals {
-  log_steam_name = "test"
-  container_name = "unique"
-}
-
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
 
   cluster_name = var.name
-
-  # cluster logging
-  # create_cloudwatch_log_group            = true
-  # cloudwatch_log_group_retention_in_days = var.log.retention_days
-  # cloudwatch_log_group_tags              = var.tags
-  # cluster_configuration = {
-  #   execute_command_configuration = {
-  #     logging = "OVERRIDE"
-  #     log_configuration = {
-  #       cloud_watch_encryption_enabled = true
-  #       # cloud_watch_log_group_name     = local.log_steam_name
-  #     }
-  #   }
-  # }
 
   # capacity providers
   default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
@@ -83,7 +64,7 @@ module "ecs" {
   }
 
   services = {
-    unique = {
+    "${var.name}-service" = {
       #------------
       # Service
       #------------
@@ -104,7 +85,7 @@ module "ecs" {
       load_balancer = {
         service = {
           target_group_arn = element(module.elb.target_group_arns, 0) // one LB per target group
-          container_name   = local.container_name
+          container_name   = "${var.name}-container"
           container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
       }
@@ -161,14 +142,6 @@ module "ecs" {
             effect    = "Allow"
             resources = ["*"],
           },
-          # log-group = {
-          #   actions = [
-          #     "logs:CreateLogStream",
-          #     "logs:PutLogEvents",
-          #   ]
-          #   effect    = "Allow"
-          #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}"],
-          # },
         },
         try({
           bucket-env = {
@@ -208,13 +181,6 @@ module "ecs" {
           effect    = "Allow"
           resources = ["*"],
         },
-        # log-stream = {
-        #   actions = [
-        #     "logs:PutLogEvents",
-        #   ]
-        #   effect    = "Allow"
-        #   resources = ["arn:${local.partition}:logs:${local.region_name}:${local.account_id}:log-group:${local.log_steam_name}:log-stream:*"],
-        # },
       }
 
       # Task definition
@@ -228,7 +194,7 @@ module "ecs" {
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
-        "${local.container_name}" = {
+        "${var.name}-container" = {
 
           # enable_cloudwatch_logging              = true
           # create_cloudwatch_log_group            = true

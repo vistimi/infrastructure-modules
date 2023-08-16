@@ -1,13 +1,12 @@
 locals {
   microservice_config_vars = yamldecode(file("../../microservice.yml"))
-  repository_config_vars   = yamldecode(file("./repository.yml"))
-  name                     = lower(join("-", compact([var.name_prefix, local.repository_config_vars.project_name, local.repository_config_vars.service_name, var.name_suffix])))
+  # repository_config_vars   = yamldecode(file("./repository.yml"))
 }
 
 module "microservice" {
   source = "../../../../../../module/aws/container/microservice"
 
-  name       = local.name
+  name       = "${var.name_prefix}-scraper-fe-${var.name_suffix}"
   tags       = var.tags
   vpc        = var.vpc
   route53    = var.microservice.route53
