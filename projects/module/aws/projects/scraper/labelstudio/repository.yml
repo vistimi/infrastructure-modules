@@ -21,7 +21,7 @@ statements:
           "logs:*",
           "cloudwatch:*",
           "ssm:*",
-          "iam:*",
+          # "iam:*",
           "kms:*",
           "elasticloadbalancing:*",
           "iam:ListAttachedRolePolicies",
@@ -57,10 +57,6 @@ statements:
       resources: ["*"]
   - AcmFull:
       actions: ["acm:*"]
-      effect: "Allow"
-      resources: ["*"]
-  - Full:
-      actions: ["*"]
       effect: "Allow"
       resources: ["*"]
 

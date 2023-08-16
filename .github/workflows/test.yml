@@ -54,40 +54,6 @@ jobs:
             echo "ECR_REGISTRY_URI=$ECR_REGISTRY_PUBLIC_URI" >> $GITHUB_OUTPUT  
           fi
 
-#   clean:
-#     needs: [...]
-#     runs-on: ubuntu-latest
-#     environment: test
-#     container: 
-#       image: '${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ env.ECR_REPOSITORY_EXTENSION }}:${{ env.IMAGE_TAG }}'
-#       credentials:
-#         username: AWS
-#         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
-#     env:
-#       GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
-#       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
-#       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
-#       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-#       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
-#       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v3
-
-#       - name: Setup AWS CLI
-#         id: setup
-#         run: |
-#           make aws-auth
-
-#       - name: Setup Github CLI
-#         run: |
-#           make -f Makefile_infra gh-auth-check
-
-#       - name: Setup Test
-#         run: |
-#           make clean
-
   cuda:
     needs: [setup]
     runs-on: ubuntu-latest
@@ -97,13 +63,16 @@ jobs:
       credentials:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
-    env:
-      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
+    env:      
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
+      DOMAIN_NAME: vistimi
+      DOMAIN_SUFFIX: com
 
     steps:
       - name: Checkout
@@ -130,12 +99,15 @@ jobs:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
     env:
-      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
+      DOMAIN_NAME: vistimi
+      DOMAIN_SUFFIX: com
 
     steps:
       - name: Checkout
@@ -151,5 +123,3 @@ jobs:
         run: |
           make prepare-terragrunt
           go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/rest
-            
-            

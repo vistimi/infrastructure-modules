@@ -64,12 +64,15 @@ jobs:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
     env:
-      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
+      DOMAIN_NAME: vistimi
+      DOMAIN_SUFFIX: com
 
     steps:
       - name: Checkout
@@ -97,12 +100,15 @@ jobs:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
     env:
-      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
       AWS_REGION_NAME: ${{ vars.AWS_REGION_NAME }}
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
       AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_TOKEN: ${{ secrets.GH_TERRA_TOKEN }}
+      DOMAIN_NAME: vistimi
+      DOMAIN_SUFFIX: com
 
     steps:
       - name: Checkout

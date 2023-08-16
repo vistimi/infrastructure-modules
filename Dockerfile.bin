@@ -12,7 +12,7 @@ FROM ${ALPINE_VARIANT} as builder-alpine
 ARG TARGETOS TARGETARCH
 
 RUN apk update
-RUN apk add -q --no-cache git zip gzip tar dpkg make wget
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget curl
 
 # # rover
 # ARG ROVER_VERSION=0.3.3

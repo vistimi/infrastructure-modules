@@ -3,7 +3,6 @@ package microservice_scraper_backend_test
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -60,7 +59,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 
 	// global variables
 	namePrefix := "vi"
-	id := "abcd" //util.RandomID(4)
+	id := "1234" //util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
 		"TestID":  id,
@@ -86,10 +85,14 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 					"global.image.repository": "heartexlabs/label-studio",
 					"global.image.tag":        "develop",
 				},
-				"postgresql_type":         "rds",
-				"postgresql_machine_type": "db.m5.large",
-				"redis_type":              "elasticache",
-				"redis_machine_type":      util.Format(".", "cache", instance.Name),
+				// "postgresql_type":         "rds",
+				// "postgresql_machine_type": "db.m5.large",
+				// "postgresql_password":     "12345678",
+				// "redis_type":              "elasticache",
+				// "redis_machine_type":      util.Format(".", "cache", instance.Name),
+				// "redis_password":          "12345678",
+				"postgresql_type": "internal",
+				"redis_type":      "internal",
 			},
 			// "route53": map[string]any{
 			// 	"zone": map[string]any{
@@ -114,23 +117,19 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		},
 	}
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
-		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		name := util.Format("-", util.Format("-", projectName, serviceName), nameSuffix)
-		os.Setenv(terratestStructure.SKIP_STAGE_ENV_VAR_PREFIX+"validate_microservice", "true")
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
 	})
 }
