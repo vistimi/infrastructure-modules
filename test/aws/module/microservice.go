@@ -106,10 +106,13 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, de
 		ValidateEcs(t, AccountRegion, name, serviceName, serviceCount, deployment)
 
 		for _, traffic := range traffics {
+			terratestLogger.Log(t, fmt.Sprintf("traffic :: %+v", traffic))
+
 			if traffic.Listener.Protocol == "http" {
 				port := util.Value(traffic.Listener.Port, 80)
 				// test Load Balancer HTTP
 				elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
+				terratestLogger.Log(t, fmt.Sprintf("elb :: %+v", elb))
 				if elb != nil {
 					elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
 					elbDnsUrl = fmt.Sprintf("http://%s:%d", elbDnsUrl, port)
@@ -134,6 +137,7 @@ func ValidateMicroservice(t *testing.T, name string, microservicePath string, de
 
 				// test Route53
 				route53 := ExtractFromState(t, microservicePath, "route53")
+				terratestLogger.Log(t, fmt.Sprintf("route53 :: %+v", route53))
 				if route53 != nil {
 					zoneName := elb.(map[string]any)["zone"].(map[string]any)["name"].(string)
 					recordSubdomainName := elb.(map[string]any)["record"].(map[string]any)["subdomain_name"].(string)
