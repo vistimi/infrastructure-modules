@@ -8,11 +8,6 @@ PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 FILE_NAME=$(shell basename $(MAKEFILE_LIST))
 INFRA_FILE_NAME=Makefile_infra
 
-PATH_AWS=module/aws
-PATH_AWS_IAM=module/aws/iam
-
-PATH_TEST_AWS_MICROSERVICE=test/aws/microservice
-
 OVERRIDE_EXTENSION=override
 export OVERRIDE_EXTENSION
 export AWS_REGION_NAME AWS_PROFILE_NAME AWS_ACCOUNT_ID AWS_ACCESS_KEY AWS_SECRET_KEY
@@ -40,7 +35,7 @@ test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/${PATH_AWS}
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -54,9 +49,9 @@ prepare-aws-microservice:
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
 
 prepare-aws-iam-level:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/level
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/iam/level
 prepare-aws-iam-group:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/${PATH_AWS_IAM}/group
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/iam/group
 
 
 clean: ## Clean the test environment

@@ -86,6 +86,7 @@ jobs:
           make -f Makefile_infra gh-auth-check
       - name: Setup Test
         run: |
+          apk add curl
           make prepare-terragrunt
           go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/cuda
 
@@ -121,5 +122,6 @@ jobs:
           make -f Makefile_infra gh-auth-check
       - name: Setup Test
         run: |
+          apk add curl
           make prepare-terragrunt
           go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/rest
