@@ -28,6 +28,7 @@ statements:
           "iam:ListAttachedRolePolicies",
           "iam:CreateServiceLinkedRole",
           "iam:PassRole",
+          "s3:*",
         ]
         # "iam:CreatePolicy", "kms:DescribeKey", "elasticloadbalancing:CreateLoadBalancer", "application-autoscaling:RegisterScalableTarget"
         # "cloudwatch:PutMetricStream",

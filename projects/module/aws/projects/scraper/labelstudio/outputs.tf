@@ -10,18 +10,18 @@ output "labelstudio" {
   }
 }
 
-# output "kms" {
-#   value = {
-#     key_arn                       = module.kms.key_arn
-#     key_id                        = module.kms.key_id
-#     key_policy                    = module.kms.key_policy
-#     external_key_expiration_model = module.kms.external_key_expiration_model
-#     external_key_state            = module.kms.external_key_state
-#     external_key_usage            = module.kms.external_key_usage
-#     aliases                       = module.kms.aliases
-#     grants                        = module.kms.grants
-#   }
-# }
+output "kms" {
+  value = {
+    key_arn                       = module.kms.key_arn
+    key_id                        = module.kms.key_id
+    key_policy                    = module.kms.key_policy
+    external_key_expiration_model = module.kms.external_key_expiration_model
+    external_key_state            = module.kms.external_key_state
+    external_key_usage            = module.kms.external_key_usage
+    aliases                       = module.kms.aliases
+    grants                        = module.kms.grants
+  }
+}
 
 output "bucket_label" {
   value = module.bucket_label
