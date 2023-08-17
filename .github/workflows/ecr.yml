@@ -27,8 +27,8 @@ env:
   DEFAULT_BRANCH_NAME: ${{ 'trunk' || github.event.repository.default_branch }}
   ARCHITECTURES: "x86-64 arm-64" # "arm-32"   "arm-64"   "x86-32"   "x86-64"
   OS: '"Linux"' # "Windows"
-  IMAGE_KEEP_COUNT_DEFAULT: 3
-  IMAGE_KEEP_COUNT_NON_DEFAULT: 1
+  IMAGE_KEEP_COUNT_DEFAULT: 10
+  IMAGE_KEEP_COUNT_NON_DEFAULT: 5
 
 jobs:
   ecr:
@@ -296,6 +296,7 @@ jobs:
             DOCKERFILE_TAGS=[\"latest\",\"${IMAGE_TAG:0:8}\"]
             tags=$(jq -r '.tags' <<< "$dockerfile")
             if [[ -n "$tags" && $tags != null ]]; then
+              # TODO: add \"${IMAGE_TAG:0:8}\" to tags
               DOCKERFILE_TAGS=$tags
             fi
             echo DOCKERFILE_TAGS:: $DOCKERFILE_TAGS
