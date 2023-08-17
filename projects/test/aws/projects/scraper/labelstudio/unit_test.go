@@ -69,31 +69,31 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		"Service": serviceName,
 	}
 
-	instance := testAwsModule.T3Small
+	// instance := testAwsModule.T3Small
 	options := &terraform.Options{
 		TerraformDir: MicroservicePath,
 		Vars: map[string]any{
 			"name_prefix": namePrefix,
 			"name_suffix": nameSuffix,
-			"labelstudio": map[string]any{
-				"instance_type":    instance.Name,
-				"desired_capacity": 1,
-				"max_size":         2,
-				"min_size":         1,
-				// "create_acm_certificate": true,
-				"label_studio_additional_set": map[string]any{
-					"global.image.repository": "heartexlabs/label-studio",
-					"global.image.tag":        "develop",
-				},
-				// "postgresql_type":         "rds",
-				// "postgresql_machine_type": "db.m5.large",
-				// "postgresql_password":     "12345678",
-				// "redis_type":              "elasticache",
-				// "redis_machine_type":      util.Format(".", "cache", instance.Name),
-				// "redis_password":          "12345678",
-				"postgresql_type": "internal",
-				"redis_type":      "internal",
-			},
+			// "labelstudio": map[string]any{
+			// 	"instance_type":    instance.Name,
+			// 	"desired_capacity": 1,
+			// 	"max_size":         2,
+			// 	"min_size":         1,
+			// 	// "create_acm_certificate": true,
+			// 	"label_studio_additional_set": map[string]any{
+			// 		"global.image.repository": "heartexlabs/label-studio",
+			// 		"global.image.tag":        "develop",
+			// 	},
+			// 	// "postgresql_type":         "rds",
+			// 	// "postgresql_machine_type": "db.m5.large",
+			// 	// "postgresql_password":     "12345678",
+			// 	// "redis_type":              "elasticache",
+			// 	// "redis_machine_type":      util.Format(".", "cache", instance.Name),
+			// 	// "redis_password":          "12345678",
+			// 	"postgresql_type": "internal",
+			// 	"redis_type":      "internal",
+			// },
 			// "route53": map[string]any{
 			// 	"zone": map[string]any{
 			// 		"name": DomainName,
@@ -102,9 +102,9 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			// 		"subdomain_name": id,
 			// 	},
 			// },
-			"vpc": map[string]any{
-				"id": "vpc-013a411b59dd8a08e",
-			},
+			// "vpc": map[string]any{
+			// 	"id": "vpc-013a411b59dd8a08e",
+			// },
 			"iam": map[string]any{
 				"scope":        "accounts",
 				"requires_mfa": false,
@@ -117,15 +117,15 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratestStructure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
 		terraform.InitAndApply(t, options)

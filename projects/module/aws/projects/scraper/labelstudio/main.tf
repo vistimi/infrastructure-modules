@@ -9,37 +9,35 @@ locals {
   }
 }
 
-# module "bucket_label" {
-#   source = "../../../../../../module/aws/data/bucket"
+module "bucket_label" {
+  source = "../../../../../../module/aws/data/bucket"
 
-#   name          = "${local.name}-${local.repository_config_vars.bucket_label_name}"
-#   force_destroy = var.bucket_label.force_destroy
-#   versioning    = var.bucket_label.versioning
-#   iam           = local.iam
+  name          = "${local.name}-${local.repository_config_vars.bucket_label_name}"
+  force_destroy = var.bucket_label.force_destroy
+  versioning    = var.bucket_label.versioning
+  iam           = local.iam
 
-#   tags = var.tags
-# }
+  tags = var.tags
+}
 
-# module "kms" {
-#   source  = "terraform-aws-modules/kms/aws"
-#   version = "1.5.0"
+module "kms" {
+  source  = "terraform-aws-modules/kms/aws"
+  version = "1.5.0"
 
-#   description = "Label Studio key usage"
-#   key_usage   = "ENCRYPT_DECRYPT"
+  description = "Label Studio key usage"
+  key_usage   = "ENCRYPT_DECRYPT"
 
-#   aliases = [local.name]
+  aliases = [local.name]
 
-#   tags = var.tags
-# }
+  tags = var.tags
+}
 
 # data "aws_availability_zones" "available" {
 #   state = "available"
 # }
-
 # data "aws_vpc" "current" {
 #   id = var.vpc.id
 # }
-
 # locals {
 #   cidr_block = data.aws_vpc.current.cidr_block
 #   tiers      = concat(var.vpc.existing_tiers, ["ls-private", "ls-public"])
@@ -52,20 +50,17 @@ locals {
 # }
 
 module "labelstudio" {
-  source = "git::https://github.com/dresspeng/label-studio-terraform.git//terraform/aws/env?ref=master"
+  source = "git::https://github.com/HumanSignal/label-studio-terraform.git//terraform/aws/env?ref=master"
 
-  environment = "demo"
-  name        = "ls"
-  region      = "eu-north-1"
+  name        = lower(var.name_suffix)
+  environment = lower(join("-", compact([var.name_prefix, local.repository_config_vars.project_name, local.repository_config_vars.service_name])))
+  region      = local.region_name
 
   label_studio_additional_set = {
     "global.image.repository" = "heartexlabs/label-studio"
     "global.image.tag"        = "develop"
   }
 
-  # name             = lower(var.name_suffix)
-  # environment      = lower(join("-", compact([var.name_prefix, local.repository_config_vars.project_name, local.repository_config_vars.service_name])))
-  # region           = local.region_name
   # instance_type    = var.labelstudio.instance_type
   # desired_capacity = var.labelstudio.desired_capacity
   # max_size         = var.labelstudio.max_size
@@ -120,19 +115,19 @@ module "labelstudio" {
   # redis_tls_key_file                    = var.labelstudio.redis_tls_key_file
   # lets_encrypt_email                    = var.labelstudio.lets_encrypt_email
 
-  # # dns
-  # create_r53_zone        = false
-  # create_acm_certificate = var.labelstudio.create_acm_certificate
-  # domain_name            = try(var.route53.zone.name, null)
-  # record_name            = try(var.route53.record.subdomain_name, null)
+  # dns
+  create_r53_zone        = false
+  create_acm_certificate = var.create_acm_certificate
+  domain_name            = try(var.route53.zone.name, null)
+  record_name            = try(var.route53.record.subdomain_name, null)
 
-  # # s3
-  # predefined_s3_bucket = {
-  #   name : module.bucket_label.bucket.name
-  #   region : local.region_name
-  #   folder : "/"
-  #   kms_arn : module.kms.key_arn
-  # }
+  # s3
+  predefined_s3_bucket = {
+    name : module.bucket_label.bucket.name
+    region : local.region_name
+    folder : "/"
+    kms_arn : module.kms.key_arn
+  }
 
   # # vpc
   # predefined_vpc_id                    = var.vpc.id

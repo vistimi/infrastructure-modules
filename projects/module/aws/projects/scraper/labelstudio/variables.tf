@@ -45,6 +45,11 @@ variable "iam" {
   })
 }
 
+variable "create_acm_certificate" {
+  type = bool
+  default = false
+}
+
 # # https://github.com/HumanSignal/label-studio-terraform/blob/master/terraform/aws/env/variables.tf
 # variable "labelstudio" {
 #   type = object({
