@@ -9,39 +9,47 @@ locals {
   }
 }
 
-module "bucket_label" {
-  source = "../../../../../../module/aws/data/bucket"
+# module "bucket_label" {
+#   source = "../../../../../../module/aws/data/bucket"
 
-  name          = "${local.name}-${local.repository_config_vars.bucket_label_name}"
-  force_destroy = var.bucket_label.force_destroy
-  versioning    = var.bucket_label.versioning
-  iam           = local.iam
+#   name          = "${local.name}-${local.repository_config_vars.bucket_label_name}"
+#   force_destroy = var.bucket_label.force_destroy
+#   versioning    = var.bucket_label.versioning
+#   iam           = local.iam
 
-  tags = var.tags
-}
+#   tags = var.tags
+# }
 
-module "kms" {
-  source  = "terraform-aws-modules/kms/aws"
-  version = "1.5.0"
+# module "kms" {
+#   source  = "terraform-aws-modules/kms/aws"
+#   version = "1.5.0"
 
-  description = "Label Studio key usage"
-  key_usage   = "ENCRYPT_DECRYPT"
+#   description = "Label Studio key usage"
+#   key_usage   = "ENCRYPT_DECRYPT"
 
-  aliases = [local.name]
+#   aliases = [local.name]
 
-  tags = var.tags
-}
+#   tags = var.tags
+# }
 
-locals {
-  cidr_block = data.aws_vpc.current.cidr_block
-  tiers      = concat(var.vpc.existing_tiers, ["ls-private", "ls-public"])
-  # cidr_block = "10.0.0.0/16"
-  # tiers      = ["ls-private", "ls-public"]
-  subnets = {
-    for i, tier in local.tiers :
-    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(local.cidr_block, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
-  }
-}
+# data "aws_availability_zones" "available" {
+#   state = "available"
+# }
+
+# data "aws_vpc" "current" {
+#   id = var.vpc.id
+# }
+
+# locals {
+#   cidr_block = data.aws_vpc.current.cidr_block
+#   tiers      = concat(var.vpc.existing_tiers, ["ls-private", "ls-public"])
+#   # cidr_block = "10.0.0.0/16"
+#   # tiers      = ["ls-private", "ls-public"]
+#   subnets = {
+#     for i, tier in local.tiers :
+#     "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(local.cidr_block, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
+#   }
+# }
 
 module "labelstudio" {
   source = "git::https://github.com/dresspeng/label-studio-terraform.git//terraform/aws/env?ref=master"

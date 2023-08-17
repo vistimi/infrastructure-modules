@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     container: 
-      image: '${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}'
+      image: ${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}
       credentials:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
@@ -90,13 +90,16 @@ jobs:
           make -f ./projects/Makefile prepare-terragrunt
           make -f ./projects/Makefile prepare-aws-scraper-backend
           go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/backend/
+          export SKIP_deploy=true
+          export SKIP_validate=true
+          go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/backend/
 
   scraper-frontend:
     needs: [setup]
     runs-on: ubuntu-latest
     environment: test
     container: 
-      image: '${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}'
+      image: ${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}
       credentials:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
@@ -126,6 +129,9 @@ jobs:
           apk add curl
           make -f ./projects/Makefile prepare-terragrunt
           make -f ./projects/Makefile prepare-aws-scraper-frontend
+          go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/frontend/
+          export SKIP_deploy=true
+          export SKIP_validate=true
           go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/frontend/
             
             

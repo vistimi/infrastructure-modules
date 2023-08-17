@@ -52,7 +52,7 @@ generate "provider" {
   contents  = <<EOF
     provider "aws" {
       region = "${local.aws_account_region}"
-      allowed_account_ids = ["${local.aws_account_id}"]
+      # allowed_account_ids = ["${local.aws_account_id}"]
     }
     provider "kubernetes" {
       host                   = data.aws_eks_cluster.eks.endpoint

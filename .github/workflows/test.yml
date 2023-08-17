@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     container: 
-      image: '${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}'
+      image: ${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}
       credentials:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
@@ -89,13 +89,16 @@ jobs:
           apk add curl
           make prepare-terragrunt
           go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/cuda
+          export SKIP_deploy=true
+          export SKIP_validate=true
+          go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/cuda
 
   rest:
     needs: [setup]
     runs-on: ubuntu-latest
     environment: test
     container: 
-      image: '${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}'
+      image: ${{ needs.setup.outputs.ECR_REGISTRY_URI }}/${{ needs.setup.outputs.ECR_REPOSITORY_NAME}}${{ needs.setup.outputs.ECR_REPOSITORY_EXTENSION }}:${{ needs.setup.outputs.IMAGE_TAG }}
       credentials:
         username: AWS
         password: ${{ needs.setup.outputs.ECR_LOGIN_PASSWORD }}
@@ -124,4 +127,7 @@ jobs:
         run: |
           apk add curl
           make prepare-terragrunt
+          go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/rest
+          export SKIP_deploy=true
+          export SKIP_validate=true
           go test -timeout 60m -p 1 -v -cover ./test/aws/microservice/rest
