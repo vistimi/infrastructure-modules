@@ -1,4 +1,4 @@
-ARG AWS_ECR_REGISTRY=401582117818.dkr.ecr.us-west-1.amazonaws.com
+ARG AWS_ECR_REGISTRY=496882976578.dkr.ecr.us-west-1.amazonaws.com
 ARG AWS_ECR_REPOSITORY=infrastructure-modules-trunk-bin
 ARG VARIANT=$AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY
 
@@ -17,18 +17,17 @@ RUN addgroup --gid $USER_GID $USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 USER $USERNAME
 
-# Golang tools
-RUN go install github.com/cweill/gotests/gotests@latest \
-    && go install github.com/fatih/gomodifytags@latest \
-    && go install github.com/josharian/impl@latest \
-    && go install github.com/haya14busa/goplay/cmd/goplay@latest \
-    && go install github.com/go-delve/delve/cmd/dlv@latest \
-    && go install honnef.co/go/tools/cmd/staticcheck@latest \
-    && go install golang.org/x/tools/gopls@latest
+# # Golang tools
+# RUN go install github.com/cweill/gotests/gotests@latest \
+#     && go install github.com/fatih/gomodifytags@latest \
+#     && go install github.com/josharian/impl@latest \
+#     && go install github.com/haya14busa/goplay/cmd/goplay@latest \
+#     && go install github.com/go-delve/delve/cmd/dlv@latest \
+#     && go install honnef.co/go/tools/cmd/staticcheck@latest \
+#     && go install golang.org/x/tools/gopls@latest
 
 WORKDIR /home/$USERNAME
 
-COPY --chown=$USERNAME:$USER_GID . .
-
-RUN echo Date::; date; echo ;echo Files in home::; ls -l
-RUN echo Changes in the past 2h::; find ./ -not -path '*/.*' -type f -mmin -120 -mmin +1
+# COPY --chown=$USERNAME:$USER_GID . .
+# RUN echo Date::; date; echo ;echo Files in home::; ls -l
+# RUN echo Changes in the past 2h::; find ./ -not -path '*/.*' -type f -mmin -120 -mmin +1

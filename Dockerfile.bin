@@ -12,7 +12,7 @@ FROM ${ALPINE_VARIANT} as builder-alpine
 ARG TARGETOS TARGETARCH
 
 RUN apk update
-RUN apk add -q --no-cache git zip gzip tar dpkg make wget curl
+RUN apk add -q --no-cache git zip gzip tar dpkg make wget
 
 # # rover
 # ARG ROVER_VERSION=0.3.3
@@ -59,7 +59,7 @@ FROM ${VARIANT} as runner
 
 RUN apk update
 # coreutils for docker inspect
-RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq jq github-cli aws-cli
+RUN apk add -q --no-cache make gcc libc-dev bash docker coreutils yq jq github-cli aws-cli curl
 
 # Golang setup
 COPY --from=builder-alpine-go /usr/local/go/ /usr/local/go/
