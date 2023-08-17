@@ -12,13 +12,6 @@ GIT_DIFF=$(shell git diff -s --exit-code || echo "-dirty") # If working copy has
 GIT_REV=$(GIT_SHA)$(GIT_DIFF)
 BUILD_TIMESTAMP=$(shell date '+%F_%H:%M:%S')
 
-# absolute path
-PATH_ABS_ROOT=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-PATH_REL_LIVE=live
-PATH_ABS_LIVE=${PATH_ABS_ROOT}/${PATH_REL_LIVE}
-PATH_REL_AWS=live/aws
-PATH_ABS_AWS=${PATH_ABS_ROOT}/${PATH_REL_AWS}
-
 OVERRIDE_EXTENSION=override
 
 .SILENT:	# silent all commands below
