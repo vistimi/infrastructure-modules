@@ -45,7 +45,6 @@ generate "versions" {
 EOF
 }
 
-# TODO: add non root role arn
 generate "provider" {
   path      = "provider_override.tf"
   if_exists = "overwrite_terragrunt"
