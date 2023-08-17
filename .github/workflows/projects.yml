@@ -86,7 +86,6 @@ jobs:
           make -f Makefile_infra gh-auth-check
       - name: Setup Test
         run: |
-          apk add curl
           make -f ./projects/Makefile prepare-terragrunt
           make -f ./projects/Makefile prepare-aws-scraper-backend
           go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/backend/
@@ -126,7 +125,6 @@ jobs:
           make -f Makefile_infra gh-auth-check
       - name: Setup Test
         run: |
-          apk add curl
           make -f ./projects/Makefile prepare-terragrunt
           make -f ./projects/Makefile prepare-aws-scraper-frontend
           go test -timeout 60m -p 1 -v -cover ./projects/test/aws/projects/scraper/frontend/
