@@ -74,7 +74,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	}
 
 	instance := testAwsModule.G4dnXlarge
-	// keySpot := "spot"
 	keyOnDemand := "on-demand"
 
 	traffics := []map[string]any{}
@@ -142,34 +141,11 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					},
 				},
 
+				// scale vertically at first in order to work on the same task
+				// spawning a second load balancer will create a duplicate but they will not be syncronized
+				// if you need more GPU, then think about implementing a higher logic to split the dataset in chunks and share common checkpoints
+				// if you need more than 4GPUs, then this is not yet supported
 				"ec2": map[string]map[string]any{
-					// keySpot: {
-					// 	"os":            "linux",
-					// 	"os_version":    "2",
-					// 	"architecture":  instance.Architecture,
-					// 	"instance_type": instance.Name,
-					// 	"key_name":      nil,
-					// 	"use_spot":      true,
-					// 	"asg": map[string]any{
-					// 		"instance_refresh": map[string]any{
-					// 			"strategy": "Rolling",
-					// 			"preferences": map[string]any{
-					// 				"checkpoint_delay":       600,
-					// 				"checkpoint_percentages": []int{35, 70, 100},
-					// 				"instance_warmup":        300,
-					// 				"min_healthy_percentage": 80,
-					// 			},
-					// 			"triggers": []string{"tag"},
-					// 		},
-					// 	},
-					// 	"capacity_provider": map[string]any{
-					// 		"base":                        nil, // no preferred instance amount
-					// 		"weight":                      50,  // 50% chance
-					// 		"target_capacity_cpu_percent": 70,
-					// 		"maximum_scaling_step_size":   1,
-					// 		"minimum_scaling_step_size":   1,
-					// 	},
-					// },
 					keyOnDemand: {
 						"os":            "linux",
 						"os_version":    "2",

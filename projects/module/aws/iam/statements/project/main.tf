@@ -85,12 +85,12 @@ locals {
               S3Backend = {
                 actions   = ["s3:*"]
                 effect    = "Allow"
-                resources = ["arn:aws:s3:::*${var.user_name}*${var.backend.bucket_name}"]
+                resources = ["arn:aws:s3:::*${var.user_name}*${var.backend.bucket_name}*"]
               },
               DynamodbBackend = {
                 actions   = ["dynamodb:*"]
                 effect    = "Allow"
-                resources = ["arn:aws:dynamodb:${local.region_name}:${local.account_id}:table/*${var.user_name}*${var.backend.bucket_name}"]
+                resources = ["arn:aws:dynamodb:${local.region_name}:${local.account_id}:table/*${var.user_name}*${var.backend.dynamodb_table_name}"]
               },
             }
           ]

@@ -1,4 +1,4 @@
-package microservice_cuda_test
+package microservice_rest_test
 
 import (
 	"fmt"

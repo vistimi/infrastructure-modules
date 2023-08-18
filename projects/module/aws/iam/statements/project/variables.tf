@@ -23,7 +23,7 @@ variable "project_names" {
 variable "backend" {
   type = object({
     bucket_name   = optional(string, "tf-state")
-    dynamodb_name = optional(string, "tf-locks")
+    dynamodb_table_name = optional(string, "tf-locks")
   })
   default = {}
 }
