@@ -74,5 +74,9 @@ variable "github" {
       key   = string
       value = string
     })), [])
+    # secrets = optional(list(object({
+    #   key   = string
+    #   value = string
+    # })), [])
   })
 }

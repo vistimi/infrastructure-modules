@@ -52,6 +52,9 @@ prepare-account-aws:
 prepare-global-level:
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
 
+prepare-global-config:
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/config
+
 prepare-aws-scraper-labelstudio:
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
 

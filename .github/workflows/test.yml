@@ -11,7 +11,7 @@ env:
   IMAGE_TAG: latest
   ORGANIZATION_NAME: ${{ github.repository_owner }}
   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-  ECR_REPOSITORY_EXTENSION: '-bin'
+  ECR_REPOSITORY_EXTENSION: ''
 
 jobs:
   setup:

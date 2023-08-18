@@ -48,7 +48,7 @@ module "aws_level" {
   tags = var.aws.tags
 }
 
-resource "github_actions_variable" "example_variable" {
+resource "github_actions_variable" "variable" {
   for_each = { for product in setproduct(var.github.repositories, var.github.variables) : "${product[0].name}-${product[1].key}" => { repository = product[0], variable = product[1] } }
 
   repository    = join("/", [each.value.repository.name])

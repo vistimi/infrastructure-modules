@@ -31,6 +31,7 @@ variable "secrets" {
     key   = string
     value = string
   }))
-  nullable = false
-  default  = []
+  nullable  = false
+  default   = []
+  sensitive = true
 }
