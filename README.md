@@ -189,11 +189,24 @@ cidrhost("192.168.0.0/16", 0)
 cidrhost("192.168.0.0/16", -1)
 ```
 
-# terratest 
+# terratest
 
-  - make prepare
-  - run each test
-  - make clean
+Some modules incorporates other modules wich can be tested. If you test locally, you might come with the following error:
+```
+│ Error: Module is incompatible with count, for_each, and depends_on
+| 
+| ***
+|
+│ The module at module.my_module_name is a legacy module which contains its
+│ own local provider configurations, and so calls to it may not use the
+│ count, for_each, or depends_on arguments.
+│ 
+│ If you also control the module "../path_to_my_module",
+│ consider updating this module to instead expect provider configurations to
+│ be passed by its caller.
+```
+
+All you have to do is remove the provider file `../path_to_my_module/provider_override.tf` which was generated for testing purposes.
 
 ### local
 

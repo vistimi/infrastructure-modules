@@ -48,37 +48,29 @@ module "aws_level" {
   tags = var.aws.tags
 }
 
-resource "github_actions_variable" "variable" {
-  for_each = { for product in setproduct(var.github.repositories, var.github.variables) : "${product[0].name}-${product[1].key}" => { repository = product[0], variable = product[1] } }
+module "github_variables" {
+  source = "../../../../module/github/variables"
 
-  repository    = join("/", [each.value.repository.name])
-  variable_name = each.value.variable.key
-  value         = each.value.variable.value
-}
+  for_each = var.github.store_environment ? { "${var.name_prefix}" = {} } : {}
 
-module "github_environments" {
-  source = "../../../../module/github/environments"
+  environments = flatten([
+    for group_name, group in module.aws_level.groups : [
+      for user_name, value in group.users : {
+        name     = user_name
+        accesses = var.github.accesses
+        variables = [
+          { key = "AWS_ACCESS_KEY", value = value.user.iam_access_key_id },
+          { key = "AWS_ACCOUNT_ID", value = local.account_id },
+          { key = "AWS_PROFILE_NAME", value = value.user.iam_user_name },
+          { key = "AWS_REGION_NAME", value = local.region_name },
+        ]
+        secrets = [{ key = "AWS_SECRET_KEY", value = sensitive(module.aws_level.groups_sensitive[group_name].users[user_name].user.iam_access_key_secret) }]
+      }
+    ]
+  ])
 
-  for_each = merge([
-    for group_name, group in module.aws_level.groups : {
-      for user_name, value in group.users : user_name => value.user if var.aws.groups[group_name].github_store_environment
-    }
-  ]...)
-
-  name             = each.value.iam_user_name
-  repository_names = [for repository in var.github.repositories : join("/", [repository.owner, repository.name])]
-  variables = [
-    { key = "AWS_ACCESS_KEY", value = each.value.iam_access_key_id },
-    { key = "AWS_ACCOUNT_ID", value = local.account_id },
-    { key = "AWS_PROFILE_NAME", value = each.value.iam_user_name },
-    { key = "AWS_REGION_NAME", value = local.region_name },
-  ]
-  secrets = [
-    { key = "AWS_SECRET_KEY", value = merge([
-      for group_name, group in module.aws_level.groups_sensitive : merge({
-        for user_name, value in group.users : user_name => value.user
-      })
-      ]...)[each.key].iam_access_key_secret
-    }
-  ]
+  repositories = [for repository in var.github.repositories : {
+    accesses  = var.github.accesses
+    variables = repository.variables
+  }]
 }

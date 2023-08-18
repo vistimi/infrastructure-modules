@@ -11,10 +11,9 @@ variable "aws" {
       value = string
     })))
     groups = map(object({
-      force_destroy            = optional(bool)
-      pw_length                = optional(number)
-      project_names            = optional(list(string), [])
-      github_store_environment = optional(bool, false)
+      force_destroy = optional(bool)
+      pw_length     = optional(number)
+      project_names = optional(list(string), [])
       users = list(object({
         name = string
         statements = optional(list(object({
@@ -66,17 +65,21 @@ variable "aws" {
 
 variable "github" {
   type = object({
-    repositories = optional(list(object({
+    accesses = optional(list(object({
       owner = string
       name  = string
     })), [])
-    variables = optional(list(object({
-      key   = string
-      value = string
+    repositories = optional(list(object({
+      variables = optional(list(object({
+        key   = string
+        value = string
+      })), [])
+      secrets = optional(list(object({
+        key   = string
+        value = string
+      })), [])
     })), [])
-    # secrets = optional(list(object({
-    #   key   = string
-    #   value = string
-    # })), [])
+    store_environment = optional(bool, true)
   })
+  default = {}
 }

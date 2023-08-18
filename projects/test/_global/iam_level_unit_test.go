@@ -109,16 +109,26 @@ func Test_Unit_Global_Level(t *testing.T) {
 			},
 
 			"github": map[string]any{
-				"repositories": []map[string]any{
+				"accesses": []map[string]any{
 					{
 						"owner": "dresspeng",
 						"name":  "infrastructure-modules",
 					},
 				},
-				"variables": []map[string]any{
+				"repositories": []map[string]any{
 					{
-						"key":   "TEST",
-						"value": "test",
+						"variables": []map[string]any{
+							{
+								"key":   "REPO_" + id,
+								"value": "test",
+							},
+						},
+						"secrets": []map[string]any{
+							{
+								"key":   "REPO_" + id,
+								"value": "test",
+							},
+						},
 					},
 				},
 				"store_environment": true,

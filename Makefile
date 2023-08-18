@@ -53,6 +53,8 @@ prepare-aws-iam-level:
 prepare-aws-iam-group:
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/iam/group
 
+prepare-github-variables:
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/github/variables
 
 clean: ## Clean the test environment
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-region

@@ -11,7 +11,16 @@ import (
 )
 
 const (
-	pathConfig = "../../module/_global/config"
+	path = "../../module/github/variables"
+)
+
+var (
+	accesses = []map[string]any{
+		{
+			"owner": "dresspeng",
+			"name":  "infrastructure-modules",
+		},
+	}
 )
 
 func Test_Unit_Global_Config(t *testing.T) {
@@ -21,7 +30,7 @@ func Test_Unit_Global_Config(t *testing.T) {
 	id := util.RandomID(4)
 
 	options := &terraform.Options{
-		TerraformDir: pathConfig,
+		TerraformDir: path,
 		Vars: map[string]any{
 			"organization": map[string]any{
 				"variables": []map[string]any{
@@ -40,12 +49,7 @@ func Test_Unit_Global_Config(t *testing.T) {
 
 			"repositories": []map[string]any{
 				{
-					"accesses": []map[string]any{
-						{
-							"owner": "dresspeng",
-							"name":  "infrastructure-modules",
-						},
-					},
+					"accesses": accesses,
 					"variables": []map[string]any{
 						{
 							"key":   "REPO_" + id,
@@ -55,6 +59,25 @@ func Test_Unit_Global_Config(t *testing.T) {
 					"secrets": []map[string]any{
 						{
 							"key":   "REPO_" + id,
+							"value": "test",
+						},
+					},
+				},
+			},
+
+			"environments": []map[string]any{
+				{
+					"name":     id,
+					"accesses": accesses,
+					"variables": []map[string]any{
+						{
+							"key":   "ENV_" + id,
+							"value": "test",
+						},
+					},
+					"secrets": []map[string]any{
+						{
+							"key":   "ENV_" + id,
 							"value": "test",
 						},
 					},
