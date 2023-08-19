@@ -11,9 +11,14 @@ statements:
         "logs:*",
         "cloudwatch:*",
         "ssm:*",
-        "iam:*",
         "kms:*",
         "elasticloadbalancing:*",
+        "iam:ListAttachedRolePolicies",
+        "iam:CreateServiceLinkedRole",
+        "iam:*Role",
+        "iam:*RolePolicy",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
       ]
       # "iam:CreatePolicy", "kms:DescribeKey", "elasticloadbalancing:CreateLoadBalancer", "application-autoscaling:RegisterScalableTarget"
       # "cloudwatch:PutMetricStream",

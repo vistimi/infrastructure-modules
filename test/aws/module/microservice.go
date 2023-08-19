@@ -35,6 +35,7 @@ type EC2Instance struct {
 
 var (
 	// for amazon 2023 at least
+	// arm64 for amd
 	T3Small = EC2Instance{
 		Name:          "t3.small",
 		Cpu:           2048,

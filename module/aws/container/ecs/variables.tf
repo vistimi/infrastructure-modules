@@ -228,8 +228,8 @@ resource "null_resource" "fargate" {
     }
 
     precondition {
-      condition     = var.fargate.os == "linux" ? contains(["x86_64", "arm_64"], var.fargate.architecture) : false
-      error_message = "Fargate architecture must for one of linux:[x86_64, arm_64]"
+      condition     = var.fargate.os == "linux" ? contains(["x86_64", "arm64"], var.fargate.architecture) : false
+      error_message = "Fargate architecture must for one of linux:[x86_64, arm64]"
     }
   }
 }
@@ -314,8 +314,8 @@ resource "null_resource" "ec2_architecture" {
 
   lifecycle {
     precondition {
-      condition     = each.value.os == "linux" ? contains(["x86_64", "arm_64", "gpu", "inf"], each.value.architecture) : false
-      error_message = "EC2 architecture must for one of linux:[x86_64, arm_64, gpu, inf]"
+      condition     = each.value.os == "linux" ? contains(["x86_64", "arm64", "gpu", "inf"], each.value.architecture) : false
+      error_message = "EC2 architecture must for one of linux:[x86_64, arm64, gpu, inf]"
     }
 
     precondition {
@@ -323,7 +323,7 @@ resource "null_resource" "ec2_architecture" {
       condition = each.value.architecture == "x86_64" ? (
         contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
         ) : (
-        each.value.architecture == "arm_64" ? (
+        each.value.architecture == "arm64" ? (
           contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
           ) : (
           each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
