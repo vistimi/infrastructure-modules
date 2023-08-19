@@ -103,30 +103,26 @@ locals {
     [
       for project_name in ["permission"] : [
         for principal_name, configs in local.config[project_name] : [
-          for statement in configs.statements : [
-            for sid, value in statement : {
-              sid        = format("%s%s%s", title(project_name), title(principal_name), title(sid))
-              actions    = try(value.actions, [])
-              effect     = try(value.effect, null)
-              resources  = try(value.resources, [])
-              conditions = try(value.conditions, [])
-            }
-          ]
+          for statement in configs.statements : {
+            sid        = format("%s%s%s", title(project_name), title(principal_name), try(title(statement.sid), ""))
+            actions    = try(statement.actions, [])
+            effect     = try(statement.effect, null)
+            resources  = try(statement.resources, [])
+            conditions = try(statement.conditions, [])
+          }
         ]
       ]
     ],
     [
       for project_name in var.project_names : [
         for service_name, configs in local.config[project_name] : [
-          for statement in concat(try(configs.microservice.statements, []), try(configs.repository.statements, [])) : [
-            for sid, value in statement : {
-              sid        = format("%s%s%s", title(project_name), title(service_name), title(sid))
-              actions    = try(value.actions, [])
-              effect     = try(value.effect, null)
-              resources  = try(value.resources, [])
-              conditions = try(value.conditions, [])
-            }
-          ]
+          for statement in concat(try(configs.microservice.statements, []), try(configs.repository.statements, [])) : {
+            sid        = format("%s%s%s", title(project_name), title(service_name), try(title(statement.sid), ""))
+            actions    = try(statement.actions, [])
+            effect     = try(statement.effect, null)
+            resources  = try(statement.resources, [])
+            conditions = try(statement.conditions, [])
+          }
         ]
       ]
     ]

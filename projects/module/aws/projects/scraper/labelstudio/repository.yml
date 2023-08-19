@@ -2,65 +2,65 @@ project_name: scraper
 service_name: ls
 bucket_label_name: label
 statements:
-  - Bucket:
-      actions: ["s3:*"]
-      effect: "Allow"
-      resources:
-        [
-          "arn:aws:s3:::${name_prefix}scraper-ls-${user_name}-${branch_name}-label",
-        ]
-  - Microservice:
-      actions:
-        [
-          "eks:*",
-          "rds:*",
-          "elasticache:*",
-          "ec2:*",
-          "autoscaling:*",
-          "autoscaling-plans:*",
-          "application-autoscaling:*",
-          "logs:*",
-          "cloudwatch:*",
-          "ssm:*",
-          # "iam:*",
-          "kms:*",
-          "elasticloadbalancing:*",
-          "iam:ListAttachedRolePolicies",
-          "iam:CreateServiceLinkedRole",
-          "iam:PassRole",
-          "s3:*",
-        ]
-        # "iam:CreatePolicy", "kms:DescribeKey", "elasticloadbalancing:CreateLoadBalancer", "application-autoscaling:RegisterScalableTarget"
-        # "cloudwatch:PutMetricStream",
-        # "logs:CreateLogDelivery",
-        # "logs:CreateLogStream",
-        # "cloudwatch:PutMetricData",
-        # "logs:UpdateLogDelivery",
-        # "logs:CreateLogGroup",
-        # "logs:PutLogEvents",
-        # "cloudwatch:ListMetrics"
-      effect: "Allow"
-      resources: ["*"]
-  - Route53RecordsFull:
-      actions: [
-          # first trial
-          "route53:ChangeResourceRecordSets",
-          "route53:ListResourceRecordSets",
-          "route53:GetHostedZone",
-          "route53:GetHostedZoneCount",
-          "route53:ListHostedZones",
-          "route53:ListHostedZonesByName",
-          "route53:ListHostedZonesByVPC",
-          "route53:ListTagsForResource",
-          # required
-          "route53:GetChange",
-        ]
-      effect: "Allow"
-      resources: ["*"]
-  - AcmFull:
-      actions: ["acm:*"]
-      effect: "Allow"
-      resources: ["*"]
+  - sid: DynamodbRead
+    actions: ["s3:*"]
+    effect: "Allow"
+    resources:
+      [
+        "arn:aws:s3:::${name_prefix}scraper-ls-${user_name}-${branch_name}-label",
+      ]
+  - sid: Microservice
+    actions:
+      [
+        "eks:*",
+        "rds:*",
+        "elasticache:*",
+        "ec2:*",
+        "autoscaling:*",
+        "autoscaling-plans:*",
+        "application-autoscaling:*",
+        "logs:*",
+        "cloudwatch:*",
+        "ssm:*",
+        # "iam:*",
+        "kms:*",
+        "elasticloadbalancing:*",
+        "iam:ListAttachedRolePolicies",
+        "iam:CreateServiceLinkedRole",
+        "iam:PassRole",
+        "s3:*",
+      ]
+      # "iam:CreatePolicy", "kms:DescribeKey", "elasticloadbalancing:CreateLoadBalancer", "application-autoscaling:RegisterScalableTarget"
+      # "cloudwatch:PutMetricStream",
+      # "logs:CreateLogDelivery",
+      # "logs:CreateLogStream",
+      # "cloudwatch:PutMetricData",
+      # "logs:UpdateLogDelivery",
+      # "logs:CreateLogGroup",
+      # "logs:PutLogEvents",
+      # "cloudwatch:ListMetrics"
+    effect: "Allow"
+    resources: ["*"]
+  - sid: Route53RecordsFull
+    actions: [
+        # first trial
+        "route53:ChangeResourceRecordSets",
+        "route53:ListResourceRecordSets",
+        "route53:GetHostedZone",
+        "route53:GetHostedZoneCount",
+        "route53:ListHostedZones",
+        "route53:ListHostedZonesByName",
+        "route53:ListHostedZonesByVPC",
+        "route53:ListTagsForResource",
+        # required
+        "route53:GetChange",
+      ]
+    effect: "Allow"
+    resources: ["*"]
+  - sid: AcmFull
+    actions: ["acm:*"]
+    effect: "Allow"
+    resources: ["*"]
 
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSClusterPolicy.html
   # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonEKSServicePolicy.html
