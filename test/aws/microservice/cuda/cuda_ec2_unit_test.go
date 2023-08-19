@@ -106,10 +106,6 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 			"ecs": map[string]any{
 				"traffics": traffics,
-				"log": map[string]any{
-					"retention_days": 1,
-					"prefix":         "ecs",
-				},
 				"task_definition": map[string]any{
 					"gpu":    aws.IntValue(instance.Gpu),
 					"cpu":    instance.Cpu,
@@ -177,7 +173,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
-					"task_min_count":                     0,
+					"task_min_count":                     1,
 					"task_desired_count":                 1,
 					"task_max_count":                     1,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required

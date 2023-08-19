@@ -15,8 +15,6 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	// t.Parallel()
 	optionsProject, namePrefix, nameSuffix := SetupOptionsRepository(t)
 
-	maxTaskCount := 3
-
 	instance := testAwsModule.T3Small
 	keySpot := "spot"
 	keyOnDemand := "on-demand"
@@ -72,17 +70,15 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 					"base":                        nil, // no preferred instance amount
 					"weight":                      50,  // 50% chance
 					"target_capacity_cpu_percent": 70,
-					// "maximum_scaling_step_size":   1,
-					// "minimum_scaling_step_size":   1,
 				},
 			},
 		},
 
 		"service": map[string]any{
 			"deployment_type":                    "ec2",
-			"task_min_count":                     0,
-			"task_desired_count":                 maxTaskCount,
-			"task_max_count":                     maxTaskCount,
+			"task_min_count":                     1,
+			"task_desired_count":                 1,
+			"task_max_count":                     1,
 			"deployment_minimum_healthy_percent": 66, // % tasks running required
 			"deployment_circuit_breaker": map[string]any{
 				"enable":   true,  // service deployment fail if no steady state
