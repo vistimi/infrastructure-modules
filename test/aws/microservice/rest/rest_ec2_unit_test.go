@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	projectName = "scraper"
-	serviceName = "detector"
+	projectName = "ms"
+	serviceName = "rest"
 
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/container/microservice"
@@ -82,7 +82,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	}
 
 	instance := testAwsModule.T3Small
-	keySpot := "spot"
+	// keySpot := "spot"
 	keyOnDemand := "on-demand"
 
 	traffics := []map[string]any{}
@@ -91,12 +91,10 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 			"listener": map[string]any{
 				"port":     util.Value(traffic.Listener.Port, 80),
 				"protocol": traffic.Listener.Protocol,
-				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     util.Value(traffic.Target.Port, 80),
-				"protocol": traffic.Target.Protocol,
-				// "protocol_version":  targetProtocolVersion,
+				"port":              util.Value(traffic.Target.Port, 80),
+				"protocol":          traffic.Target.Protocol,
 				"health_check_path": "/",
 			},
 			"base": util.Value(traffic.Base),
@@ -124,6 +122,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 						"/bin/bash",
 						"-c",
 					},
+					// install systemmd; service example start
 					"command": []string{
 						"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost; sleep infinity",
 					},
@@ -140,33 +139,33 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 				},
 
 				"ec2": map[string]map[string]any{
-					keySpot: {
-						"os":            "linux",
-						"os_version":    "2023",
-						"architecture":  instance.Architecture,
-						"instance_type": instance.Name,
-						"key_name":      nil,
-						"use_spot":      true,
-						"asg": map[string]any{
-							"instance_refresh": map[string]any{
-								"strategy": "Rolling",
-								"preferences": map[string]any{
-									"checkpoint_delay":       600,
-									"checkpoint_percentages": []int{35, 70, 100},
-									"instance_warmup":        300,
-									"min_healthy_percentage": 80,
-								},
-								"triggers": []string{"tag"},
-							},
-						},
-						"capacity_provider": map[string]any{
-							"base":                        nil, // no preferred instance amount
-							"weight":                      50,  // 50% chance
-							"target_capacity_cpu_percent": 70,
-							"maximum_scaling_step_size":   1,
-							"minimum_scaling_step_size":   1,
-						},
-					},
+					// keySpot: {
+					// 	"os":            "linux",
+					// 	"os_version":    "2023",
+					// 	"architecture":  instance.Architecture,
+					// 	"instance_type": instance.Name,
+					// 	"key_name":      nil,
+					// 	"use_spot":      true,
+					// 	"asg": map[string]any{
+					// 		"instance_refresh": map[string]any{
+					// 			"strategy": "Rolling",
+					// 			"preferences": map[string]any{
+					// 				"checkpoint_delay":       600,
+					// 				"checkpoint_percentages": []int{35, 70, 100},
+					// 				"instance_warmup":        300,
+					// 				"min_healthy_percentage": 80,
+					// 			},
+					// 			"triggers": []string{"tag"},
+					// 		},
+					// 	},
+					// 	"capacity_provider": map[string]any{
+					// 		"base":                        nil, // no preferred instance amount
+					// 		"weight":                      50,  // 50% chance
+					// 		"target_capacity_cpu_percent": 70,
+					// 		"maximum_scaling_step_size":   1,
+					// 		"minimum_scaling_step_size":   1,
+					// 	},
+					// },
 					keyOnDemand: {
 						"os":            "linux",
 						"os_version":    "2023",
@@ -232,6 +231,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "")
+		testAwsModule.ValidateMicroservice(t, name, Deployment)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
 	})
 }

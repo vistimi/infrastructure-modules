@@ -54,6 +54,7 @@ variable "traffics" {
       port              = number
       protocol_version  = optional(string)
       health_check_path = optional(string)
+      status_code       = optional(string)
     })
     base = optional(bool)
   }))
@@ -121,7 +122,14 @@ resource "null_resource" "target" {
 # })), [])
 variable "task_definition" {
   type = object({
-    memory             = number
+    volumes = optional(list(object({
+      name = string
+      host = object({
+        sourcePath = string
+      })
+    })), [])
+
+    memory             = optional(number)
     memory_reservation = optional(number)
     cpu                = number
     gpu                = optional(number)
@@ -162,6 +170,7 @@ variable "task_definition" {
     volumes_from             = optional(list(any), [])
     working_directory        = optional(string)
     mount_points             = optional(list(any), [])
+    linux_parameters         = optional(any, {})
   })
 
   validation {
@@ -180,6 +189,7 @@ variable "task_definition" {
   }
 }
 
+# orchestrator_type                  = string
 variable "service" {
   type = object({
     deployment_type                    = string
@@ -294,6 +304,11 @@ data "aws_ec2_instance_types" "region" {
       condition     = sort(distinct([for key, value in var.ec2 : value.instance_type])) == sort(distinct(self.instance_types))
       error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
     }
+
+    postcondition {
+      condition     = alltrue([for key, value in var.ec2 : contains(["inf", "gpu"], value.architecture)]) ? length(distinct([for key, value in var.ec2 : value.instance_type])) == 1 : true
+      error_message = "ec2 inf/gpu instances must be the same, got ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}"
+    }
   }
 }
 
@@ -307,7 +322,7 @@ resource "null_resource" "ec2_architecture" {
       architecture    = value.architecture
       instance_type   = value.instance_type
       instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type)
-      instance_family = try(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type)), substr(value.instance_type, 0, 1))
+      instance_family = try(one(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type).prefix)), substr(value.instance_type, 0, 1))
     }
     if var.service.deployment_type == "ec2"
   }

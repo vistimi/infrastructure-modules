@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	projectName = "scraper"
-	serviceName = "detector"
+	projectName = "ms"
+	serviceName = "cuda"
 
 	Rootpath         = "../../../.."
 	MicroservicePath = Rootpath + "/module/aws/container/microservice"
@@ -41,21 +41,20 @@ var (
 		// {
 		// 	Listener: testAwsModule.TrafficPoint{
 		// 		Port:     util.Ptr(443),
-		// 		Protocol: "https",
+		// 		Protocol: "ssl",
 		// 	},
 		// 	Target: testAwsModule.TrafficPoint{
 		// 		Port:     util.Ptr(3000),
-		// 		Protocol: "https",
+		// 		Protocol: "ssl",
 		// 	},
 		// },
 	}
 
 	Deployment = testAwsModule.DeploymentTest{
-		MaxRetries: aws.Int(20),
+		MaxRetries: aws.Int(15),
 	}
 )
 
-// https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
 func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 	t.Parallel()
@@ -82,12 +81,10 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 			"listener": map[string]any{
 				"port":     util.Value(traffic.Listener.Port),
 				"protocol": traffic.Listener.Protocol,
-				// "protocol_version": listenerHttpProtocolVersion,
 			},
 			"target": map[string]any{
-				"port":     util.Value(traffic.Target.Port),
-				"protocol": traffic.Target.Protocol,
-				// "protocol_version":  targetProtocolVersion,
+				"port":              util.Value(traffic.Target.Port),
+				"protocol":          traffic.Target.Protocol,
 				"health_check_path": "/",
 			},
 			"base": util.Value(traffic.Base),
@@ -107,7 +104,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 			"ecs": map[string]any{
 				"traffics": traffics,
 				"task_definition": map[string]any{
-					"gpu":    aws.IntValue(instance.Gpu),
+					"gpu":    instance.Gpu,
 					"cpu":    instance.Cpu,
 					"memory": instance.MemoryAllowed,
 
@@ -120,6 +117,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 					},
 					"readonly_root_filesystem": false,
 
+					// WARNING: requires permissions to that private external account ECR repository
 					"docker": map[string]any{
 						"registry": map[string]any{
 							"ecr": map[string]any{
@@ -207,6 +205,7 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "")
+		testAwsModule.ValidateMicroservice(t, name, Deployment)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
 	})
 }

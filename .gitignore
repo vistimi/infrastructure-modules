@@ -11,3 +11,7 @@
 
 # rover
 rover.svg
+
+# grpcurl
+grpcurl*
+grpc-client-cli

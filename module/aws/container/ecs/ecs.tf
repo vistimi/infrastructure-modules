@@ -191,6 +191,19 @@ module "ecs" {
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
       network_mode = var.service.deployment_type == "fargate" ? "awsvpc" : "bridge" // "host" for single instance
 
+      placement_constraints = var.service.deployment_type == "ec2" && alltrue([for key, value in var.ec2 : value.architecture == "inf"]) ? [
+        {
+          "type" : "memberOf",
+          "expression" : "attribute:ecs.os-type == linux"
+        },
+        {
+          "type" : "memberOf",
+          "expression" : "attribute:ecs.instance-type == ${element(distinct([for key, value in var.ec2 : value.instance_type]), 0)}"
+        }
+      ] : []
+
+      volumes = var.task_definition.volumes
+
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
@@ -211,13 +224,14 @@ module "ecs" {
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [for target in distinct([for traffic in local.traffics : {
-            port     = traffic.target.port
-            protocol = traffic.target.protocol
+            port             = traffic.target.port
+            protocol         = traffic.target.protocol
+            protocol_version = traffic.target.protocol_version
             }]) : {
             containerPort = target.port
             hostPort      = var.service.deployment_type == "fargate" ? target.port : 0 // "host" network can use target port 
             name          = join("-", ["container", target.protocol, target.port])
-            protocol      = target.protocol
+            protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol
             }
           ]
           memory             = var.task_definition.memory
@@ -233,7 +247,6 @@ module "ecs" {
             }] : []
           )
 
-
           command                  = var.task_definition.command
           entrypoint               = var.task_definition.entrypoint
           health_check             = var.task_definition.health_check
@@ -242,6 +255,7 @@ module "ecs" {
           volumes_from             = var.task_definition.volumes_from
           working_directory        = var.task_definition.working_directory
           mount_points             = var.task_definition.mount_points
+          linux_parameters         = var.task_definition.linux_parameters
 
           // fargate AMI
           runtime_platform = var.service.deployment_type == "fargate" ? {

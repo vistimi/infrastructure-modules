@@ -31,24 +31,19 @@ locals {
   subnets     = data.aws_subnets.tier.ids
 
   traffics = [for traffic in var.traffics : {
-    listener = {
-      protocol = traffic.listener.protocol
+    listener = merge(traffic.listener, {
       port = coalesce(
         traffic.listener.port,
         traffic.listener.protocol == "http" ? 80 : null,
         traffic.listener.protocol == "https" ? 443 : null,
       )
-      protocol_version = traffic.listener.protocol_version
-    }
-    target = {
-      protocol         = traffic.target.protocol
-      port             = traffic.target.port
-      protocol_version = traffic.target.protocol_version
+    })
+    target = merge(traffic.target, {
       health_check_path = coalesce(
         traffic.target.health_check_path,
         "/",
       )
-    }
+    })
     base = traffic.base
   }]
 

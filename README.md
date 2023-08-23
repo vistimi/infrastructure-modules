@@ -1,5 +1,15 @@
 # infrastructure-modules
 
+## modules
+
+In [Modules](./module/), there are the reusable cloud components
+In [Modules](./module/aws/container/microservice/) there is the microservice module for AWS
+In [Test](./test/aws/microservice/) there are the tests for the microservice with support for
+- CPU, GPU, FPGA
+- Rest and gRPC
+
+## projects
+In [Projects](./projects/), there are examples on how to use the [Modules](./module/)
 
 
 ## build
@@ -24,6 +34,8 @@ AWS_SECRET_KEY=***
 GITHUB_TOKEN=***GH_TERRA_TOKEN***
 DOMAIN_NAME=name
 DOMAIN_SUFFIX=com
+
+ARCH="x86_64"
 ```
 GITHUB_TOKEN is required for the github cli. Otherwise terratest will print the token in the logs, for login or curl requests, which is not a safe behaviour.
 

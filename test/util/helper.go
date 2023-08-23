@@ -15,6 +15,13 @@ func Value[K any](m *K, def ...K) K {
 	return *m
 }
 
+func ValueNil[K any](m *K) any {
+	if m == nil {
+		return nil
+	}
+	return *m
+}
+
 func Filter[T any](ss []T, test func(T) bool) (ret []T) {
 	for _, s := range ss {
 		if test(s) {

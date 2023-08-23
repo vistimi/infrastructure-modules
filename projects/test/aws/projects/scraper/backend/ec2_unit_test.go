@@ -108,6 +108,7 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
 		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
+		testAwsModule.ValidateMicroservice(t, name, Deployment)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
 	})
 }

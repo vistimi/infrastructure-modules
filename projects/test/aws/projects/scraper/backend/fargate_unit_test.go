@@ -62,6 +62,7 @@ func Test_Unit_Microservice_ScraperBackend_Fargate(t *testing.T) {
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
-		testAwsModule.ValidateMicroservice(t, name, MicroservicePath, Deployment, Traffic, "microservice")
+		testAwsModule.ValidateMicroservice(t, name, Deployment)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
 	})
 }

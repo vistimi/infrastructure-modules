@@ -54,11 +54,19 @@ variable "ecs" {
         port              = number
         protocol_version  = optional(string)
         health_check_path = optional(string)
+        status_code       = optional(string)
       })
       base = optional(bool)
     }))
     task_definition = object({
-      memory             = number
+      volumes = optional(list(object({
+        name = string
+        host = object({
+          sourcePath = string
+        })
+      })), [])
+
+      memory             = optional(number)
       memory_reservation = optional(number)
       cpu                = number
       gpu                = optional(number)
@@ -95,6 +103,7 @@ variable "ecs" {
       volumes_from             = optional(list(any))
       working_directory        = optional(string)
       mount_points             = optional(list(any))
+      linux_parameters         = optional(any, {})
     })
     fargate = optional(object({
       os           = string
