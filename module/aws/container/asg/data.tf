@@ -29,32 +29,4 @@ locals {
   partition   = data.aws_partition.current.partition  // aws
   region_name = data.aws_region.current.name
   subnets     = data.aws_subnets.tier.ids
-
-  traffics = [for traffic in var.traffics : {
-    listener = merge(traffic.listener, {
-      port = coalesce(
-        traffic.listener.port,
-        traffic.listener.protocol == "http" ? 80 : null,
-        traffic.listener.protocol == "https" ? 443 : null,
-      )
-    })
-    target = merge(traffic.target, {
-      health_check_path = coalesce(
-        traffic.target.health_check_path,
-        "/",
-      )
-    })
-    base = traffic.base
-  }]
-
-  # icmp, icmpv6, tcp, udp, or all use the protocol number
-  # https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
-  layer7_to_layer4_mapping = {
-    http    = "tcp"
-    https   = "tcp"
-    tcp     = "tcp"
-    udp     = "udp"
-    tcp_udp = "tcp"
-    ssl     = "tcp"
-  }
 }

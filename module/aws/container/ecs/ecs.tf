@@ -45,7 +45,7 @@ module "ecs" {
     for key, value in var.ec2 :
     key => {
       name                   = "${var.name}-${key}"
-      auto_scaling_group_arn = module.asg[key].autoscaling_group_arn
+      auto_scaling_group_arn = module.asg[key].asg.autoscaling_group_arn
       managed_scaling = {
         // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
         maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size == null ? max(min(ceil((var.service.task_max_count - var.service.task_min_count) / 3), 10), 1) : value.capacity_provider.maximum_scaling_step_size
@@ -101,7 +101,7 @@ module "ecs" {
             type                     = "ingress"
             from_port                = target.port
             to_port                  = target.port
-            protocol                 = local.aws_security_group_rule_protocols[target.protocol]
+            protocol                 = local.layer7_to_layer4_mapping[target.protocol]
             description              = "Service ${target.protocol} port ${target.port}"
             source_security_group_id = module.elb_sg.security_group_id
           }
@@ -231,7 +231,7 @@ module "ecs" {
             containerPort = target.port
             hostPort      = var.service.deployment_type == "fargate" ? target.port : 0 // "host" network can use target port 
             name          = join("-", ["container", target.protocol, target.port])
-            protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol
+            protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol // TODO: local.layer7_to_layer4_mapping[target.protocol]
             }
           ]
           memory             = var.task_definition.memory

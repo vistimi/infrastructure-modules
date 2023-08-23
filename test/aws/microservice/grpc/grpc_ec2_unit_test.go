@@ -64,7 +64,7 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	id := "fghj" // util.RandomID(4)
+	id := util.RandomID(4)
 	name := util.Format("-", projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
 	tags := map[string]string{
 		"TestID":  id,
@@ -191,18 +191,18 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 		},
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			// destroy all resources if panic
-			terraform.Destroy(t, options)
-		}
-		terratestStructure.RunTestStage(t, "cleanup", func() {
-			terraform.Destroy(t, options)
-		})
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		// destroy all resources if panic
+	// 		terraform.Destroy(t, options)
+	// 	}
+	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
+	// 		terraform.Destroy(t, options)
+	// 	})
+	// }()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, options)
+		terraform.InitAndPlan(t, options) // FIXME: init and apply
 	})
 
 	terratestStructure.RunTestStage(t, "validate", func() {

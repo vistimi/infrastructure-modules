@@ -172,8 +172,8 @@ module "elb_sg" {
       }]) : {
       from_port   = listener.port
       to_port     = listener.port
-      protocol    = local.aws_security_group_rule_protocols[listener.protocol]
-      description = "listener port ${local.aws_security_group_rule_protocols[listener.protocol]} ${listener.port}"
+      protocol    = local.layer7_to_layer4_mapping[listener.protocol]
+      description = "listener port ${local.layer7_to_layer4_mapping[listener.protocol]} ${listener.port}"
       cidr_blocks = "0.0.0.0/0"
     } if listener.protocol == "http" || (listener.protocol == "https" && var.route53 != null)
   ]

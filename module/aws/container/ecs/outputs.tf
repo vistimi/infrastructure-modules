@@ -47,35 +47,7 @@ output "route53" {
 # https://registry.terraform.io/module/terraform-aws-modules/autoscaling/aws/6.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "asg" {
   value = {
-    for key, asg in module.asg : key => {
-      autoscaling_group_arn                       = asg.autoscaling_group_arn
-      autoscaling_group_availability_zones        = asg.autoscaling_group_availability_zones
-      autoscaling_group_default_cooldown          = asg.autoscaling_group_default_cooldown
-      autoscaling_group_desired_capacity          = asg.autoscaling_group_desired_capacity
-      autoscaling_group_enabled_metrics           = asg.autoscaling_group_enabled_metrics
-      autoscaling_group_health_check_grace_period = asg.autoscaling_group_health_check_grace_period
-      autoscaling_group_health_check_type         = asg.autoscaling_group_health_check_type
-      autoscaling_group_id                        = asg.autoscaling_group_id
-      autoscaling_group_load_balancers            = asg.autoscaling_group_load_balancers
-      autoscaling_group_max_size                  = asg.autoscaling_group_max_size
-      autoscaling_group_min_size                  = asg.autoscaling_group_min_size
-      autoscaling_group_name                      = asg.autoscaling_group_name
-      autoscaling_group_target_group_arns         = asg.autoscaling_group_target_group_arns
-      autoscaling_group_vpc_zone_identifier       = asg.autoscaling_group_vpc_zone_identifier
-      autoscaling_policy_arns                     = asg.autoscaling_policy_arns
-      autoscaling_schedule_arns                   = asg.autoscaling_schedule_arns
-      iam_instance_profile_arn                    = asg.iam_instance_profile_arn
-      iam_instance_profile_id                     = asg.iam_instance_profile_id
-      iam_instance_profile_unique                 = asg.iam_instance_profile_unique
-      iam_role_arn                                = asg.iam_role_arn
-      iam_role_name                               = asg.iam_role_name
-      iam_role_unique_id                          = asg.iam_role_unique_id
-      launch_template_arn                         = asg.launch_template_arn
-      launch_template_default_version             = asg.launch_template_default_version
-      launch_template_id                          = asg.launch_template_id
-      launch_template_latest_version              = asg.launch_template_latest_version
-      launch_template_name                        = asg.launch_template_name
-    }
+    for key, asg in module.asg : key => asg
   }
 }
 
