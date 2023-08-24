@@ -171,9 +171,9 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
-					"task_min_count":                     1,
-					"task_desired_count":                 1,
-					"task_max_count":                     1,
+					"min_count":                          1,
+					"desired_count":                      1,
+					"max_count":                          1,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required
 					"deployment_circuit_breaker": map[string]any{
 						"enable":   true,  // service deployment fail if no steady state

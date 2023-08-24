@@ -57,4 +57,27 @@ locals {
     tcp_udp = "tcp"
     ssl     = "tcp"
   }
+
+  ecr_services = {
+    private = "ecr"
+    public  = "ecr-public"
+  }
+  fargate_os = {
+    linux = "LINUX"
+  }
+  fargate_architecture = {
+    x86_64 = "X86_64"
+  }
+
+  ecr_repository_account_id = coalesce(try(var.task_definition.docker.registry.ecr.account_id, null), local.account_id)
+  ecr_repository_region_name = try(
+    (var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"),
+    null
+  )
+
+  docker_registry_name = try(
+    var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
+    var.task_definition.docker.registry.name,
+    null
+  )
 }

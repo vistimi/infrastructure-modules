@@ -112,90 +112,12 @@ resource "null_resource" "target" {
   }
 }
 
-#--------------
-# ECS
-#--------------
-
-# inference_accelerators = optional(list(object({
-# deviceName = string
-# deviceType = string
-# })), [])
-variable "task_definition" {
-  type = object({
-    volumes = optional(list(object({
-      name = string
-      host = object({
-        sourcePath = string
-      })
-    })), [])
-
-    memory             = optional(number)
-    memory_reservation = optional(number)
-    cpu                = number
-    gpu                = optional(number)
-    env_file = optional(object({
-      bucket_name = string
-      file_name   = string
-    }))
-    environment = optional(list(object({
-      name  = string
-      value = string
-    })), [])
-    docker = object({
-      registry = optional(object({
-        name = optional(string)
-        ecr = optional(object({
-          privacy      = string
-          public_alias = optional(string)
-          account_id   = optional(string)
-          region_name  = optional(string)
-        }))
-      }))
-      repository = object({
-        name = string
-      })
-      image = optional(object({
-        tag = string
-      }))
-    })
-    resource_requirements = optional(list(object({
-      type  = string
-      value = string
-    })), [])
-    command                  = optional(list(string), [])
-    entrypoint               = optional(list(string), [])
-    health_check             = optional(any, {})
-    readonly_root_filesystem = optional(bool)
-    user                     = optional(string)
-    volumes_from             = optional(list(any), [])
-    working_directory        = optional(string)
-    mount_points             = optional(list(any), [])
-    linux_parameters         = optional(any, {})
-  })
-
-  validation {
-    condition     = try(var.task_definition.docker.registry.ecr.name != null, true)
-    error_message = "docker registry name must not be empty if ecr is not specified"
-  }
-
-  validation {
-    condition     = try(contains(["private", "public", "intra"], var.task_definition.docker.registry.ecr.privacy), true)
-    error_message = "docker repository privacy must be one of [public, private, intra]"
-  }
-
-  validation {
-    condition     = try((var.task_definition.docker.registry.ecr.privacy == "public" ? length(coalesce(var.task_definition.docker.registry.ecr.public_alias, "")) > 0 : true), true)
-    error_message = "docker repository alias need when repository privacy is `public`"
-  }
-}
-
-# orchestrator_type                  = string
-variable "service" {
-  type = object({
+variable "ecs" {
+  services = map(object({
     deployment_type                    = string
-    task_min_count                     = number
-    task_desired_count                 = number
-    task_max_count                     = number
+    min_count                          = number
+    desired_count                      = number
+    max_count                          = number
     deployment_maximum_percent         = optional(number)
     deployment_minimum_healthy_percent = optional(number)
     deployment_circuit_breaker = optional(object({
@@ -205,7 +127,77 @@ variable "service" {
       enable   = true
       rollback = true
     })
-  })
+    task_definition = object({
+      volumes = optional(list(object({
+        name = string
+        host = object({
+          sourcePath = string
+        })
+      })), [])
+
+      memory = optional(number)
+      cpu    = number
+      containers = map(object({
+        memory             = optional(number)
+        memory_reservation = optional(number)
+        cpu                = number
+        gpu                = optional(number)
+        env_file = optional(object({
+          bucket_name = string
+          file_name   = string
+        }))
+        environment = optional(list(object({
+          name  = string
+          value = string
+        })), [])
+        docker = object({
+          registry = optional(object({
+            name = optional(string)
+            ecr = optional(object({
+              privacy      = string
+              public_alias = optional(string)
+              account_id   = optional(string)
+              region_name  = optional(string)
+            }))
+          }))
+          repository = object({
+            name = string
+          })
+          image = optional(object({
+            tag = string
+          }))
+        })
+        resource_requirements = optional(list(object({
+          type  = string
+          value = string
+        })), [])
+        command                  = optional(list(string), [])
+        entrypoint               = optional(list(string), [])
+        health_check             = optional(any, {})
+        readonly_root_filesystem = optional(bool)
+        user                     = optional(string)
+        volumes_from             = optional(list(any), [])
+        working_directory        = optional(string)
+        mount_points             = optional(list(any), [])
+        linux_parameters         = optional(any, {})
+      }))
+    })
+  }))
+
+  validation {
+    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try(container.docker.registry.ecr.name, true)]])
+    error_message = "docker registry name must not be empty if ecr is not specified"
+  }
+
+  validation {
+    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try(contains(["private", "public", "intra"], container.docker.registry.ecr.privacy), true)]])
+    error_message = "docker repository privacy must be one of [public, private, intra]"
+  }
+
+  validation {
+    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try((container.docker.registry.ecr.privacy == "public" ? length(coalesce(container.docker.registry.ecr.public_alias, "")) > 0 : true), true)]])
+    error_message = "docker repository alias need when repository privacy is `public`"
+  }
 }
 
 variable "fargate" {

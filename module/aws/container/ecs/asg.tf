@@ -53,6 +53,7 @@ locals {
 #------------------------
 #     EC2 autoscaler
 #------------------------
+// TODO: support multiple instance_types
 module "asg" {
   source = "../asg"
 
@@ -61,32 +62,21 @@ module "asg" {
     key => {
       name              = "${var.name}-${key}"
       capacity_provider = value.capacity_provider
-      instance_market_options = value.use_spot ? {
-        # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
-        market_type = "spot"
-        # spot_options = {
-        #   block_duration_minutes = 60
-        # }
-      } : {}
-      tag_specifications = value.use_spot ? [{
-        resource_type = "spot-instances-request"
-        tags          = merge(var.tags, { Name = "${var.name}-spot-instance-request" })
-      }] : []
-      instance_type    = value.instance_type
-      key_name         = value.key_name # to SSH into instance
-      instance_refresh = value.asg.instance_refresh
+      use_spot          = value.use_spot
+      instance_type     = value.instance_type
+      key_name          = value.key_name # to SSH into instance
+      instance_refresh  = value.asg.instance_refresh
     } if var.service.deployment_type == "ec2"
   }
 
   vpc = var.vpc
 
-  name                    = each.value.name
-  capacity_provider       = each.value.capacity_provider
-  instance_market_options = each.value.instance_market_options
-  tag_specifications      = each.value.tag_specifications
-  instance_type           = each.value.instance_type
-  key_name                = each.value.key_name
-  instance_refresh        = each.value.instance_refresh
+  name              = each.value.name
+  capacity_provider = each.value.capacity_provider
+  instance_type     = each.value.instance_type
+  key_name          = each.value.key_name
+  instance_refresh  = each.value.instance_refresh
+  use_spot          = each.value.use_spot
 
   image_id                 = local.image_ids[each.key]
   user_data_base64         = base64encode(local.user_data[each.key])
@@ -94,12 +84,12 @@ module "asg" {
   port_mapping             = "dynamic"
   layer7_to_layer4_mapping = local.layer7_to_layer4_mapping
   traffics                 = local.traffics
-  target_group_arns        = module.elb.target_group_arns
-  source_security_group_id = module.elb_sg.security_group_id
+  target_group_arns        = module.elb.elb.target_group_arns
+  source_security_group_id = module.elb.elb_sg.security_group_id
 
-  task_min_count     = var.service.task_min_count
-  task_max_count     = var.service.task_max_count
-  task_desired_count = var.service.task_desired_count
+  min_count     = var.service.min_count
+  max_count     = var.service.max_count
+  desired_count = var.service.desired_count
 
   tags = var.tags
 }
@@ -111,7 +101,7 @@ resource "aws_autoscaling_attachment" "ecs" {
     if var.service.deployment_type == "ec2"
   }
   autoscaling_group_name = module.asg[each.key].asg.autoscaling_group_name
-  lb_target_group_arn    = element(module.elb.target_group_arns, 0)
+  lb_target_group_arn    = element(module.elb.elb.target_group_arns, 0)
 }
 
 # group notification

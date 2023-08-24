@@ -20,11 +20,22 @@ module "asg" {
 
   # launch template configuration
   create_launch_template = true
-  tag_specifications = concat(var.tag_specifications, [{
-    resource_type = "instance"
-    tags          = merge(var.tags, { Name = "${var.name}-instance" })
+  tag_specifications = concat(
+    var.use_spot ? [{
+      resource_type = "spot-instances-request"
+      tags          = merge(var.tags, { Name = "${var.name}-spot-instance-request" })
+    }] : []
+    , [{
+      resource_type = "instance"
+      tags          = merge(var.tags, { Name = "${var.name}-instance" })
   }])
-  instance_market_options     = var.instance_market_options
+  instance_market_options = value.use_spot ? {
+    # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
+    market_type = "spot"
+    # spot_options = {
+    #   block_duration_minutes = 60
+    # }
+  } : {}
   instance_type               = var.instance_type
   image_id                    = var.image_id
   user_data                   = var.user_data_base64
@@ -87,9 +98,9 @@ module "asg" {
 
   # asg configuration
   ignore_desired_capacity_changes = false
-  min_size                        = floor(var.task_min_count * var.capacity_provider.weight / var.weight_total)
-  max_size                        = ceil(var.task_max_count * var.capacity_provider.weight / var.weight_total)
-  desired_capacity                = ceil(var.task_desired_count * var.capacity_provider.weight / var.weight_total)
+  min_size                        = floor(var.min_count * var.capacity_provider.weight / var.weight_total)
+  max_size                        = ceil(var.max_count * var.capacity_provider.weight / var.weight_total)
+  desired_capacity                = ceil(var.desired_count * var.capacity_provider.weight / var.weight_total)
   vpc_zone_identifier             = local.subnets
   health_check_type               = "EC2"
   target_group_arns               = var.target_group_arns

@@ -1,28 +1,3 @@
-locals {
-  ecr_services = {
-    private = "ecr"
-    public  = "ecr-public"
-  }
-  fargate_os = {
-    linux = "LINUX"
-  }
-  fargate_architecture = {
-    x86_64 = "X86_64"
-  }
-
-  ecr_repository_account_id = coalesce(try(var.task_definition.docker.registry.ecr.account_id, null), local.account_id)
-  ecr_repository_region_name = try(
-    (var.task_definition.docker.registry.ecr.privacy == "private" ? coalesce(var.task_definition.docker.registry.ecr.region_name, local.region_name) : "us-east-1"),
-    null
-  )
-
-  docker_registry_name = try(
-    var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
-    var.task_definition.docker.registry.name,
-    null
-  )
-}
-
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
@@ -48,8 +23,8 @@ module "ecs" {
       auto_scaling_group_arn = module.asg[key].asg.autoscaling_group_arn
       managed_scaling = {
         // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
-        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size == null ? max(min(ceil((var.service.task_max_count - var.service.task_min_count) / 3), 10), 1) : value.capacity_provider.maximum_scaling_step_size
-        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size == null ? max(min(floor((var.service.task_max_count - var.service.task_min_count) / 10), 10), 1) : value.capacity_provider.minimum_scaling_step_size
+        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size == null ? max(min(ceil((var.service.max_count - var.service.min_count) / 3), 10), 1) : value.capacity_provider.maximum_scaling_step_size
+        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size == null ? max(min(floor((var.service.max_count - var.service.min_count) / 10), 10), 1) : value.capacity_provider.minimum_scaling_step_size
         target_capacity           = value.capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
@@ -71,9 +46,9 @@ module "ecs" {
       force_new_deployment               = true
       launch_type                        = var.service.deployment_type == "fargate" ? "FARGATE" : "EC2"
       enable_autoscaling                 = true
-      autoscaling_min_capacity           = var.service.task_min_count
-      desired_count                      = var.service.task_desired_count
-      autoscaling_max_capacity           = var.service.task_max_count
+      autoscaling_min_capacity           = var.service.min_count
+      desired_count                      = var.service.desired_count
+      autoscaling_max_capacity           = var.service.max_count
       deployment_maximum_percent         = var.service.deployment_maximum_percent         // max % tasks running required
       deployment_minimum_healthy_percent = var.service.deployment_minimum_healthy_percent // min % tasks running required
       deployment_circuit_breaker         = var.service.deployment_circuit_breaker
@@ -84,7 +59,7 @@ module "ecs" {
 
       load_balancer = {
         service = {
-          target_group_arn = element(module.elb.target_group_arns, 0) // one LB per target group
+          target_group_arn = element(module.elb.elb.target_group_arns, 0) // one LB per target group
           container_name   = "${var.name}-container"
           container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
@@ -103,7 +78,7 @@ module "ecs" {
             to_port                  = target.port
             protocol                 = local.layer7_to_layer4_mapping[target.protocol]
             description              = "Service ${target.protocol} port ${target.port}"
-            source_security_group_id = module.elb_sg.security_group_id
+            source_security_group_id = module.elb.elb_sg.security_group_id
           }
         },
         {

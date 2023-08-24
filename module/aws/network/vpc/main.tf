@@ -31,6 +31,7 @@ module "vpc" {
 
   private_subnet_tags = { Tier = "private" }
   public_subnet_tags  = { Tier = "public" }
+  intra_subnet_tags   = { Tier = "intra" }
 
   tags = merge(var.tags, { Zones = jsonencode(data.aws_availability_zones.available.names) })
 }

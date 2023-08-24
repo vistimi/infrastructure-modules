@@ -40,9 +40,9 @@ variable "microservice" {
     ecs = object({
       service = object({
         deployment_type                    = string
-        task_min_count                     = number
-        task_desired_count                 = number
-        task_max_count                     = number
+        min_count                          = number
+        desired_count                      = number
+        max_count                          = number
         deployment_maximum_percent         = optional(number)
         deployment_minimum_healthy_percent = optional(number)
         deployment_circuit_breaker = optional(object({

@@ -1,16 +1,21 @@
-# ec2-asg
+# ECS
 
-EC2 Auto Scaling Group template
-Wrong but you get the flow
+Instances can be Fargate or EC2
 
 ```mermaid
 flowchart LR
-    Inbound_traffic -- HTTP: 80 --> ALB -- HTTP: server_port --> ECS
-    ECS --> task_1
+    Inbound_traffic -- HTTP(S)/TCP --> ELB -- scaling --> Target_Group -- provision --> ECS_service
+    ELB -- traffic --> ECS_service
+```
+
+```mermaid
+flowchart LR
+    ECS_service_1 --> task_1
     task_1 --> ASG_on_demand & ASG_spot
-    ASG_on_demand --> EC2_on_demand_1 & EC2_on_demand_2
-    ASG_spot --> EC2_spot_1 & EC2_spot_2
-    ECS --> task_2
+    ASG_on_demand --> instance_on_demand_1 & instance_on_demand_2
+    ASG_spot --> instance_spot_1 & instance_spot_2
+
+    ECS_service_1 --> task_2...
 ```
 
 # network mode

@@ -41,13 +41,9 @@ variable "capacity_provider" {
   nullable = false
 }
 
-variable "instance_market_options" {
-  type     = map(any)
-  nullable = false
-}
-
-variable "tag_specifications" {
-  type = list(any)
+variable "use_spot" {
+  type    = bool
+  default = false
 }
 
 variable "instance_type" {
@@ -75,17 +71,17 @@ variable "weight_total" {
   nullable = false
 }
 
-variable "task_min_count" {
+variable "min_count" {
   type     = number
   nullable = false
 }
 
-variable "task_max_count" {
+variable "max_count" {
   type     = number
   nullable = false
 }
 
-variable "task_desired_count" {
+variable "desired_count" {
   type     = number
   nullable = false
 }

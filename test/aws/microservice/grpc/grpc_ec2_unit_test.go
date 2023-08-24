@@ -161,9 +161,9 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 
 				"service": map[string]any{
 					"deployment_type":                    "ec2",
-					"task_min_count":                     1,
-					"task_desired_count":                 1,
-					"task_max_count":                     1,
+					"min_count":                          1,
+					"desired_count":                      1,
+					"max_count":                          1,
 					"deployment_minimum_healthy_percent": 66, // % tasks running required
 					"deployment_circuit_breaker": map[string]any{
 						"enable":   true,  // service deployment fail if no steady state
@@ -191,18 +191,18 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 		},
 	}
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		// destroy all resources if panic
-	// 		terraform.Destroy(t, options)
-	// 	}
-	// 	terratestStructure.RunTestStage(t, "cleanup", func() {
-	// 		terraform.Destroy(t, options)
-	// 	})
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			// destroy all resources if panic
+			terraform.Destroy(t, options)
+		}
+		terratestStructure.RunTestStage(t, "cleanup", func() {
+			terraform.Destroy(t, options)
+		})
+	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndPlan(t, options) // FIXME: init and apply
+		terraform.InitAndApply(t, options)
 	})
 
 	terratestStructure.RunTestStage(t, "validate", func() {

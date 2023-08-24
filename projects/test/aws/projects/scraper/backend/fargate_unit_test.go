@@ -36,9 +36,9 @@ func Test_Unit_Microservice_ScraperBackend_Fargate(t *testing.T) {
 		},
 		"service": map[string]any{
 			"deployment_type":                    "fargate",
-			"task_min_count":                     1,
-			"task_desired_count":                 1,
-			"task_max_count":                     1,
+			"min_count":                          1,
+			"desired_count":                      1,
+			"max_count":                          1,
 			"deployment_minimum_healthy_percent": 66,
 		},
 	})

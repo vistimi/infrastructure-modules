@@ -29,13 +29,19 @@ variable "route53" {
   default = null
 }
 
+variable "eks" {
+  type = object({
+  })
+  default = null
+}
+
 variable "ecs" {
   type = object({
     service = object({
       deployment_type                    = string
-      task_min_count                     = number
-      task_desired_count                 = number
-      task_max_count                     = number
+      min_count                          = number
+      desired_count                      = number
+      max_count                          = number
       deployment_maximum_percent         = optional(number)
       deployment_minimum_healthy_percent = optional(number)
       deployment_circuit_breaker = optional(object({
@@ -145,6 +151,16 @@ variable "ecs" {
       })
     })))
   })
+  default = null
+}
+
+resource "null_resource" "orchestrator" {
+  lifecycle {
+    precondition {
+      condition     = length([for orchestrator in [var.ecs, var.eks] : true if orchestrator != null]) == 1
+      error_message = "orchestrator must be either [ecs, eks]"
+    }
+  }
 }
 
 variable "bucket_env" {
