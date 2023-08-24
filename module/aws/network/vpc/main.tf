@@ -19,6 +19,8 @@ module "vpc" {
   name = var.name
   cidr = var.cidr_ipv4
 
+  map_public_ip_on_launch = true # eks
+
   # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/5.1.1?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#nat-gateway-scenarios
   enable_nat_gateway     = var.nat != null ? true : false
   single_nat_gateway     = var.nat == "vpc" ? true : false

@@ -84,10 +84,10 @@ module "eks" {
       use_custom_launch_template = false
       description                = "EKS managed node group example launch template"
 
-      remote_access = try({
-        ec2_ssh_key               = value.ec2.key_name
-        source_security_group_ids = [module.ssh_sg[key].security_group_id]
-      }, {})
+      # remote_access = try({
+      #   ec2_ssh_key               = value.ec2.key_name
+      #   source_security_group_ids = [module.ssh_sg[key].security_group_id]
+      # }, null)
 
       subnet_ids = local.tier_subnet_ids
       ami_id     = local.image_ids[key]
@@ -114,8 +114,8 @@ module "eks" {
         #   effect = "NO_SCHEDULE"
         # }
         {
-          key    = key
-          value  = "401582117818.dkr.ecr.us-west-1.amazonaws.com/scraper-backend-trunk"
+          key    = "ecr"
+          value  = "scraper-backend-trunk"
           effect = "NO_SCHEDULE"
         }
       ]
