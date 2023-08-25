@@ -1,3 +1,10 @@
+locals {
+  fargate_capacity_provider_keys = {
+    ON_DEMAND = "FARGATE"
+    SPOT      = "FARGATE_SPOT"
+  }
+}
+
 module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.2.0"
@@ -6,36 +13,34 @@ module "ecs" {
 
   # capacity providers
   default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
-  fargate_capacity_providers = {
-    for key, cp in var.fargate.capacity_provider :
-    cp.key => {
+  fargate_capacity_providers = try({
+    for capacity in var.ecs.service.fargate.capacities :
+    local.fargate_capacity_provider_keys[capacity.type] => {
       default_capacity_provider_strategy = {
-        weight = cp.weight
-        base   = cp.base
+        weight = capacity.weight
+        base   = capacity.base
       }
     }
-    if var.service.deployment_type == "fargate"
-  }
+  }, {})
   autoscaling_capacity_providers = {
-    for key, value in var.ec2 :
-    key => {
-      name                   = "${var.name}-${key}"
+    for capacity in var.ecs.service.ec2.capacities :
+    "${var.name}-${capacity.type}" => {
+      name                   = "${var.name}-${capacity.type}"
       auto_scaling_group_arn = module.asg[key].asg.autoscaling_group_arn
       managed_scaling = {
         // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
-        maximum_scaling_step_size = value.capacity_provider.maximum_scaling_step_size == null ? max(min(ceil((var.service.max_count - var.service.min_count) / 3), 10), 1) : value.capacity_provider.maximum_scaling_step_size
-        minimum_scaling_step_size = value.capacity_provider.minimum_scaling_step_size == null ? max(min(floor((var.service.max_count - var.service.min_count) / 10), 10), 1) : value.capacity_provider.minimum_scaling_step_size
-        target_capacity           = value.capacity_provider.target_capacity_cpu_percent # utilization for the capacity provider
+        maximum_scaling_step_size = capacity.maximum_scaling_step_size == null ? max(min(ceil((var.service.max_count - var.service.min_count) / 3), 10), 1) : capacity.maximum_scaling_step_size
+        minimum_scaling_step_size = capacity.minimum_scaling_step_size == null ? max(min(floor((var.service.max_count - var.service.min_count) / 10), 10), 1) : capacity.minimum_scaling_step_size
+        target_capacity           = capacity.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
         default_capacity_provider_strategy = {
-          base   = value.capacity_provider.base
-          weight = value.capacity_provider.weight
+          base   = capacity.base
+          weight = capacity.weight
         }
       }
       managed_termination_protection = "DISABLED"
     }
-    if var.service.deployment_type == "ec2"
   }
 
   services = {
@@ -44,7 +49,7 @@ module "ecs" {
       # Service
       #------------
       force_new_deployment               = true
-      launch_type                        = var.service.deployment_type == "fargate" ? "FARGATE" : "EC2"
+      launch_type                        = var.service.ec2 != null ? "EC2" : "FARGATE"
       enable_autoscaling                 = true
       autoscaling_min_capacity           = var.service.min_count
       desired_count                      = var.service.desired_count

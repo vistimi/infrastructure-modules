@@ -62,10 +62,9 @@ output "cloudwatch_log_group" {
   }
 }
 
-# output "fargate_profiles" {
-#   value = module.eks.fargate_profiles
-# }
-
+output "fargate_profiles" {
+  value = module.eks.fargate_profiles
+}
 
 output "eks_managed_node_groups" {
   value = {

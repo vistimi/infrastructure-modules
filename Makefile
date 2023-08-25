@@ -46,6 +46,12 @@ prepare-account-aws:
 	EOF
 
 prepare-aws-microservice:
+	$(call check_defined, ORCHESTRATOR)
+	cat <<-EOF > ${PATH_ABS_ROOT}/module/aws/container/microservice/microservice_override.hcl
+	locals {
+		orchestrator="${ORCHESTRATOR}"
+	}
+	EOF
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
 
 prepare-aws-iam-level:

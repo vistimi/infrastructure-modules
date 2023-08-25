@@ -98,9 +98,9 @@ module "asg" {
 
   # asg configuration
   ignore_desired_capacity_changes = false
-  min_size                        = floor(var.min_count * var.capacity_provider.weight / var.weight_total)
-  max_size                        = ceil(var.max_count * var.capacity_provider.weight / var.weight_total)
-  desired_capacity                = ceil(var.desired_count * var.capacity_provider.weight / var.weight_total)
+  min_size                        = floor(var.min_count * var.capacity_provider.weight / var.capacity_weight_total)
+  max_size                        = ceil(var.max_count * var.capacity_provider.weight / var.capacity_weight_total)
+  desired_capacity                = ceil(var.desired_count * var.capacity_provider.weight / var.capacity_weight_total)
   vpc_zone_identifier             = local.subnets
   health_check_type               = "EC2"
   target_group_arns               = var.target_group_arns

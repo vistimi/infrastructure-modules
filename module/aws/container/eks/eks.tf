@@ -16,58 +16,61 @@ module "vpc_cni_irsa" {
   tags = var.tags
 }
 
-module "ssh_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "5.0.0"
+# module "ssh_sg" {
+#   source  = "terraform-aws-modules/security-group/aws"
+#   version = "5.0.0"
 
-  for_each = { for key, value in var.eks.groups : key => value.ec2.key_name if value.ec2 != null }
+#   description = "SSH security group"
+#   vpc_id      = var.vpc.id
+#   name        = var.name
 
-  description = "SSH security group"
-  vpc_id      = var.vpc.id
-  name        = var.name
+#   // accept SSH if key
+#   ingress_with_cidr_blocks = var.eks.ec2 != null ? [
+#     {
+#       from_port   = 22
+#       to_port     = 22
+#       protocol    = "tcp"
+#       description = "SSH"
+#       cidr_blocks = "0.0.0.0/0"
+#     },
+#   ] : []
+#   egress_rules = ["all-all"]
 
-  // accept SSH if key
-  ingress_with_cidr_blocks = each.value != null ? [
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      description = "SSH"
-      cidr_blocks = "0.0.0.0/0"
-    },
-  ] : []
-  egress_rules = ["all-all"]
-
-  tags = var.tags
-}
+#   tags = var.tags
+# }
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "19.16.0"
 
-  cluster_name    = var.name
-  cluster_version = var.eks.cluster_version
-
+  create = var.eks.create
+  cluster_name                   = var.name
+  cluster_version                = var.eks.cluster_version
   cluster_endpoint_public_access = true
-
   cluster_addons = {
-    coredns = {
+    coredns = var.eks.group.fargate != null ? {
+      configuration_values = jsonencode({
+        computeType = "Fargate"
+      })
+      } : {
       most_recent = true
     }
     kube-proxy = {
       most_recent = true
     }
-    vpc-cni = {
-      most_recent              = true
-      before_compute           = true
-      service_account_role_arn = module.vpc_cni_irsa.iam_role_arn
-      configuration_values = jsonencode({
-        env = {
-          # Reference docs https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html
-          ENABLE_PREFIX_DELEGATION = "true"
-          WARM_PREFIX_TARGET       = "1"
-        }
-      })
+    vpc-cni = var.eks.group.ec2 != null ? {
+      most_recent = true
+      # before_compute           = true
+      # service_account_role_arn = module.vpc_cni_irsa.iam_role_arn
+      # configuration_values = jsonencode({
+      #   env = {
+      #     # Reference docs https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html
+      #     ENABLE_PREFIX_DELEGATION = "true"
+      #     WARM_PREFIX_TARGET       = "1"
+      #   }
+      # })
+      } : {
+      most_recent = true
     }
   }
 
@@ -75,53 +78,68 @@ module "eks" {
   subnet_ids               = local.tier_subnet_ids
   control_plane_subnet_ids = local.intra_subnet_ids
 
-  # Extend node-to-node security group rules
-  node_security_group_additional_rules = {}
+  # Extend cluster security group rules
+  # cluster_security_group_additional_rules = {
+  #   ingress_nodes_ephemeral_ports_tcp = {
+  #     description                = "Nodes on ephemeral ports"
+  #     protocol                   = "tcp"
+  #     from_port                  = 1025
+  #     to_port                    = 65535
+  #     type                       = "ingress"
+  #     source_node_security_group = true
+  #   }
+  # }
 
-  # TODO: use bottlerocket for more optimized container amis
+  # Extend node-to-node security group rules
+  # node_security_group_additional_rules = {
+  #   ingress_self_all = {
+  #     description = "Node to node all ports/protocols"
+  #     protocol    = "-1"
+  #     from_port   = 0
+  #     to_port     = 0
+  #     type        = "ingress"
+  #     self        = true
+  #   }
+  # }
+
   eks_managed_node_groups = {
-    for key, value in var.eks.groups : key => {
+    for capacity in var.eks.group.ec2.capacities : "${var.name}-${capacity.type}" => {
       use_custom_launch_template = false
       description                = "EKS managed node group example launch template"
 
       # remote_access = try({
-      #   ec2_ssh_key               = value.ec2.key_name
+      #   ec2_ssh_key               = var.eks.group.ec2.key_name
       #   source_security_group_ids = [module.ssh_sg[key].security_group_id]
       # }, null)
 
       subnet_ids = local.tier_subnet_ids
-      ami_id     = local.image_ids[key]
+      ami_id     = local.image_id
       # disk_size  = 50
 
-      min_size     = value.min_size
-      max_size     = value.max_size
-      desired_size = value.desired_size
+      min_size     = var.eks.group.deployment.min_size
+      max_size     = var.eks.group.deployment.max_size
+      desired_size = var.eks.group.deployment.desired_size
 
-      instance_types = value.ec2.instance_types
-      capacity_type  = value.ec2.use_spot ? "SPOT" : "ON_DEMAND"
+      instance_types = var.eks.group.ec2.instance_types
+      capacity_type  = capacity.type
 
       # For the pod to be eligible to run on a node, the node must have each of the indicated key-value pairs as labels
-      labels = {
-        GithubRepo = "terraform-aws-eks"
-        GithubOrg  = "terraform-aws-modules"
-      }
+      # labels = {
+      #   GithubRepo = "terraform-aws-eks"
+      #   GithubOrg  = "terraform-aws-modules"
+      # }
 
       # Taints and tolerations work together to ensure that Pods aren't scheduled onto inappropriate nodes
-      taints = [
-        # {
-        #   key    = "dedicated"
-        #   value  = "gpuGroup"
-        #   effect = "NO_SCHEDULE"
-        # }
-        {
-          key    = "ecr"
-          value  = "scraper-backend-trunk"
-          effect = "NO_SCHEDULE"
-        }
-      ]
+      # taints = [
+      #   # {
+      #   #   key    = "dedicated"
+      #   #   value  = "gpuGroup"
+      #   #   effect = "NO_SCHEDULE"
+      #   # }
+      # ]
 
       # update_config = {
-      #   max_unavailable_percentage = value.deployment_maximum_percent
+      #   max_unavailable_percentage = var.eks.group.deployment_maximum_percent
       # }
 
 
@@ -222,85 +240,65 @@ module "eks" {
 
   # aws-auth configmap
   manage_aws_auth_configmap = true
-  # aws_auth_node_iam_role_arns_non_windows = [
-  #   module.eks_managed_node_group.iam_role_arn,
-  # ]
-  # aws_auth_fargate_profile_pod_execution_role_arns = [
-  #   module.fargate_profile.fargate_profile_pod_execution_role_arn
-  # ]
-  # aws_auth_roles = [
+  # aws_auth_users = [
   #   {
-  #     rolearn  = module.eks_managed_node_group.iam_role_arn
-  #     username = "system:node:{{EC2PrivateDNSName}}"
-  #     groups = [
-  #       "system:bootstrappers",
-  #       "system:nodes",
-  #     ]
+  #     userarn  = data.aws_caller_identity.current.arn
+  #     username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
+  #     groups   = ["system:masters"]
   #   },
-  #   {
-  #     rolearn  = module.fargate_profile.fargate_profile_pod_execution_role_arn
-  #     username = "system:node:{{SessionName}}"
-  #     groups = [
-  #       "system:bootstrappers",
-  #       "system:nodes",
-  #       "system:node-proxier",
-  #     ]
-  #   }
   # ]
-  aws_auth_users = [
-    {
-      userarn  = data.aws_caller_identity.current.arn
-      username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
-      groups   = ["system:masters"]
-    },
-  ]
-  # aws_auth_accounts = [local.account_id]
+  aws_auth_accounts = [local.account_id]
 
   tags = var.tags
 }
 
-# module "eks_managed_node_group" {
-#   source = "../../modules/eks-managed-node-group"
-
-#   name            = "separate-eks-mng"
-#   cluster_name    = module.eks.cluster_name
-#   cluster_version = module.eks.cluster_version
-
-#   subnet_ids                        = module.vpc.private_subnets
-#   cluster_primary_security_group_id = module.eks.cluster_primary_security_group_id
-#   vpc_security_group_ids = [
-#     module.eks.cluster_security_group_id,
-#   ]
-
-#   ami_type = "BOTTLEROCKET_x86_64"
-#   platform = "bottlerocket"
-
-#   # this will get added to what AWS provides
-#   bootstrap_extra_args = <<-EOT
-#     # extra args added
-#     [settings.kernel]
-#     lockdown = "integrity"
-
-#     [settings.kubernetes.node-labels]
-#     "label1" = "foo"
-#     "label2" = "bar"
-#   EOT
-
-#   tags = merge(local.tags, { Separate = "eks-managed-node-group" })
+# resource "kubectl_manifest" "current" {
+#   yaml_body = <<YAML
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: test-ingress
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+#     azure/frontdoor: enabled
+# spec:
+#   rules:
+#   - http:
+#       paths:
+#       - path: /testpath
+#         pathType: "Prefix"
+#         backend:
+#           serviceName: test
+#           servicePort: 80
+# YAML
 # }
 
-# module "fargate_profile" {
-#   source = "../../modules/fargate-profile"
+# resource "kubectl_manifest" "deployment" {
+#   provider = kubectl
 
-#   name         = "separate-fargate-profile"
-#   cluster_name = module.eks.cluster_name
+#   yaml_body = <<YAML
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: microservice-deployment-non-tainted
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       name: ${var.name}-container
+#   template:
+#     metadata:
+#       labels:
+#         name: ${var.name}-container
+#     spec:
+#       containers:
+#         - name: ${var.name}-container
+#           image: hello-world
+#           ports:
+#             - containerPort: 80
+# YAML
 
-#   subnet_ids = module.vpc.private_subnets
-#   selectors = [{
-#     namespace = "kube-system"
-#   }]
-
-#   tags = merge(local.tags, { Separate = "fargate-profile" })
+#   depends_on = [module.eks]
 # }
 
 resource "aws_ec2_tag" "tier" {
@@ -310,7 +308,6 @@ resource "aws_ec2_tag" "tier" {
   key         = "kubernetes.io/role/elb"
   value       = 1
 }
-
 resource "aws_ec2_tag" "intra" {
   for_each = { for subnet_id in local.intra_subnet_ids : subnet_id => {} }
 
@@ -321,7 +318,6 @@ resource "aws_ec2_tag" "intra" {
 
 
 locals {
-
   # We need to lookup K8s taint effect from the AWS API value
   taint_effects = {
     NO_SCHEDULE        = "NoSchedule"

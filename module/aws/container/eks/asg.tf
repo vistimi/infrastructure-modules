@@ -1,31 +1,20 @@
 locals {
   # https://docs.aws.amazon.com/eks/latest/userguide/retrieve-ami-id.html
-  cluster_version = "1.27"
   ami_ssm_name = {
-    amazon-linux-2-x86_64 = "/aws/service/eks/optimized-ami/${local.cluster_version}/amazon-linux-2/recommended/image_id"
-    amazon-linux-2-arm64  = "/aws/service/eks/optimized-ami/${local.cluster_version}/amazon-linux-2-arm64/recommended/image_id"
-    amazon-linux-2-gpu    = "/aws/service/eks/optimized-ami/${local.cluster_version}/amazon-linux-2-gpu/recommended/image_id"
-    amazon-linux-2-inf    = "/aws/service/eks/optimized-ami/${local.cluster_version}/amazon-linux-2-gpu/recommended/image_id" # gpu and inf same
+    amazon-linux-2-x86_64 = "/aws/service/eks/optimized-ami/${var.eks.cluster_version}/amazon-linux-2/recommended/image_id"
+    amazon-linux-2-arm64  = "/aws/service/eks/optimized-ami/${var.eks.cluster_version}/amazon-linux-2-arm64/recommended/image_id"
+    amazon-linux-2-gpu    = "/aws/service/eks/optimized-ami/${var.eks.cluster_version}/amazon-linux-2-gpu/recommended/image_id"
+    amazon-linux-2-inf    = "/aws/service/eks/optimized-ami/${var.eks.cluster_version}/amazon-linux-2-gpu/recommended/image_id" # gpu and inf same
   }
 }
 
-data "aws_ssm_parameter" "ecs_optimized_ami_id" {
-  for_each = {
-    for key, value in var.eks.groups :
-    key => {
-      name = local.ami_ssm_name[join("-", ["amazon", value.ec2.os, value.ec2.os_version, value.ec2.architecture])]
-    }
-    if value.ec2 != null
-  }
-
-  name = each.value.name
+data "aws_ssm_parameter" "eks_optimized_ami_id" {
+  # TODO: handle no ec2
+  name = local.ami_ssm_name[join("-", ["amazon", var.eks.group.ec2.os, var.eks.group.ec2.os_version, var.eks.group.ec2.architecture])]
 }
 
 locals {
-  image_ids = {
-    for key, value in var.eks.groups :
-    key => data.aws_ssm_parameter.ecs_optimized_ami_id[key].value if value.ec2 != null
-  }
+  image_id = data.aws_ssm_parameter.eks_optimized_ami_id.value
 }
 
 # #------------------------

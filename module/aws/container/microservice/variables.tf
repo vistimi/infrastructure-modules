@@ -29,25 +29,27 @@ variable "route53" {
   default = null
 }
 
-variable "eks" {
+variable "container" {
   type = object({
-  })
-  default = null
-}
+    group = object({
+      deployment = object({
+        min_size        = number
+        max_size        = number
+        desired_size    = number
+        maximum_percent = optional(number)
+      })
+      ec2 = optional(object({
+        key_name       = optional(string)
+        instance_types = list(string)
+        os             = string
+        os_version     = string
+        architecture   = string
 
-variable "ecs" {
-  type = object({
-    service = object({
-      deployment_type                    = string
-      min_count                          = number
-      desired_count                      = number
-      max_count                          = number
-      deployment_maximum_percent         = optional(number)
-      deployment_minimum_healthy_percent = optional(number)
-      deployment_circuit_breaker = optional(object({
-        enable   = bool
-        rollback = bool
+        capacities = optional(list(object({
+          type = optional(string, "ON_DEMAND")
+        })))
       }))
+      fargate = optional(object({}))
     })
     traffics = list(object({
       listener = object({
@@ -64,102 +66,50 @@ variable "ecs" {
       })
       base = optional(bool)
     }))
-    task_definition = object({
-      volumes = optional(list(object({
-        name = string
-        host = object({
-          sourcePath = string
-        })
-      })), [])
-
-      memory             = optional(number)
-      memory_reservation = optional(number)
-      cpu                = number
-      gpu                = optional(number)
-      docker = object({
-        registry = optional(object({
-          name = optional(string)
-          ecr = optional(object({
-            privacy      = string
-            public_alias = optional(string)
-            account_id   = optional(string)
-            region_name  = optional(string)
-          }))
-        }))
-        repository = object({
-          name = string
-        })
-        image = optional(object({
-          tag = string
-        }))
-      })
-      environment = optional(list(object({
-        name  = string
-        value = string
-      })))
-      resource_requirements = optional(list(object({
-        type  = string
-        value = string
-      })))
-      command                  = optional(list(string), [])
-      entrypoint               = optional(list(string), [])
-      health_check             = optional(any, {})
-      readonly_root_filesystem = optional(bool)
-      user                     = optional(string)
-      volumes_from             = optional(list(any))
-      working_directory        = optional(string)
-      mount_points             = optional(list(any))
-      linux_parameters         = optional(any, {})
-    })
-    fargate = optional(object({
-      os           = string
-      architecture = string
-      capacity_provider = map(object({
-        key    = string
-        base   = optional(number)
-        weight = optional(number)
-      }))
+    eks = optional(object({
+      cluster_version = string
     }))
-    ec2 = optional(map(object({
-      user_data     = optional(string)
-      instance_type = string
-      os            = string
-      os_version    = string
-      architecture  = string
-      use_spot      = bool
-      key_name      = optional(string)
-      asg = object({
-        instance_refresh = optional(object({
-          strategy = string
-          preferences = optional(object({
-            checkpoint_delay       = optional(number)
-            checkpoint_percentages = optional(list(number))
-            instance_warmup        = optional(number)
-            min_healthy_percentage = optional(number)
-            skip_matching          = optional(bool)
-            auto_rollback          = optional(bool)
-          }))
-          triggers = optional(list(string))
-        }))
-      })
-      capacity_provider = object({
-        base                        = optional(number)
-        weight                      = number
-        target_capacity_cpu_percent = number
-        maximum_scaling_step_size   = optional(number)
-        minimum_scaling_step_size   = optional(number)
-      })
-    })))
+    ecs = optional(object({}))
   })
-  default = null
-}
 
-resource "null_resource" "orchestrator" {
-  lifecycle {
-    precondition {
-      condition     = length([for orchestrator in [var.ecs, var.eks] : true if orchestrator != null]) == 1
-      error_message = "orchestrator must be either [ecs, eks]"
-    }
+  # orchestrator
+  validation {
+    condition     = (var.container.group.ec2 != null && var.container.group.fargate == null) || (var.container.group.ec2 == null && var.container.group.fargate != null)
+    error_message = "either fargate or ec2 should have a configurations"
+  }
+
+  # traffic
+  validation {
+    condition     = length(var.container.traffics) > 0
+    error_message = "traffic must have at least one element"
+  }
+  validation {
+    condition     = length([for traffic in var.container.traffics : traffic.base if traffic.base == true || length(var.container.traffics) == 1]) == 1
+    error_message = "traffics must have exactly one base or only one element (base not required)"
+  }
+  validation {
+    condition     = length(distinct([for traffic in var.container.traffics : { listener = traffic.listener, target = traffic.target }])) == length(var.container.traffics)
+    error_message = "traffics elements cannot be similar"
+  }
+
+  # traffic listeners
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.listener.protocol)])
+    error_message = "Listener protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : traffic.listener.protocol_version != null ? contains(["http", "http2", "grpc"], traffic.listener.protocol_version) : true])
+    error_message = "Listener protocol version must be one of [http, http2, grpc] or null"
+  }
+
+  # traffic targets
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.target.protocol)])
+    error_message = "Target protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : traffic.target.protocol_version != null ? contains(["http", "http2", "grpc"], traffic.target.protocol_version) : true])
+    error_message = "Target protocol version must be one of [http, http2, grpc] or null"
   }
 }
 

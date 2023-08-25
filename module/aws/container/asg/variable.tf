@@ -37,7 +37,13 @@ variable "user_data_base64" {
 }
 
 variable "capacity_provider" {
-  type     = map(any)
+  type = object({
+    weight = number
+  })
+  nullable = false
+}
+variable "capacity_weight_total" {
+  type     = number
   nullable = false
 }
 
@@ -64,11 +70,6 @@ variable "target_group_arns" {
 
 variable "source_security_group_id" {
   type = string
-}
-
-variable "weight_total" {
-  type     = number
-  nullable = false
 }
 
 variable "min_count" {

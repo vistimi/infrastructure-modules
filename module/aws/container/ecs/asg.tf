@@ -14,37 +14,27 @@ locals {
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html#ecs-optimized-ami-linux
 data "aws_ssm_parameter" "ecs_optimized_ami_id" {
-  for_each = {
-    for key, value in var.ec2 :
-    key => {
-      name = local.ami_ssm_name[join("-", ["amazon", value.os, value.os_version, value.architecture])]
-    }
-    if var.service.deployment_type == "ec2"
-  }
-
-  name = each.value.name
+  # TODO: handle no ec2
+  name = local.ami_ssm_name[join("-", ["amazon", var.eks.group.ec2.os, var.eks.group.ec2.os_version, var.eks.group.ec2.architecture])]
 }
 
 locals {
-  image_ids = {
-    for key, value in var.ec2 :
-    key => data.aws_ssm_parameter.ecs_optimized_ami_id[key].value if var.service.deployment_type == "ec2"
-  }
+  image_id = data.aws_ssm_parameter.ecs_optimized_ami_id.value
 
   # https://github.com/aws/amazon-ecs-agent/blob/master/README.md
   # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-gpu.html
   # <<- is required compared to << because there should be no identation for EOT and EOF to work properly
   user_data = {
-    for key, value in var.ec2 : key => <<-EOT
+    for capacity in var.ecs.service.ec2.capacities : capacity.type => <<-EOT
         #!/bin/bash
         cat <<'EOF' >> /etc/ecs/ecs.config
         ECS_CLUSTER=${var.name}
-        ${value.use_spot ? "ECS_ENABLE_SPOT_INSTANCE_DRAINING=true" : ""}
+        ${capacity.type == "SPOT" ? "ECS_ENABLE_SPOT_INSTANCE_DRAINING=true" : ""}
         ECS_ENABLE_TASK_IAM_ROLE=true
-        ${value.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
-        ${value.architecture == "gpu" ? "ECS_NVIDIA_RUNTIME=nvidia" : ""}
+        ${var.ecs.service.ec2.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
+        ${var.ecs.service.ec2.architecture == "gpu" ? "ECS_NVIDIA_RUNTIME=nvidia" : ""}
         EOF
-        ${value.user_data != null ? value.user_data : ""}
+        ${var.ecs.service.ec2.user_data != null ? var.ecs.service.ec2.user_data : ""}
       EOT
   }
 
@@ -58,35 +48,34 @@ module "asg" {
   source = "../asg"
 
   for_each = {
-    for key, value in var.ec2 :
-    key => {
-      name              = "${var.name}-${key}"
-      capacity_provider = value.capacity_provider
-      use_spot          = value.use_spot
-      instance_type     = value.instance_type
-      key_name          = value.key_name # to SSH into instance
-      instance_refresh  = value.asg.instance_refresh
-    } if var.service.deployment_type == "ec2"
+    for obj in flatten([for instance_type in var.ecs.service.ec2.instance_types : [for capacity in var.ecs.service.ec2.capacities : {
+      name          = "${var.name}-${capacity.type}-${instance_type}"
+      instance_type = value.instance_type
+      capacity      = capacity
+      }
+    ]]) : obj.name => { instance_type = obj.instance_type, capacity = obj.capacity }
   }
 
-  vpc = var.vpc
+  name          = each.key
+  instance_type = each.value
 
-  name              = each.value.name
-  capacity_provider = each.value.capacity_provider
-  instance_type     = each.value.instance_type
-  key_name          = each.value.key_name
-  instance_refresh  = each.value.instance_refresh
-  use_spot          = each.value.use_spot
+  capacity_provider = {
+    weight = each.value.capacity.weight
+  }
+  capacity_weight_total = sum([for capacity in var.ecs.service.ec2.capacities : capacity.weight])
+  key_name              = var.ecs.service.ec2.key_name
+  instance_refresh      = var.ecs.service.ec2.instance_refresh
+  use_spot              = each.value.capacity.type == "ON_DEMAND" ? false : true
 
   image_id                 = local.image_ids[each.key]
-  user_data_base64         = base64encode(local.user_data[each.key])
-  weight_total             = sum([for key, value in var.ec2 : value.capacity_provider.weight])
+  user_data_base64         = base64encode(local.user_data[each.value.capacity.type])
   port_mapping             = "dynamic"
   layer7_to_layer4_mapping = local.layer7_to_layer4_mapping
   traffics                 = local.traffics
   target_group_arns        = module.elb.elb.target_group_arns
   source_security_group_id = module.elb.elb_sg.security_group_id
 
+  vpc           = var.vpc
   min_count     = var.service.min_count
   max_count     = var.service.max_count
   desired_count = var.service.desired_count
@@ -95,12 +84,8 @@ module "asg" {
 }
 
 resource "aws_autoscaling_attachment" "ecs" {
-  for_each = {
-    for key, _ in var.ec2 :
-    key => {}
-    if var.service.deployment_type == "ec2"
-  }
-  autoscaling_group_name = module.asg[each.key].asg.autoscaling_group_name
+  for_each               = module.asg
+  autoscaling_group_name = each.value.asg.autoscaling_group_name
   lb_target_group_arn    = element(module.elb.elb.target_group_arns, 0)
 }
 
