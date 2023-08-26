@@ -167,9 +167,11 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 					// 	},
 					// },
 					keyOnDemand: {
-						"os":            "linux",
-						"os_version":    "2023",
-						"architecture":  instance.Architecture,
+						"os":           "linux",
+						"os_version":   "2023",
+						"architecture": instance.Architecture,
+						"processor":    instance.Processor,
+
 						"instance_type": instance.Name,
 						"key_name":      nil,
 						"use_spot":      false,

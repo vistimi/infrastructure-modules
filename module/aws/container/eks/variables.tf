@@ -49,7 +49,7 @@ variable "traffics" {
 
 variable "eks" {
   type = object({
-    create = optional(bool, true)
+    create          = optional(bool, true)
     cluster_version = string
     group = object({
       deployment = object({
@@ -64,6 +64,7 @@ variable "eks" {
         os             = string
         os_version     = string
         architecture   = string
+        processor      = string
 
         capacities = optional(list(object({
           type = optional(string, "ON_DEMAND")

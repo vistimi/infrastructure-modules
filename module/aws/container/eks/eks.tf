@@ -43,7 +43,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "19.16.0"
 
-  create = var.eks.create
+  create                         = var.eks.create
   cluster_name                   = var.name
   cluster_version                = var.eks.cluster_version
   cluster_endpoint_public_access = true
@@ -240,14 +240,15 @@ module "eks" {
 
   # aws-auth configmap
   manage_aws_auth_configmap = true
-  # aws_auth_users = [
-  #   {
-  #     userarn  = data.aws_caller_identity.current.arn
-  #     username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
-  #     groups   = ["system:masters"]
-  #   },
-  # ]
-  aws_auth_accounts = [local.account_id]
+  # create_aws_auth_configmap = true
+  aws_auth_users = [
+    {
+      userarn  = data.aws_caller_identity.current.arn
+      username = regex("^arn:aws:iam::\\w+:user\\/(?P<user_name>\\w+)$", data.aws_caller_identity.current.arn).user_name
+      groups   = ["system:masters"]
+    },
+  ]
+  # aws_auth_accounts = [local.account_id]
 
   tags = var.tags
 }

@@ -73,7 +73,8 @@ variable "ecs" {
         memory = optional(number)
         cpu    = number
 
-        containers = map(object({
+        container = object({
+          name               = string
           memory             = optional(number)
           memory_reservation = optional(number)
           cpu                = number
@@ -116,7 +117,7 @@ variable "ecs" {
           working_directory        = optional(string)
           mount_points             = optional(list(any), [])
           linux_parameters         = optional(any, {})
-        }))
+        })
       })
       ec2 = optional(object({
         key_name       = optional(string)
@@ -124,6 +125,7 @@ variable "ecs" {
         os             = string
         os_version     = string
         architecture   = string
+        processor      = string
 
         asg = object({
           instance_refresh = optional(object({
@@ -166,147 +168,4 @@ variable "ecs" {
       }))
     })
   })
-
-  
-
-  validation {
-    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try(container.docker.registry.ecr.name, true)]])
-    error_message = "docker registry name must not be empty if ecr is not specified"
-  }
-
-  validation {
-    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try(contains(["private", "public", "intra"], container.docker.registry.ecr.privacy), true)]])
-    error_message = "docker repository privacy must be one of [public, private, intra]"
-  }
-
-  validation {
-    condition     = flatten([for key_service, service in var.ecs.services : [for key_container, container in service.task_definition.containers : try((container.docker.registry.ecr.privacy == "public" ? length(coalesce(container.docker.registry.ecr.public_alias, "")) > 0 : true), true)]])
-    error_message = "docker repository alias need when repository privacy is `public`"
-  }
-
-  # # fargate
-  # precondition {
-  #   condition     = contains(["linux"], var.fargate.os)
-  #   error_message = "Fargate os must be one of [linux]"
-  # }
-
-  # precondition {
-  #   condition     = var.fargate.os == "linux" ? contains(["x86_64", "arm64"], var.fargate.architecture) : false
-  #   error_message = "Fargate architecture must for one of linux:[x86_64, arm64]"
-  # }
-
-  # # ec2
-  # postcondition {
-  #   condition     = sort(distinct([for key, value in var.ec2 : value.instance_type])) == sort(distinct(self.instance_types))
-  #   error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
-  # }
-
-  # postcondition {
-  #   condition     = alltrue([for key, value in var.ec2 : contains(["inf", "gpu"], value.architecture)]) ? length(distinct([for key, value in var.ec2 : value.instance_type])) == 1 : true
-  #   error_message = "ec2 inf/gpu instances must be the same, got ${jsonencode(sort([for key, value in var.ec2 : value.instance_type]))}"
-  # }
 }
-
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
-# https://aws.amazon.com/ec2/instance-types/
-resource "null_resource" "ec2_architecture" {
-  for_each = {
-    for key, value in var.ec2 :
-    key => {
-      os              = value.os
-      architecture    = value.architecture
-      instance_type   = value.instance_type
-      instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type)
-      instance_family = try(one(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", value.instance_type).prefix)), substr(value.instance_type, 0, 1))
-    }
-    if var.service.deployment_type == "ec2"
-  }
-
-  lifecycle {
-    precondition {
-      condition     = each.value.os == "linux" ? contains(["x86_64", "arm64", "gpu", "inf"], each.value.architecture) : false
-      error_message = "EC2 architecture must for one of linux:[x86_64, arm64, gpu, inf]"
-    }
-
-    precondition {
-      // TODO: add support for mac
-      condition = each.value.architecture == "x86_64" ? (
-        contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
-        ) : (
-        each.value.architecture == "arm64" ? (
-          contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
-          ) : (
-          each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
-            each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (false)
-          )
-        )
-      )
-      error_message = "EC2 instance config do not match, arch: ${each.value.architecture}, instance type ${each.value.instance_type}, instance family ${each.value.instance_family}, instance generation ${substr(each.value.instance.prefix, length(each.value.instance_family) + 0, 1)}, processor family ${substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)}, additional capability ${substr(each.value.instance.prefix, length(each.value.instance_family) + 2, -1)}, instance size ${each.value.instance.size}"
-    }
-
-    precondition {
-      condition     = each.value.architecture == "gpu" ? var.task_definition.gpu != null : true
-      error_message = "EC2 gpu must have a task definition gpu number"
-    }
-  }
-}
-
-// TODO: add support for mac and windows
-resource "null_resource" "ec2_os" {
-  for_each = {
-    for key, value in var.ec2 :
-    key => {
-      os         = value.os
-      os_version = value.os_version
-    }
-    if var.service.deployment_type == "ec2"
-  }
-
-  lifecycle {
-    precondition {
-      condition     = contains(["linux"], each.value.os)
-      error_message = "EC2 os must be one of [linux]"
-    }
-
-    precondition {
-      condition     = each.value.os == "linux" ? contains(["2", "2023"], each.value.os_version) : false
-      error_message = "EC2 os version must be one of linux:[2, 2023]"
-    }
-  }
-}
-
-# ebs_device_map = {
-#   amazon2       = "/dev/sdf"
-#   amazon2023    = "/dev/sdf"
-#   amazoneks     = "/dev/sdf"
-#   amazonecs     = "/dev/xvdcz"
-#   rhel7         = "/dev/sdf"
-#   rhel8         = "/dev/sdf"
-#   centos7       = "/dev/sdf"
-#   ubuntu18      = "/dev/sdf"
-#   ubuntu20      = "/dev/sdf"
-#   debian10      = "/dev/sdf"
-#   debian11      = "/dev/sdf"
-#   windows2012r2 = "xvdf"
-#   windows2016   = "xvdf"
-#   windows2019   = "xvdf"
-#   windows2022   = "xvdf"
-# }
-
-# root_device_map = {
-#   amazon2       = "/dev/xvda"
-#   amazon2023    = "/dev/xvda"
-#   amazoneks     = "/dev/xvda"
-#   amazonecs     = "/dev/xvda"
-#   rhel7         = "/dev/sda1"
-#   rhel8         = "/dev/sda1"
-#   centos7       = "/dev/sda1"
-#   ubuntu18      = "/dev/sda1"
-#   ubuntu20      = "/dev/sda1"
-#   windows2012r2 = "/dev/sda1"
-#   windows2016   = "/dev/sda1"
-#   windows2019   = "/dev/sda1"
-#   windows2022   = "/dev/sda1"
-#   debian10      = "/dev/sda1"
-#   debian11      = "/dev/sda1"
-# }

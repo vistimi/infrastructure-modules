@@ -121,113 +121,112 @@ func Test_Unit_Microservice_Fpga_Inferentia_EC2_MXNet(t *testing.T) {
 				"tier": "public",
 			},
 
-			"ecs": map[string]any{
+			"container": map[string]any{
 				"traffics": traffics,
-				"task_definition": map[string]any{
-					"cpu":                instance.Cpu,
-					"memory_reservation": instance.MemoryAllowed,
+				"group": map[string]any{
+					"deployment": map[string]any{
+						"min_count":     1,
+						"desired_count": 1,
+						"max_count":     1,
 
-					"entrypoint": []string{
-						"/bin/bash",
-						"-c",
-					},
-					// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference:1.6.0-cpu-py36-ubuntu16.04 -c 'multi-model-server --start --mms-config /home/model-server/config.properties --models squeezenet=https://s3.amazonaws.com/model-server/models/squeezenet_v1.1/squeezenet_v1.1.model; curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://0.0.0.0/predictions/squeezenet -T kitten.jpg'
+						"cpu":    instance.Cpu,
+						"memory": instance.MemoryAllowed,
 
-					// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference:1.6.0-cpu-py36-ubuntu16.04 -c 'git clone https://github.com/awslabs/multi-model-server.git; cd multi-model-server; multi-model-server --start --mms-config /home/model-server/config.properties --model-store examples --models squeezenet_v1.1.mar; curl -X POST http://127.0.0.1:8080/predictions/squeezenet_v1.1 -T docs/images/kitten_small.jpg'
+						"containers": []map[string]any{
+							{
+								"cpu":                instance.Cpu,
+								"memory_reservation": instance.MemoryAllowed,
 
-					// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.3.1-cpu-py36-ubuntu16.04 -c 'git clone https://github.com/pytorch/serve.git; cd serve; ls examples/image_classifier/densenet_161/; python -m pip install torch-model-archiver torchserve; wget https://download.pytorch.org/models/densenet161-8d451a50.pth; torch-model-archiver --model-name densenet161 --version 1.0 --model-file examples/image_classifier/densenet_161/model.py --serialized-file densenet161-8d451a50.pth --handler image_classifier --extra-files examples/image_classifier/index_to_name.json; mkdir model_store; mv densenet161.mar model_store/; torchserve --start --model-store model_store --models densenet161=densenet161.mar; curl http://127.0.0.1:8080/predictions/densenet161 -T examples/image_classifier/kitten.jpg'
-
-					"command": []string{
-						"cat /home/model-server/config.properties; mxnet-model-server --start --mms-config /home/model-server/config.properties --models squeezenet=https://s3.amazonaws.com/model-server/models/squeezenet_v1.1/squeezenet_v1.1.model; curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://127.0.0.1/predictions/squeezenet -T kitten.jpg",
-
-						// "multi-model-server --start --models squeezenet=https://s3.amazonaws.com/model-server/model_archive_1.0/squeezenet_v1.1.mar",
-					},
-					// "health_check": map[string]any{
-					// 	"command": []string{"CMD-SHELL", "curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://127.0.0.1/predictions/squeezenet -T kitten.jpg || exit 1"},
-					// },
-					"readonly_root_filesystem": false,
-
-					"linux_parameters": map[string]any{
-						"devices": devices,
-						"capabilities": map[string]any{
-							"add": []string{"IPC_LOCK"},
-						},
-					},
-
-					// WARNING: requires permissions to that private external account ECR repository
-					"docker": map[string]any{
-						"registry": map[string]any{
-							"ecr": map[string]any{
-								"privacy":     "private",
-								"account_id":  "763104351884",
-								"region_name": "us-east-1",
-							},
-						},
-						"repository": map[string]any{
-							"name": "mxnet-inference",
-						},
-						"image": map[string]any{
-							// "tag": "1.8.1-cpu-py36-ubuntu18.04-v1.7",
-							"tag": "1.6.0-cpu-py36-ubuntu16.04",
-						},
-						// "registry": map[string]any{
-						// 	"name": "awsdeeplearningteam",
-						// },
-						// "repository": map[string]any{
-						// 	"name": "multi-model-server",
-						// },
-						// "image": map[string]any{
-						// 	"tag": "latest",
-						// },
-					},
-				},
-
-				// scale vertically at first in order to work on the same task
-				// spawning a second load balancer will create a duplicate but they will not be syncronized
-				// if you need more GPU, then think about implementing a higher logic to split the dataset in chunks and share common checkpoints
-				// if you need more than 4GPUs, then this is not yet supported
-				"ec2": map[string]map[string]any{
-					keyOnDemand: {
-						"os":            "linux",
-						"os_version":    "2",
-						"architecture":  instance.Architecture,
-						"instance_type": instance.Name,
-						"key_name":      "local", // FIXME: nil
-						"use_spot":      false,
-						"asg": map[string]any{
-							"instance_refresh": map[string]any{
-								"strategy": "Rolling",
-								"preferences": map[string]any{
-									"checkpoint_delay":       600,
-									"checkpoint_percentages": []int{35, 70, 100},
-									"instance_warmup":        300,
-									"min_healthy_percentage": 80,
+								"entrypoint": []string{
+									"/bin/bash",
+									"-c",
 								},
-								"triggers": []string{"tag"},
+								// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference:1.6.0-cpu-py36-ubuntu16.04 -c 'multi-model-server --start --mms-config /home/model-server/config.properties --models squeezenet=https://s3.amazonaws.com/model-server/models/squeezenet_v1.1/squeezenet_v1.1.model; curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://0.0.0.0/predictions/squeezenet -T kitten.jpg'
+
+								// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference:1.6.0-cpu-py36-ubuntu16.04 -c 'git clone https://github.com/awslabs/multi-model-server.git; cd multi-model-server; multi-model-server --start --mms-config /home/model-server/config.properties --model-store examples --models squeezenet_v1.1.mar; curl -X POST http://127.0.0.1:8080/predictions/squeezenet_v1.1 -T docs/images/kitten_small.jpg'
+
+								// docker run --entrypoint /bin/bash -p 80:8080 -p 8081:8081 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.3.1-cpu-py36-ubuntu16.04 -c 'git clone https://github.com/pytorch/serve.git; cd serve; ls examples/image_classifier/densenet_161/; python -m pip install torch-model-archiver torchserve; wget https://download.pytorch.org/models/densenet161-8d451a50.pth; torch-model-archiver --model-name densenet161 --version 1.0 --model-file examples/image_classifier/densenet_161/model.py --serialized-file densenet161-8d451a50.pth --handler image_classifier --extra-files examples/image_classifier/index_to_name.json; mkdir model_store; mv densenet161.mar model_store/; torchserve --start --model-store model_store --models densenet161=densenet161.mar; curl http://127.0.0.1:8080/predictions/densenet161 -T examples/image_classifier/kitten.jpg'
+
+								"command": []string{
+									"cat /home/model-server/config.properties; mxnet-model-server --start --mms-config /home/model-server/config.properties --models squeezenet=https://s3.amazonaws.com/model-server/models/squeezenet_v1.1/squeezenet_v1.1.model; curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://127.0.0.1/predictions/squeezenet -T kitten.jpg",
+
+									// "multi-model-server --start --models squeezenet=https://s3.amazonaws.com/model-server/model_archive_1.0/squeezenet_v1.1.mar",
+								},
+								// "health_check": map[string]any{
+								// 	"command": []string{"CMD-SHELL", "curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://127.0.0.1/predictions/squeezenet -T kitten.jpg || exit 1"},
+								// },
+								"readonly_root_filesystem": false,
+
+								"linux_parameters": map[string]any{
+									"devices": devices,
+									"capabilities": map[string]any{
+										"add": []string{"IPC_LOCK"},
+									},
+								},
+
+								// WARNING: requires permissions to that private external account ECR repository
+								"docker": map[string]any{
+									"registry": map[string]any{
+										"ecr": map[string]any{
+											"privacy":     "private",
+											"account_id":  "763104351884",
+											"region_name": "us-east-1",
+										},
+									},
+									"repository": map[string]any{
+										"name": "mxnet-inference",
+									},
+									"image": map[string]any{
+										// "tag": "1.8.1-cpu-py36-ubuntu18.04-v1.7",
+										"tag": "1.6.0-cpu-py36-ubuntu16.04",
+									},
+									// "registry": map[string]any{
+									// 	"name": "awsdeeplearningteam",
+									// },
+									// "repository": map[string]any{
+									// 	"name": "multi-model-server",
+									// },
+									// "image": map[string]any{
+									// 	"tag": "latest",
+									// },
+								},
 							},
 						},
-						"capacity_provider": map[string]any{
-							"base":                        nil, // no preferred instance amount
-							"weight":                      50,  // 50% chance
-							"target_capacity_cpu_percent": 70,
-							// "maximum_scaling_step_size":   1,
-							// "minimum_scaling_step_size":   1,
-						},
 					},
-				},
 
-				"service": map[string]any{
-					"deployment_type":                    "ec2",
-					"min_count":                          1,
-					"desired_count":                      1,
-					"max_count":                          1,
-					"deployment_minimum_healthy_percent": 66, // % tasks running required
-					"deployment_circuit_breaker": map[string]any{
-						"enable":   true,  // service deployment fail if no steady state
-						"rollback": false, // rollback in case of failure
+					"ec2": map[string]map[string]any{
+						keyOnDemand: {
+							"os":           "linux",
+							"os_version":   "2023",
+							"architecture": instance.Architecture,
+							"processor":    instance.Processor,
+
+							"instance_type": instance.Name,
+							"key_name":      nil,
+							"use_spot":      false,
+							"asg": map[string]any{
+								"instance_refresh": map[string]any{
+									"strategy": "Rolling",
+									"preferences": map[string]any{
+										"checkpoint_delay":       600,
+										"checkpoint_percentages": []int{35, 70, 100},
+										"instance_warmup":        300,
+										"min_healthy_percentage": 80,
+									},
+									"triggers": []string{"tag"},
+								},
+							},
+							"capacity_provider": map[string]any{
+								"base":                        nil, // no preferred instance amount
+								"weight":                      50,  // 50% chance
+								"target_capacity_cpu_percent": 70,
+							},
+						},
 					},
 				},
 			},
+
+			"ecs": map[string]any{},
 
 			"iam": map[string]any{
 				"scope":        "accounts",

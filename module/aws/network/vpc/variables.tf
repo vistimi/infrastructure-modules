@@ -13,6 +13,11 @@ variable "cidr_ipv4" {
   }
 }
 
+variable "az_max" {
+  type    = number
+  default = 3
+}
+
 variable "nat" {
   description = "Enable the NAT gateway"
   type        = string

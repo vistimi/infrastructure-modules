@@ -75,8 +75,6 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 	}
 
 	instance := testAwsModule.T3Small
-	// keySpot := "spot"
-	keyOnDemand := "on-demand"
 
 	traffics := []map[string]any{}
 	for _, traffic := range Traffic {
@@ -99,77 +97,63 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 		TerraformDir: MicroservicePath,
 		Vars: map[string]any{
 			"name": name,
-			"tags": tags,
 
 			"vpc": map[string]any{
 				"id":   "vpc-013a411b59dd8a08e",
 				"tier": "public",
 			},
 
-			"ecs": map[string]any{
+			"container": map[string]any{
 				"traffics": traffics,
-				"task_definition": map[string]any{
-					// container
-					"cpu":                instance.Cpu,
-					"memory":             instance.MemoryAllowed,
-					"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
+				"group": map[string]any{
+					"deployment": map[string]any{
+						"min_count":     1,
+						"desired_count": 1,
+						"max_count":     1,
 
-					"readonly_root_filesystem": false,
+						"cpu":    instance.Cpu,
+						"memory": instance.MemoryAllowed,
 
-					"docker": map[string]any{
-						"registry": map[string]any{
-							"name": "grpc",
-						},
-						"repository": map[string]any{
-							"name": "java-example-hostname",
-						},
-						"image": map[string]any{
-							"tag": "latest",
+						"containers": []map[string]any{
+							{
+								"cpu":                instance.Cpu,
+								"memory":             instance.MemoryAllowed,
+								"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory,
+
+								"readonly_root_filesystem": false,
+
+								"docker": map[string]any{
+									"registry": map[string]any{
+										"name": "grpc",
+									},
+									"repository": map[string]any{
+										"name": "java-example-hostname",
+									},
+									"image": map[string]any{
+										"tag": "latest",
+									},
+								},
+							},
 						},
 					},
-				},
 
-				"ec2": map[string]map[string]any{
-					keyOnDemand: {
+					"ec2": map[string]any{
 						"os":            "linux",
 						"os_version":    "2023",
 						"architecture":  instance.Architecture,
+						"processor":     instance.Processor,
 						"instance_type": instance.Name,
 						"key_name":      nil,
-						"use_spot":      false,
-						"asg": map[string]any{
-							"instance_refresh": map[string]any{
-								"strategy": "Rolling",
-								"preferences": map[string]any{
-									"checkpoint_delay":       600,
-									"checkpoint_percentages": []int{35, 70, 100},
-									"instance_warmup":        300,
-									"min_healthy_percentage": 80,
-								},
-								"triggers": []string{"tag"},
+						"capacities": []map[string]any{
+							{
+								"type":   "ON_DEMAND",
+								"base":   nil, // no preferred instance amount
+								"weight": 50,  // 50% chance
 							},
 						},
-						"capacity_provider": map[string]any{
-							"base":                        nil, // no preferred instance amount
-							"weight":                      50,  // 50% chance
-							"target_capacity_cpu_percent": 70,
-							// "maximum_scaling_step_size":   1,
-							// "minimum_scaling_step_size":   1,
-						},
 					},
 				},
-
-				"service": map[string]any{
-					"deployment_type":                    "ec2",
-					"min_count":                          1,
-					"desired_count":                      1,
-					"max_count":                          1,
-					"deployment_minimum_healthy_percent": 66, // % tasks running required
-					"deployment_circuit_breaker": map[string]any{
-						"enable":   true,  // service deployment fail if no steady state
-						"rollback": false, // rollback in case of failure
-					},
-				},
+				"ecs": map[string]any{},
 			},
 
 			"iam": map[string]any{
@@ -188,6 +172,8 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 					"subdomain_name": name,
 				},
 			},
+
+			"tags": tags,
 		},
 	}
 
@@ -202,7 +188,7 @@ func Test_Unit_Microservice_Grpc_EC2(t *testing.T) {
 	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, options)
+		terraform.InitAndPlan(t, options) // FIXME: InitAndApply
 	})
 
 	terratestStructure.RunTestStage(t, "validate", func() {

@@ -2,7 +2,7 @@ module "microservice" {
   source = "./module/aws/container/microservice"
 
   vpc = {
-    id   = "vpc-013a411b59dd8a08e"
+    id   = "vpc-05221cfd68bdbdf14"
     tier = "public"
   }
 
@@ -20,6 +20,8 @@ module "microservice" {
         max_size        = 1
         desired_size    = 1
         maximum_percent = 30
+
+        cpu = 1000
       }
       ec2 = {
         # key_name = nil
@@ -27,11 +29,16 @@ module "microservice" {
         os             = "linux"
         os_version     = "2"
         architecture   = "x86_64"
+        processor      = "cpu"
         capacities = [
           {
             type = "ON_DEMAND"
           }
         ]
+
+        containers = [{
+          cpu = 1000
+        }]
       }
     }
     traffics = [{
@@ -44,8 +51,8 @@ module "microservice" {
         protocol = "http"
       }
     }]
-    eks = {
-      cluster_version = "1.27"
+    ecs = {
+      # cluster_version = "1.27"
     }
   }
 

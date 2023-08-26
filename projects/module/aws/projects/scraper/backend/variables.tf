@@ -105,6 +105,7 @@ variable "microservice" {
         os            = string
         os_version    = string
         architecture  = string
+        processor     = string
         use_spot      = bool
         key_name      = optional(string)
         asg = object({

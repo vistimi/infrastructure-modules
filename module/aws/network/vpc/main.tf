@@ -3,9 +3,10 @@ locals {
   tier_tags = ["private", "public", "intra"]
 
   # increment from `0.0.0.0/16` to `0.0.16.0/16`
+  azs = try(slice(data.aws_availability_zones.available.names, 0, var.az_max), data.aws_availability_zones.available.names)
   subnets = {
     for i, tier in local.tier_tags :
-    "${tier}" => [for az_idx in range(0, length(data.aws_availability_zones.available.names)) : cidrsubnet(var.cidr_ipv4, 4, i * length(data.aws_availability_zones.available.names) + az_idx)]
+    "${tier}" => [for az_idx in range(0, length(local.azs)) : cidrsubnet(var.cidr_ipv4, 4, i * length(local.azs) + az_idx)]
   }
 }
 

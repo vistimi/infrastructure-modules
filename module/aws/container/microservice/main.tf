@@ -2,33 +2,28 @@ locals {
   tags = merge(var.tags, { VpcId = "${var.vpc.id}" })
 }
 
-# module "ecs" {
-#   source = "../../../../module/aws/container/ecs"
+module "ecs" {
+  source = "../../../../module/aws/container/ecs"
 
-#   for_each = var.container.ecs != null ? { "${var.name}" = {} } : {}
+  for_each = var.container.ecs != null ? { "${var.name}" = {} } : {}
 
-#   name     = var.name
-#   vpc      = var.vpc
-#   route53  = var.route53
-#   traffics = var.container.traffics
-#   ecs = merge(
-#     {
-#       service = {
-#         task    = var.container.group.deployment
-#         ec2     = var.container.group.ec2
-#         fargate = var.container.group.fargate
-#       }
-#     },
-#     var.container.ecs
-#   )
+  name     = var.name
+  vpc      = var.vpc
+  route53  = var.route53
+  traffics = var.container.traffics
+  ecs = {
+    service = {
+      task    = merge(var.container.group.deployment, var.container.ecs.service.task, { container = merge(var.container.group.deployment.container, var.container.ecs.service.task.container) })
+      ec2     = var.container.group.ec2
+      fargate = var.container.group.fargate
+    }
+  }
 
-#   tags = local.tags
-# }
+  tags = local.tags
+}
 
 module "eks" {
   source = "../../../../module/aws/container/eks"
-
-  # for_each = var.container.eks != null ? { "${var.name}" = {} } : {}
 
   name     = var.name
   vpc      = var.vpc

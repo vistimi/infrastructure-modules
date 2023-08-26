@@ -21,9 +21,11 @@ func Test_Unit_Microservice_ScraperFrontend_EC2(t *testing.T) {
 	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
 		"ec2": map[string]map[string]any{
 			keySpot: {
-				"os":            "linux",
-				"os_version":    "2023",
-				"architecture":  instance.Architecture,
+				"os":           "linux",
+				"os_version":   "2023",
+				"architecture": instance.Architecture,
+				"processor":    instance.Processor,
+
 				"instance_type": instance.Name,
 				"key_name":      nil,
 				"use_spot":      true,

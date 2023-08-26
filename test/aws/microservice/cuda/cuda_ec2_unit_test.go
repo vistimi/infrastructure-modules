@@ -141,9 +141,11 @@ func Test_Unit_Microservice_Cuda_EC2_Pytorch(t *testing.T) {
 				// if you need more than 4GPUs, then this is not yet supported
 				"ec2": map[string]map[string]any{
 					keyOnDemand: {
-						"os":            "linux",
-						"os_version":    "2",
-						"architecture":  instance.Architecture,
+						"os":           "linux",
+						"os_version":   "2",
+						"architecture": instance.Architecture,
+						"processor":    instance.Processor,
+
 						"instance_type": instance.Name,
 						"key_name":      nil,
 						"use_spot":      false,

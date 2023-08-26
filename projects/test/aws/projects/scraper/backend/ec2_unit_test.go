@@ -48,9 +48,11 @@ func Test_Unit_Microservice_ScraperBackend_EC2(t *testing.T) {
 				},
 			},
 			keyOnDemand: {
-				"os":            "linux",
-				"os_version":    "2023",
-				"architecture":  instance.Architecture,
+				"os":           "linux",
+				"os_version":   "2023",
+				"architecture": instance.Architecture,
+				"processor":    instance.Processor,
+
 				"instance_type": instance.Name,
 				"key_name":      nil,
 				"use_spot":      false,

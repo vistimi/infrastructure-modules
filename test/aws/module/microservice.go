@@ -37,6 +37,7 @@ type EC2Instance struct {
 	RamAllowed    int
 	DevicePaths   []string
 	Architecture  string
+	Processor     string
 }
 
 var (
@@ -48,6 +49,7 @@ var (
 		Memory:        2048,
 		MemoryAllowed: 1801, // TODO: double check under infra of cluster + ECSReservedMemory
 		Architecture:  "x86_64",
+		Processor:     "cpu",
 	}
 	T3Medium = EC2Instance{
 		Name:          "t3.medium",
@@ -55,6 +57,7 @@ var (
 		Memory:        4096,
 		MemoryAllowed: 3828,
 		Architecture:  "x86_64",
+		Processor:     "cpu",
 	}
 	G4dnXlarge = EC2Instance{
 		Name:          "g4dn.xlarge",
@@ -62,7 +65,8 @@ var (
 		Gpu:           1,
 		Memory:        16384,
 		MemoryAllowed: 15731,
-		Architecture:  "gpu",
+		Architecture:  "x86_64",
+		Processor:     "gpu",
 	}
 	Inf1Xlarge = EC2Instance{
 		Name:          "inf1.xlarge",
@@ -70,7 +74,8 @@ var (
 		Ram:           8192,
 		MemoryAllowed: 7667,
 		DevicePaths:   []string{"/dev/neuron0"}, // AWS ML accelerator chips
-		Architecture:  "inf",
+		Architecture:  "arm64",
+		Processor:     "ipu",
 	}
 )
 
