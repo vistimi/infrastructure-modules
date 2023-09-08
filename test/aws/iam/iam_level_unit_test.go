@@ -34,14 +34,12 @@ func Test_Unit_IAM_Level(t *testing.T) {
 	}
 	groups := []testAwsModule.GroupInfo{
 		{
-			Name:                "admin",
-			Users:               []map[string]any{{"name": "ad1", "statements": userStatements}},
-			ExternalAssumeRoles: []string{},
+			Name:  "admin",
+			Users: []map[string]any{{"name": "ad1", "statements": userStatements}},
 		},
 		{
-			Name:                "dev",
-			Users:               []map[string]any{{"name": "dev1", "statements": userStatements}},
-			ExternalAssumeRoles: []string{},
+			Name:  "dev",
+			Users: []map[string]any{{"name": "dev1"}},
 		},
 	}
 

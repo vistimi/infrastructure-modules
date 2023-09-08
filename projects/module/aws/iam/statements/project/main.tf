@@ -76,23 +76,25 @@ locals {
       permission = {
         user = {
           statements = [
+
             {
-              SelfMaintenance = {
-                actions   = ["iam:ListMFADevices", "iam:CreateVirtualMFADevice", "iam:DeactivateMFADevice", "iam:ListAccessKeys"]
-                effect    = "Allow"
-                resources = ["arn:aws:iam::${local.account_id}:user/${var.user_name}"]
-              },
-              S3Backend = {
-                actions   = ["s3:*"]
-                effect    = "Allow"
-                resources = ["arn:aws:s3:::*${var.user_name}*${var.backend.bucket_name}*"]
-              },
-              DynamodbBackend = {
-                actions   = ["dynamodb:*"]
-                effect    = "Allow"
-                resources = ["arn:aws:dynamodb:${local.region_name}:${local.account_id}:table/*${var.user_name}*${var.backend.dynamodb_table_name}"]
-              },
-            }
+              sid       = "SelfMaintenance"
+              actions   = ["iam:ListMFADevices", "iam:CreateVirtualMFADevice", "iam:DeactivateMFADevice", "iam:ListAccessKeys"]
+              effect    = "Allow"
+              resources = ["arn:aws:iam::${local.account_id}:user/${var.user_name}"]
+            },
+            {
+              sid       = "S3Backend"
+              actions   = ["s3:*"]
+              effect    = "Allow"
+              resources = ["arn:aws:s3:::*${var.user_name}*${var.backend.bucket_name}*"]
+            },
+            {
+              sid       = "DynamodbBackend"
+              actions   = ["dynamodb:*"]
+              effect    = "Allow"
+              resources = ["arn:aws:dynamodb:${local.region_name}:${local.account_id}:table/*${var.user_name}*${var.backend.dynamodb_table_name}"]
+            },
           ]
         }
       }
