@@ -37,18 +37,63 @@ variable "microservice" {
       account_ids = optional(list(string))
       vpc_ids     = optional(list(string))
     })
-    ecs = object({
-      service = object({
-        deployment_type                    = string
-        min_count                          = number
-        desired_count                      = number
-        max_count                          = number
-        deployment_maximum_percent         = optional(number)
-        deployment_minimum_healthy_percent = optional(number)
-        deployment_circuit_breaker = optional(object({
-          enable   = bool
-          rollback = bool
+    container = object({
+      group = object({
+        deployment = object({
+          min_size        = number
+          max_size        = number
+          desired_size    = number
+          maximum_percent = optional(number)
+
+          memory = optional(number)
+          cpu    = number
+
+          container = object({
+            memory             = optional(number)
+            memory_reservation = optional(number)
+            cpu                = number
+            gpu                = optional(number)
+            environment = optional(list(object({
+              name  = string
+              value = string
+            })), [])
+            docker = object({
+              registry = optional(object({
+                name = optional(string)
+                ecr = optional(object({
+                  privacy      = string
+                  public_alias = optional(string)
+                  account_id   = optional(string)
+                  region_name  = optional(string)
+                }))
+              }))
+              repository = object({
+                name = string
+              })
+              image = optional(object({
+                tag = string
+              }))
+            })
+            command                  = optional(list(string), [])
+            entrypoint               = optional(list(string), [])
+            readonly_root_filesystem = optional(bool)
+          })
+        })
+        ec2 = optional(object({
+          key_name       = optional(string)
+          instance_types = list(string)
+          os             = string
+          os_version     = string
+          architecture   = string
+          processor      = string
+
+          capacities = optional(list(object({
+            type   = optional(string, "ON_DEMAND")
+            base   = optional(number)
+            weight = optional(number, 1)
+          })))
         }))
+        fargate = optional(object({}))
       })
       traffics = list(object({
         listener = object({
@@ -61,75 +106,42 @@ variable "microservice" {
           port              = number
           protocol_version  = optional(string)
           health_check_path = optional(string)
+          status_code       = optional(string)
         })
         base = optional(bool)
       }))
-      task_definition = object({
-        memory             = number
-        memory_reservation = optional(number)
-        cpu                = number
-        docker = object({
-          registry = optional(object({
-            name = optional(string)
-            ecr = optional(object({
-              privacy      = string
-              public_alias = optional(string)
-              account_id   = optional(string)
-              region_name  = optional(string)
-            }))
+      eks = optional(object({
+        cluster_version = string
+      }))
+      ecs = optional(object({
+        service = optional(object({
+          task = optional(object({
+            minimum_healthy_percent = optional(number)
+            circuit_breaker = optional(object({
+              enable   = bool
+              rollback = bool
+              }), {
+              enable   = true
+              rollback = true
+            })
+
+            volumes = optional(list(object({
+              name = string
+              host = object({
+                sourcePath = string
+              })
+            })), [])
+            container = object({
+              health_check      = optional(any, {})
+              user              = optional(string)
+              volumes_from      = optional(list(any), [])
+              working_directory = optional(string)
+              mount_points      = optional(list(any), [])
+              linux_parameters  = optional(any, {})
+            })
           }))
-          repository = object({
-            name = string
-          })
-          image = optional(object({
-            tag = string
-          }))
-        })
-        environment = optional(list(object({
-          name : string
-          value : string
-        })))
-      })
-      fargate = optional(object({
-        os           = string
-        architecture = string
-        capacity_provider = map(object({
-          key    = string
-          base   = optional(number)
-          weight = optional(number)
         }))
       }))
-      ec2 = optional(map(object({
-        user_data     = optional(string)
-        instance_type = string
-        os            = string
-        os_version    = string
-        architecture  = string
-        processor     = string
-        use_spot      = bool
-        key_name      = optional(string)
-        asg = object({
-          instance_refresh = optional(object({
-            strategy = string
-            preferences = optional(object({
-              checkpoint_delay       = optional(number)
-              checkpoint_percentages = optional(list(number))
-              instance_warmup        = optional(number)
-              min_healthy_percentage = optional(number)
-              skip_matching          = optional(bool)
-              auto_rollback          = optional(bool)
-            }))
-            triggers = optional(list(string))
-          }))
-        })
-        capacity_provider = object({
-          base                        = optional(number)
-          weight                      = number
-          target_capacity_cpu_percent = number
-          maximum_scaling_step_size   = optional(number)
-          minimum_scaling_step_size   = optional(number)
-        })
-      })))
     })
   })
 }

@@ -111,8 +111,9 @@ type LogTest struct {
 }
 
 type TrafficPoint struct {
-	Port     *int
-	Protocol string
+	Port            *int
+	Protocol        string
+	ProtocolVersion string
 }
 
 type Traffic struct {

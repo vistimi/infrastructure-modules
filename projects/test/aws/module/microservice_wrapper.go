@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dresspeng/infrastructure-modules/test/util"
-	"github.com/gruntwork-io/terratest/modules/terraform"
 )
 
 var (
@@ -23,7 +22,7 @@ const (
 	ECSReservedMemory = 100
 )
 
-func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (*terraform.Options, string, string) {
+func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (string, string, map[string]string) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
@@ -37,33 +36,5 @@ func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName stri
 		"Project": projectName,
 		"Service": serviceName,
 	}
-
-	options := &terraform.Options{
-		Vars: map[string]any{
-			"name_prefix": namePrefix,
-			"name_suffix": nameSuffix,
-
-			"vpc": map[string]any{
-				"id":   "vpc-013a411b59dd8a08e",
-				"tier": "public",
-			},
-
-			"microservice": map[string]any{
-				"ecs": map[string]any{
-					"log": map[string]any{
-						"retention_days": 1,
-						"prefix":         "ecs",
-					},
-					"task_definition": map[string]any{},
-				},
-				"bucket_env": map[string]any{
-					"force_destroy": true,
-					"versioning":    false,
-				},
-			},
-
-			"tags": tags,
-		},
-	}
-	return options, namePrefix, nameSuffix
+	return namePrefix, nameSuffix, tags
 }

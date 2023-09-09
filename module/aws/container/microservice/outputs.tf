@@ -1,9 +1,9 @@
-# output "ecs" {
-#   value = one(values(module.ecs))
-# }
+output "ecs" {
+  value = one(values(module.ecs))
+}
 
 output "eks" {
-  value = module.eks
+  value = one(values(module.eks))
 }
 
 output "bucket_env" {

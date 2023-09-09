@@ -12,7 +12,7 @@ module "ecs" {
   cluster_name = var.name
 
   # capacity providers
-  default_capacity_provider_use_fargate = var.service.deployment_type == "fargate" ? true : false
+  default_capacity_provider_use_fargate = var.ecs.service.ec2 != null ? false : true
   fargate_capacity_providers = try({
     for capacity in var.ecs.service.fargate.capacities :
     local.fargate_capacity_provider_keys[capacity.type] => {
@@ -29,8 +29,8 @@ module "ecs" {
       auto_scaling_group_arn = module.asg[key].asg.autoscaling_group_arn
       managed_scaling = {
         // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-quotas.html
-        maximum_scaling_step_size = capacity.maximum_scaling_step_size == null ? max(min(ceil((var.service.max_count - var.service.min_count) / 3), 10), 1) : capacity.maximum_scaling_step_size
-        minimum_scaling_step_size = capacity.minimum_scaling_step_size == null ? max(min(floor((var.service.max_count - var.service.min_count) / 10), 10), 1) : capacity.minimum_scaling_step_size
+        maximum_scaling_step_size = capacity.maximum_scaling_step_size == null ? max(min(ceil((var.ecs.service.task.max_count - var.ecs.service.task.min_count) / 3), 10), 1) : capacity.maximum_scaling_step_size
+        minimum_scaling_step_size = capacity.minimum_scaling_step_size == null ? max(min(floor((var.ecs.service.task.max_count - var.ecs.service.task.min_count) / 10), 10), 1) : capacity.minimum_scaling_step_size
         target_capacity           = capacity.target_capacity_cpu_percent # utilization for the capacity provider
         status                    = "ENABLED"
         instance_warmup_period    = 300
@@ -49,18 +49,18 @@ module "ecs" {
       # Service
       #------------
       force_new_deployment               = true
-      launch_type                        = var.service.ec2 != null ? "EC2" : "FARGATE"
+      launch_type                        = var.ecs.service.ec2 != null ? "EC2" : "FARGATE"
       enable_autoscaling                 = true
-      autoscaling_min_capacity           = var.service.min_count
-      desired_count                      = var.service.desired_count
-      autoscaling_max_capacity           = var.service.max_count
-      deployment_maximum_percent         = var.service.deployment_maximum_percent         // max % tasks running required
-      deployment_minimum_healthy_percent = var.service.deployment_minimum_healthy_percent // min % tasks running required
-      deployment_circuit_breaker         = var.service.deployment_circuit_breaker
+      autoscaling_min_capacity           = var.ecs.service.task.min_count
+      desired_count                      = var.ecs.service.task.desired_count
+      autoscaling_max_capacity           = var.ecs.service.task.max_count
+      deployment_maximum_percent         = var.ecs.service.task.maximum_percent         // max % tasks running required
+      deployment_minimum_healthy_percent = var.ecs.service.task.minimum_healthy_percent // min % tasks running required
+      deployment_circuit_breaker         = var.ecs.service.task.circuit_breaker
 
       # network awsvpc for fargate
-      subnets          = var.service.deployment_type == "fargate" ? local.subnets : null
-      assign_public_ip = var.service.deployment_type == "fargate" ? true : null // if private subnets, use NAT
+      subnets          = var.ecs.service.ec2 != null ? null : local.subnets
+      assign_public_ip = var.ecs.service.ec2 != null ? null : true // if private subnets, use NAT
 
       load_balancer = {
         service = {
@@ -167,11 +167,11 @@ module "ecs" {
       memory                   = var.task_definition.memory
       cpu                      = var.task_definition.cpu
       family                   = var.name
-      requires_compatibilities = var.service.deployment_type == "fargate" ? ["FARGATE"] : ["EC2"]
+      requires_compatibilities = var.ecs.service.ec2 != null ? ["EC2"] : ["FARGATE"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
-      network_mode = var.service.deployment_type == "fargate" ? "awsvpc" : "bridge" // "host" for single instance
+      network_mode = var.ecs.service.ec2 != null ? "bridge" : "awsvpc" // "host" for single instance
 
-      placement_constraints = var.service.deployment_type == "ec2" && alltrue([for key, value in var.ec2 : value.architecture == "inf"]) ? [
+      placement_constraints = var.ecs.service.ec2 != null && alltrue([for key, value in var.ec2 : value.architecture == "inf"]) ? [
         {
           "type" : "memberOf",
           "expression" : "attribute:ecs.os-type == linux"
@@ -209,7 +209,7 @@ module "ecs" {
             protocol_version = traffic.target.protocol_version
             }]) : {
             containerPort = target.port
-            hostPort      = var.service.deployment_type == "fargate" ? target.port : 0 // "host" network can use target port 
+            hostPort      = var.ecs.service.ec2 != null ? 0 : target.port // "host" network can use target port 
             name          = join("-", ["container", target.protocol, target.port])
             protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol // TODO: local.layer7_to_layer4_mapping[target.protocol]
             }
@@ -221,7 +221,7 @@ module "ecs" {
 
           resource_requirements = concat(
             var.task_definition.resource_requirements,
-            var.service.deployment_type == "ec2" && alltrue([for key, value in var.ec2 : value.architecture == "gpu"]) ? [{
+            var.ecs.service.ec2 != null && alltrue([for key, value in var.ec2 : value.architecture == "gpu"]) ? [{
               "type" : "GPU",
               "value" : "${var.task_definition.gpu}"
             }] : []
@@ -238,10 +238,10 @@ module "ecs" {
           linux_parameters         = var.task_definition.linux_parameters
 
           // fargate AMI
-          runtime_platform = var.service.deployment_type == "fargate" ? {
+          runtime_platform = var.ecs.service.ec2 != null ? null : {
             "operatingSystemFamily" = local.fargate_os[var.fargate.os],
             "cpuArchitecture"       = local.fargate_architecture[var.fargate.architecture],
-          } : null
+          }
 
           image = join("/", compact([
             local.docker_registry_name,

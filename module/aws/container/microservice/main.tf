@@ -13,7 +13,19 @@ module "ecs" {
   traffics = var.container.traffics
   ecs = {
     service = {
-      task    = merge(var.container.group.deployment, var.container.ecs.service.task, { container = merge(var.container.group.deployment.container, var.container.ecs.service.task.container) })
+      task = merge(
+        var.container.group.deployment,
+        var.container.ecs.service.task,
+        {
+          container = merge(var.container.group.deployment.container, var.container.ecs.service.task.container,
+            {
+              env_file = try({
+                bucket_name = one(values(module.bucket_env)).bucket.name
+                file_name   = var.bucket_env.file_key
+              }, null)
+          })
+        }
+      )
       ec2     = var.container.group.ec2
       fargate = var.container.group.fargate
     }
@@ -24,6 +36,8 @@ module "ecs" {
 
 module "eks" {
   source = "../../../../module/aws/container/eks"
+
+  for_each = var.container.eks != null ? { "${var.name}" = {} } : {}
 
   name     = var.name
   vpc      = var.vpc

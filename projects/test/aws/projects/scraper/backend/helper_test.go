@@ -5,13 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
-	"github.com/gruntwork-io/terratest/modules/terraform"
 
 	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
@@ -37,7 +34,6 @@ var (
 	Traffic = []testAwsModule.Traffic{
 		{
 			Listener: testAwsModule.TrafficPoint{
-				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
 			Target: testAwsModule.TrafficPoint{
@@ -76,8 +72,8 @@ var (
 	}
 )
 
-func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
-	optionsMicroservice, namePrefix, nameSuffix := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
+func SetupOptionsRepository(t *testing.T) (vars map[string]any, traffics []map[string]any, docker map[string]any, bucketEnv map[string]any) {
+	_, nameSuffix, _ := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
@@ -115,32 +111,20 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
 	}
 	bucket_picture_name := *bucket_picture_name_extension.Name
 
-	optionsProject := &terraform.Options{
-		TerraformDir: MicroservicePath,
-		Vars: map[string]any{
-			"dynamodb_tables": dynamodb_tables,
-			"bucket_picture": map[string]any{
-				"name":          bucket_picture_name,
-				"force_destroy": true,
-				"versioning":    false,
-			},
+	vars = map[string]any{
+		"dynamodb_tables": dynamodb_tables,
+		"bucket_picture": map[string]any{
+			"name":          bucket_picture_name,
+			"force_destroy": true,
+			"versioning":    false,
 		},
 	}
 
-	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
-		"iam": map[string]any{
-			"scope":        "accounts",
-			"requires_mfa": false,
-		},
-	})
-
-	traffics := []map[string]any{}
 	for _, traffic := range Traffic {
 		traffics = append(traffics, map[string]any{
 			"listener": map[string]any{
-				"port":             util.Value(traffic.Listener.Port),
-				"protocol":         traffic.Listener.Protocol,
+				"port":     util.Value(traffic.Listener.Port),
+				"protocol": traffic.Listener.Protocol,
 			},
 			"target": map[string]any{
 				"port":              util.Value(traffic.Target.Port),
@@ -150,11 +134,8 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
 			"base": util.Value(traffic.Base),
 		})
 	}
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffics": traffics,
-	})
-	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
+
+	docker = map[string]any{
 		"docker": map[string]any{
 			"registry": map[string]any{
 				"ecr": map[string]any{
@@ -168,11 +149,14 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
 				"tag": GithubProject.ImageTag,
 			},
 		},
-	})
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
-		"file_key":  envKey,
-		"file_path": "override.env",
-	})
+	}
 
-	return optionsProject, namePrefix, nameSuffix
+	bucketEnv = map[string]any{
+		"force_destroy": true,
+		"versioning":    false,
+		"file_key":      fmt.Sprintf("%s.env", GithubProject.Branch),
+		"file_path":     "override.env",
+	}
+
+	return vars, traffics, docker, bucketEnv
 }

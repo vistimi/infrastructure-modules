@@ -54,9 +54,9 @@ module "asg" {
   source_security_group_id = module.elb.elb_sg.security_group_id
 
   vpc           = var.vpc
-  min_count     = var.service.min_count
-  max_count     = var.service.max_count
-  desired_count = var.service.desired_count
+  min_count     = var.ecs.service.task.min_count
+  max_count     = var.ecs.service.task.max_count
+  desired_count = var.ecs.service.task.desired_count
 
   tags = var.tags
 }

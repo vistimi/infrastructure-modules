@@ -71,7 +71,7 @@ module "elb" {
   vpc                      = var.vpc
   layer7_to_layer4_mapping = local.layer7_to_layer4_mapping
   traffics                 = local.traffics
-  deployment_type          = var.service.deployment_type
+  deployment_type          = var.ecs.service.ec2 != null ? "ec2" : "fargate"
   certificate_arn          = try(one(values(module.acm)).acm_certificate_arn, null)
 
   tags = var.tags

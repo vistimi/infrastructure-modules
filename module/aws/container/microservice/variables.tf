@@ -67,10 +67,6 @@ variable "container" {
           memory_reservation = optional(number)
           cpu                = number
           gpu                = optional(number)
-          env_file = optional(object({
-            bucket_name = string
-            file_name   = string
-          }))
           environment = optional(list(object({
             name  = string
             value = string
@@ -134,10 +130,6 @@ variable "container" {
     ecs = optional(object({
       service = optional(object({
         task = optional(object({
-          min_size                = number
-          max_size                = number
-          desired_size            = number
-          maximum_percent         = optional(number)
           minimum_healthy_percent = optional(number)
           circuit_breaker = optional(object({
             enable   = bool
@@ -198,8 +190,8 @@ variable "container" {
     error_message = "Listener protocol must be one of [http, https, tcp]"
   }
   validation {
-    condition     = alltrue([for traffic in var.container.traffics : traffic.listener.protocol_version != null ? contains(["http", "http2", "grpc"], traffic.listener.protocol_version) : true])
-    error_message = "Listener protocol version must be one of [http, http2, grpc] or null"
+    condition     = alltrue([for traffic in var.container.traffics : traffic.listener.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.listener.protocol_version) : true])
+    error_message = "Listener protocol version must be one of [http1, http2, grpc] or null"
   }
 
   # traffic targets
@@ -208,8 +200,8 @@ variable "container" {
     error_message = "Target protocol must be one of [http, https, tcp]"
   }
   validation {
-    condition     = alltrue([for traffic in var.container.traffics : traffic.target.protocol_version != null ? contains(["http", "http2", "grpc"], traffic.target.protocol_version) : true])
-    error_message = "Target protocol version must be one of [http, http2, grpc] or null"
+    condition     = alltrue([for traffic in var.container.traffics : traffic.target.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.target.protocol_version) : true])
+    error_message = "Target protocol version must be one of [http1, http2, grpc] or null"
   }
 
   # docker
@@ -241,23 +233,23 @@ variable "container" {
 
   # ec2 arch
   validation {
-    condition     = length(distinct(var.container.ec2.instance_types)) == length(var.container.ec2.instance_types)
+    condition     = length(distinct(var.container.group.ec2.instance_types)) == length(var.container.group.ec2.instance_types)
     error_message = "ec2 instance types must all be unique"
   }
 
   validation {
-    condition     = contains(["inf", "gpu"], var.container.ec2.processor) ? length(var.container.ec2.instance_types) == 1 : true
-    error_message = "ec2 inf/gpu instances must contain only one element, got ${jsonencode(var.container.ec2.instance_types)}"
+    condition     = contains(["inf", "gpu"], var.container.group.ec2.processor) ? length(var.container.group.ec2.instance_types) == 1 : true
+    error_message = "ec2 inf/gpu instances must contain only one element, got ${jsonencode(var.container.group.ec2.instance_types)}"
   }
 
   # ec2 os
   validation {
-    condition     = contains(["linux"], var.container.ec2.os)
+    condition     = contains(["linux"], var.container.group.ec2.os)
     error_message = "EC2 os must be one of [linux]"
   }
 
   validation {
-    condition     = var.container.ec2.os == "linux" ? contains(["2", "2023"], var.container.ec2.os_version) : false
+    condition     = var.container.group.ec2.os == "linux" ? contains(["2", "2023"], var.container.group.ec2.os_version) : false
     error_message = "EC2 os version must be one of linux:[2, 2023]"
   }
 }
@@ -265,13 +257,19 @@ variable "container" {
 data "aws_ec2_instance_types" "region" {
   filter {
     name   = "instance-type"
-    values = [for instance_type in var.container.ec2.instance_types : instance_type]
+    values = [for instance_type in var.container.group.ec2.instance_types : instance_type]
   }
 
   lifecycle {
     postcondition {
-      condition     = sort(distinct([for instance_types in var.container.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
-      error_message = "ec2 instances type are not all available\nwant::\n ${jsonencode(sort([for instance_type in var.container.ec2.instance_types : instance_type]))}\ngot::\n ${jsonencode(sort(self.instance_types))}"
+      condition     = sort(distinct([for instance_type in var.container.group.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
+      error_message = <<EOF
+      ec2 instances type are not all available
+      want::
+      ${jsonencode(sort([for instance_type in var.container.group.ec2.instance_types : instance_type]))}
+      got::
+      ${jsonencode(sort(self.instance_types))}
+EOF
     }
   }
 }
@@ -279,11 +277,11 @@ data "aws_ec2_instance_types" "region" {
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
 # https://aws.amazon.com/ec2/instance-types/
 resource "null_resource" "ec2_architecture" {
-  for_each = var.container.ec2 != null ? {
-    for instance_type in var.container.ec2.instance_types :
-    instance_types => {
-      os              = var.container.ec2.os
-      architecture    = var.container.ec2.architecture
+  for_each = var.container.group.ec2 != null ? {
+    for instance_type in var.container.group.ec2.instance_types :
+    instance_type => {
+      os              = var.container.group.ec2.os
+      architecture    = var.container.group.ec2.architecture
       instance_type   = instance_type
       instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", instance_type)
       instance_family = try(one(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", instance_type).prefix)), substr(instance_type, 0, 1))
@@ -313,7 +311,7 @@ resource "null_resource" "ec2_architecture" {
     }
 
     precondition {
-      condition     = each.value.architecture == "gpu" ? var.task_definition.gpu != null : true
+      condition     = each.value.architecture == "gpu" ? var.container.group.container.gpu != null : true
       error_message = "EC2 gpu must have a task definition gpu number"
     }
   }
