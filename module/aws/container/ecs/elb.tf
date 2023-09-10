@@ -58,8 +58,8 @@ module "route53_records" {
     prefixes       = var.route53.record.prefixes
     type           = "A"
     alias = {
-      name    = "dualstack.${module.elb.elb.lb_dns_name}"
-      zone_id = module.elb.elb.lb_zone_id
+      name    = "dualstack.${module.elb.lb.dns_name}"
+      zone_id = module.elb.lb.zone_id
     }
   }
 }

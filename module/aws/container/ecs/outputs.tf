@@ -1,6 +1,6 @@
 # https://registry.terraform.io/module/terraform-aws-modules/elb/aws/8.6.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "elb" {
-  value = module.elb.elb
+  value = module.elb
 }
 
 output "acm" {
@@ -30,9 +30,7 @@ output "route53" {
 
 # https://registry.terraform.io/module/terraform-aws-modules/autoscaling/aws/6.10.0?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#outputs
 output "asg" {
-  value = {
-    for key, asg in module.asg : key => asg.asg
-  }
+  value = module.asg
 }
 
 # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/outputs.tf

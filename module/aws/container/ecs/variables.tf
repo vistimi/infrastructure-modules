@@ -50,6 +50,7 @@ variable "traffics" {
 variable "ecs" {
   type = object({
     service = object({
+      name = string
       task = object({
         min_size                = number
         max_size                = number
@@ -125,10 +126,10 @@ variable "ecs" {
         os             = string
         os_version     = string
         architecture   = string
-        processor      = string
+        processor_type = string
 
-        asg = object({
-          instance_refresh = optional(object({
+        asg = optional(object({
+          instance_refresh = object({
             strategy = string
             preferences = optional(object({
               checkpoint_delay       = optional(number)
@@ -139,12 +140,14 @@ variable "ecs" {
               auto_rollback          = optional(bool)
             }))
             triggers = optional(list(string))
-            }), {
+          })
+          }), {
+          instance_refresh = {
             strategy = "Rolling"
             preferences = {
               min_healthy_percentage = 66
             }
-          })
+          }
         })
         capacities = optional(list(object({
           type                        = optional(string, "ON_DEMAND")

@@ -53,6 +53,7 @@ variable "iam" {
 variable "container" {
   type = object({
     group = object({
+      name = string
       deployment = object({
         min_size        = number
         max_size        = number
@@ -63,6 +64,7 @@ variable "container" {
         cpu    = number
 
         container = object({
+          name               = string
           memory             = optional(number)
           memory_reservation = optional(number)
           cpu                = number
@@ -98,8 +100,6 @@ variable "container" {
         instance_types = list(string)
         os             = string
         os_version     = string
-        architecture   = string
-        processor      = string
 
         capacities = optional(list(object({
           type   = optional(string, "ON_DEMAND")
@@ -107,7 +107,16 @@ variable "container" {
           weight = optional(number, 1)
         })))
       }))
-      fargate = optional(object({}))
+      fargate = optional(object({
+        os           = string
+        architecture = string
+
+        capacities = optional(list(object({
+          type   = optional(string, "ON_DEMAND")
+          base   = optional(number)
+          weight = optional(number, 1)
+        })))
+      }))
     })
     traffics = list(object({
       listener = object({
@@ -145,14 +154,14 @@ variable "container" {
               sourcePath = string
             })
           })), [])
-          container = object({
+          container = optional(object({
             health_check      = optional(any, {})
             user              = optional(string)
             volumes_from      = optional(list(any), [])
             working_directory = optional(string)
             mount_points      = optional(list(any), [])
             linux_parameters  = optional(any, {})
-          })
+          }), {})
         }))
       }))
     }))
@@ -164,7 +173,7 @@ variable "container" {
     error_message = "either ecs or eks should have a configuration"
   }
 
-  # deplyoment type
+  # deployment type
   validation {
     condition     = (var.container.group.ec2 != null && var.container.group.fargate == null) || (var.container.group.ec2 == null && var.container.group.fargate != null)
     error_message = "either fargate or ec2 should have a configuration"
@@ -231,15 +240,10 @@ variable "container" {
   #   error_message = "Fargate architecture must for one of linux:[x86_64, arm64]"
   # }
 
-  # ec2 arch
+  # ec2 instance_type
   validation {
     condition     = length(distinct(var.container.group.ec2.instance_types)) == length(var.container.group.ec2.instance_types)
     error_message = "ec2 instance types must all be unique"
-  }
-
-  validation {
-    condition     = contains(["inf", "gpu"], var.container.group.ec2.processor) ? length(var.container.group.ec2.instance_types) == 1 : true
-    error_message = "ec2 inf/gpu instances must contain only one element, got ${jsonencode(var.container.group.ec2.instance_types)}"
   }
 
   # ec2 os
@@ -270,49 +274,6 @@ data "aws_ec2_instance_types" "region" {
       got::
       ${jsonencode(sort(self.instance_types))}
 EOF
-    }
-  }
-}
-
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
-# https://aws.amazon.com/ec2/instance-types/
-resource "null_resource" "ec2_architecture" {
-  for_each = var.container.group.ec2 != null ? {
-    for instance_type in var.container.group.ec2.instance_types :
-    instance_type => {
-      os              = var.container.group.ec2.os
-      architecture    = var.container.group.ec2.architecture
-      instance_type   = instance_type
-      instance        = regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", instance_type)
-      instance_family = try(one(regex("(mac|u-|dl|trn|inf|vt|Im|Is|hpc)", regex("^(?P<prefix>\\w+)\\.(?P<size>\\w+)$", instance_type).prefix)), substr(instance_type, 0, 1))
-    }
-  } : {}
-
-  lifecycle {
-    precondition {
-      condition     = each.value.os == "linux" ? contains(["x86_64", "arm64", "gpu", "inf"], each.value.architecture) : false
-      error_message = "EC2 architecture must for one of linux:[x86_64, arm64, gpu, inf]"
-    }
-
-    precondition {
-      // TODO: add support for mac
-      condition = each.value.architecture == "x86_64" ? (
-        contains(["t", "m", "c", "z", "u-", "x", "r", "dl", "trn", "f", "vt", "i", "d", "h", "hpc"], each.value.instance_family) && contains(["", "i"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
-        ) : (
-        each.value.architecture == "arm64" ? (
-          contains(["t", "m", "c", "r", "i", "Im", "Is", "hpc"], each.value.instance_family) && contains(["a", "g"], substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1))
-          ) : (
-          each.value.architecture == "gpu" ? contains(["p", "g"], each.value.instance_family) : (
-            each.value.architecture == "inf" ? contains(["inf"], each.value.instance_family) : (false)
-          )
-        )
-      )
-      error_message = "EC2 instance config do not match, arch: ${each.value.architecture}, instance type ${each.value.instance_type}, instance family ${each.value.instance_family}, instance generation ${substr(each.value.instance.prefix, length(each.value.instance_family) + 0, 1)}, processor family ${substr(each.value.instance.prefix, length(each.value.instance_family) + 1, 1)}, additional capability ${substr(each.value.instance.prefix, length(each.value.instance_family) + 2, -1)}, instance size ${each.value.instance.size}"
-    }
-
-    precondition {
-      condition     = each.value.architecture == "gpu" ? var.container.group.container.gpu != null : true
-      error_message = "EC2 gpu must have a task definition gpu number"
     }
   }
 }

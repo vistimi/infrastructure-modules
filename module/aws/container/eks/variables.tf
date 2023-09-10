@@ -52,11 +52,16 @@ variable "eks" {
     create          = optional(bool, true)
     cluster_version = string
     group = object({
+      name = string
       deployment = object({
         min_size        = number
         max_size        = number
         desired_size    = number
         maximum_percent = optional(number)
+
+        container = object({
+          name = string
+        })
       })
       ec2 = optional(object({
         key_name       = optional(string)
@@ -64,7 +69,7 @@ variable "eks" {
         os             = string
         os_version     = string
         architecture   = string
-        processor      = string
+        processor_type = string
 
         capacities = optional(list(object({
           type = optional(string, "ON_DEMAND")

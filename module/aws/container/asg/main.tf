@@ -29,7 +29,7 @@ module "asg" {
       resource_type = "instance"
       tags          = merge(var.tags, { Name = "${var.name}-instance" })
   }])
-  instance_market_options = value.use_spot ? {
+  instance_market_options = var.use_spot ? {
     # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#market-options
     market_type = "spot"
     # spot_options = {

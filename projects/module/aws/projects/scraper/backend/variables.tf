@@ -39,6 +39,7 @@ variable "microservice" {
     })
     container = object({
       group = object({
+        name = string
         deployment = object({
           min_size        = number
           max_size        = number
@@ -49,6 +50,7 @@ variable "microservice" {
           cpu    = number
 
           container = object({
+            name               = string
             memory             = optional(number)
             memory_reservation = optional(number)
             cpu                = number
@@ -93,7 +95,17 @@ variable "microservice" {
             weight = optional(number, 1)
           })))
         }))
-        fargate = optional(object({}))
+        fargate = optional(object({
+          os           = string
+          architecture = string
+
+          capacities = optional(list(object({
+            type                        = optional(string, "ON_DEMAND")
+            base                        = optional(number)
+            weight                      = optional(number, 1)
+            target_capacity_cpu_percent = optional(number, 66)
+          })))
+        }))
       })
       traffics = list(object({
         listener = object({

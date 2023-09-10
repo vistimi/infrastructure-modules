@@ -28,7 +28,7 @@ module "asg" {
   for_each = {
     for obj in flatten([for instance_type in var.ecs.service.ec2.instance_types : [for capacity in var.ecs.service.ec2.capacities : {
       name          = "${var.name}-${capacity.type}-${instance_type}"
-      instance_type = value.instance_type
+      instance_type = instance_type
       capacity      = capacity
       }
     ]]) : obj.name => { instance_type = obj.instance_type, capacity = obj.capacity }
@@ -42,29 +42,29 @@ module "asg" {
   }
   capacity_weight_total = sum([for capacity in var.ecs.service.ec2.capacities : capacity.weight])
   key_name              = var.ecs.service.ec2.key_name
-  instance_refresh      = var.ecs.service.ec2.instance_refresh
+  instance_refresh      = var.ecs.service.ec2.asg.instance_refresh
   use_spot              = each.value.capacity.type == "ON_DEMAND" ? false : true
 
-  image_id                 = local.image_ids[each.key]
+  image_id                 = local.image_id
   user_data_base64         = base64encode(local.user_data[each.value.capacity.type])
   port_mapping             = "dynamic"
   layer7_to_layer4_mapping = local.layer7_to_layer4_mapping
   traffics                 = local.traffics
-  target_group_arns        = module.elb.elb.target_group_arns
-  source_security_group_id = module.elb.elb_sg.security_group_id
+  target_group_arns        = module.elb.target_group.arns
+  source_security_group_id = module.elb.security_group.id
 
   vpc           = var.vpc
-  min_count     = var.ecs.service.task.min_count
-  max_count     = var.ecs.service.task.max_count
-  desired_count = var.ecs.service.task.desired_count
+  min_count     = var.ecs.service.task.min_size
+  max_count     = var.ecs.service.task.max_size
+  desired_count = var.ecs.service.task.desired_size
 
   tags = var.tags
 }
 
 resource "aws_autoscaling_attachment" "ecs" {
   for_each               = module.asg
-  autoscaling_group_name = each.value.asg.autoscaling_group_name
-  lb_target_group_arn    = element(module.elb.elb.target_group_arns, 0)
+  autoscaling_group_name = each.value.autoscaling.group_name
+  lb_target_group_arn    = element(module.elb.target_group.arns, 0)
 }
 
 # group notification

@@ -89,8 +89,8 @@ locals {
   )
 
   docker_registry_name = try(
-    var.task_definition.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.task_definition.docker.registry.ecr.public_alias}",
-    var.task_definition.docker.registry.name,
+    var.ecs.service.task.container.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.ecs.service.task.container.docker.registry.ecr.public_alias}",
+    var.ecs.service.task.container.docker.registry.name,
     null
   )
 }

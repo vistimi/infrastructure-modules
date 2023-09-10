@@ -136,18 +136,16 @@ func SetupOptionsRepository(t *testing.T) (vars map[string]any, traffics []map[s
 	}
 
 	docker = map[string]any{
-		"docker": map[string]any{
-			"registry": map[string]any{
-				"ecr": map[string]any{
-					"privacy": "private",
-				},
+		"registry": map[string]any{
+			"ecr": map[string]any{
+				"privacy": "private",
 			},
-			"repository": map[string]any{
-				"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
-			},
-			"image": map[string]any{
-				"tag": GithubProject.ImageTag,
-			},
+		},
+		"repository": map[string]any{
+			"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
+		},
+		"image": map[string]any{
+			"tag": GithubProject.ImageTag,
 		},
 	}
 
