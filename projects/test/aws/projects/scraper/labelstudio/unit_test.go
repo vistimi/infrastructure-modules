@@ -59,7 +59,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 
 	// global variables
 	namePrefix := "vi"
-	id := "aaaa" // util.RandomID(4)
+	id := util.RandomID(4)
 	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags := map[string]string{
 		"TestID":  id,
@@ -103,9 +103,6 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			// 	"record": map[string]any{
 			// 		"subdomain_name": id,
 			// 	},
-			// },
-			// "vpc": map[string]any{
-			// 	"id": "vpc-013a411b59dd8a08e",
 			// },
 			"iam": map[string]any{
 				"scope":        "accounts",

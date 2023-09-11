@@ -1,4 +1,3 @@
-bucket_env_name: "env"
 statements:
   - sid: Microservice
     actions:

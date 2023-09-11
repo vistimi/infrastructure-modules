@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/dresspeng/infrastructure-modules/test/util"
-	"github.com/gruntwork-io/terratest/modules/terraform"
+
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
 var (
@@ -23,47 +24,66 @@ const (
 	ECSReservedMemory = 100
 )
 
-func SetupOptionsMicroserviceWrapper(t *testing.T, projectName, serviceName string) (*terraform.Options, string, string) {
+func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.MicroserviceInformation, traffics []testAwsModule.Traffic) (namePrefix string, nameSuffix string, tags map[string]string, trafficsMap []map[string]any, docker map[string]any, bucketEnv map[string]any) {
 	rand.Seed(time.Now().UnixNano())
 
 	// global variables
-	namePrefix := "vi"
+	namePrefix = "vi"
 	id := util.RandomID(4)
-	nameSuffix := strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
-	tags := map[string]string{
+	nameSuffix = strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
+	tags = map[string]string{
 		"TestID":  id,
 		"Account": AccountName,
 		"Region":  AccountRegion,
-		"Project": projectName,
-		"Service": serviceName,
 	}
 
-	options := &terraform.Options{
-		Vars: map[string]any{
-			"name_prefix": namePrefix,
-			"name_suffix": nameSuffix,
-
-			"vpc": map[string]any{
-				"id":   "vpc-013a411b59dd8a08e",
-				"tier": "public",
+	for _, traffic := range traffics {
+		target := map[string]any{
+			"protocol":          traffic.Target.Protocol,
+			"health_check_path": microserviceInformation.HealthCheckPath,
+		}
+		target = util.Nil(traffic.Target.Port, target, "port")
+		target = util.Nil(traffic.Target.ProtocolVersion, target, "protocol_version")
+		target = util.Nil(traffic.Target.StatusCode, target, "status_code")
+		trafficsMap = append(trafficsMap, map[string]any{
+			"listener": map[string]any{
+				"port":     util.Value(traffic.Listener.Port, 80),
+				"protocol": traffic.Listener.Protocol,
 			},
+			"target": target,
+			"base":   util.Value(traffic.Base),
+		})
+	}
 
-			"microservice": map[string]any{
-				"ecs": map[string]any{
-					"log": map[string]any{
-						"retention_days": 1,
-						"prefix":         "ecs",
-					},
-					"task_definition": map[string]any{},
-				},
-				"bucket_env": map[string]any{
-					"force_destroy": true,
-					"versioning":    false,
-				},
-			},
-
-			"tags": tags,
+	registry := map[string]any{}
+	if microserviceInformation.Docker.Registry.Ecr != nil {
+		registry["ecr"] = map[string]any{
+			"privacy": microserviceInformation.Docker.Registry.Ecr.Privacy,
+		}
+		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.AccountId, registry["ecr"].(map[string]any), "account_id")
+		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.RegionName, registry["ecr"].(map[string]any), "region_name")
+		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.PublicAlias, registry["ecr"].(map[string]any), "public_alias")
+	}
+	image := map[string]any{}
+	if microserviceInformation.Docker.Image != nil {
+		registry["image"] = map[string]any{
+			"tag": microserviceInformation.Docker.Image.Tag,
+		}
+	}
+	docker = map[string]any{
+		"registry": registry,
+		"repository": map[string]any{
+			"name": microserviceInformation.Docker.Repository.Name,
 		},
+		"image": image,
 	}
-	return options, namePrefix, nameSuffix
+
+	bucketEnv = map[string]any{
+		"force_destroy": true,
+		"versioning":    false,
+		"file_key":      fmt.Sprintf("%s.env", microserviceInformation.Branch),
+		"file_path":     "override.env",
+	}
+
+	return namePrefix, nameSuffix, tags, trafficsMap, docker, bucketEnv
 }

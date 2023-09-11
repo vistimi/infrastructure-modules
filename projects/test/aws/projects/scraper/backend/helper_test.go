@@ -5,13 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
-	"github.com/gruntwork-io/terratest/modules/terraform"
 
 	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
@@ -26,18 +23,27 @@ const (
 )
 
 var (
-	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "dresspeng",
-		Repository:      "scraper-backend",
+	MicroserviceInformation = testAwsModule.MicroserviceInformation{
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
-		ImageTag:        "latest",
+		Docker: testAwsModule.Docker{
+			Registry: &testAwsModule.Registry{
+				Ecr: &testAwsModule.Ecr{
+					Privacy: "privacy",
+				},
+			},
+			Repository: testAwsModule.Repository{
+				Name: "scraper-backend-trunk", // TODO: make it flexible for testing other branches
+			},
+			Image: &testAwsModule.Image{
+				Tag: "latest",
+			},
+		},
 	}
 
-	Traffic = []testAwsModule.Traffic{
+	Traffics = []testAwsModule.Traffic{
 		{
 			Listener: testAwsModule.TrafficPoint{
-				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
 			Target: testAwsModule.TrafficPoint{
@@ -61,7 +67,7 @@ var (
 		MaxRetries: aws.Int(10),
 		Endpoints: []testAwsModule.EndpointTest{
 			{
-				Path:           GithubProject.HealthCheckPath,
+				Path:           MicroserviceInformation.HealthCheckPath,
 				ExpectedStatus: 200,
 				ExpectedBody:   util.Ptr(`"ok"`),
 				MaxRetries:     aws.Int(3),
@@ -76,8 +82,8 @@ var (
 	}
 )
 
-func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
-	optionsMicroservice, namePrefix, nameSuffix := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
+func SetupVars(t *testing.T) (vars map[string]any) {
+	_, nameSuffix, _, _, _, _ := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
@@ -114,67 +120,13 @@ func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
 		t.Errorf("config.yml file missing buckets.picture")
 	}
 	bucket_picture_name := *bucket_picture_name_extension.Name
-
-	optionsProject := &terraform.Options{
-		TerraformDir: MicroservicePath,
-		Vars: map[string]any{
-			"dynamodb_tables": dynamodb_tables,
-			"bucket_picture": map[string]any{
-				"name":          bucket_picture_name,
-				"force_destroy": true,
-				"versioning":    false,
-			},
+	vars = map[string]any{
+		"dynamodb_tables": dynamodb_tables,
+		"bucket_picture": map[string]any{
+			"name":          bucket_picture_name,
+			"force_destroy": true,
+			"versioning":    false,
 		},
 	}
-
-	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
-		"iam": map[string]any{
-			"scope":        "accounts",
-			"requires_mfa": false,
-		},
-	})
-
-	traffics := []map[string]any{}
-	for _, traffic := range Traffic {
-		traffics = append(traffics, map[string]any{
-			"listener": map[string]any{
-				"port":             util.Value(traffic.Listener.Port),
-				"protocol":         traffic.Listener.Protocol,
-				"protocol_version": util.ValueNil(traffic.Listener.ProtocolVersion),
-			},
-			"target": map[string]any{
-				"port":              util.Value(traffic.Target.Port),
-				"protocol":          traffic.Target.Protocol,
-				"protocol_version":  util.ValueNil(traffic.Listener.ProtocolVersion),
-				"health_check_path": GithubProject.HealthCheckPath,
-			},
-			"base": util.Value(traffic.Base),
-		})
-	}
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffics": traffics,
-	})
-	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"docker": map[string]any{
-			"registry": map[string]any{
-				"ecr": map[string]any{
-					"privacy": "private",
-				},
-			},
-			"repository": map[string]any{
-				"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
-			},
-			"image": map[string]any{
-				"tag": GithubProject.ImageTag,
-			},
-		},
-	})
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
-		"file_key":  envKey,
-		"file_path": "override.env",
-	})
-
-	return optionsProject, namePrefix, nameSuffix
+	return vars
 }

@@ -9,8 +9,8 @@ module "microservice" {
   name       = "${var.name_prefix}-scraper-be-${var.name_suffix}"
   vpc        = var.vpc
   route53    = var.microservice.route53
-  ecs        = var.microservice.ecs
-  bucket_env = merge(var.microservice.bucket_env, { name = local.microservice_config_vars.bucket_env_name })
+  container  = var.microservice.container
+  bucket_env = var.microservice.bucket_env
   iam        = var.microservice.iam
 
   tags = var.tags

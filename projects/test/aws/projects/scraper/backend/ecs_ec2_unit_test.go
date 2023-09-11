@@ -1,4 +1,4 @@
-package microservice_scraper_frontend_test
+package microservice_scraper_backend_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_Microservice_ScraperFrontend_ECS_EC2(t *testing.T) {
+func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 	// t.Parallel()
 	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)

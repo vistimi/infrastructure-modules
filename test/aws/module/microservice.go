@@ -37,6 +37,7 @@ type EC2Instance struct {
 	RamAllowed    int
 	DevicePaths   []string
 	Architecture  string
+	Processor     string
 }
 
 var (
@@ -47,14 +48,12 @@ var (
 		Cpu:           2048,
 		Memory:        2048,
 		MemoryAllowed: 1801, // TODO: double check under infra of cluster + ECSReservedMemory
-		Architecture:  "x86_64",
 	}
 	T3Medium = EC2Instance{
 		Name:          "t3.medium",
 		Cpu:           2048,
 		Memory:        4096,
 		MemoryAllowed: 3828,
-		Architecture:  "x86_64",
 	}
 	G4dnXlarge = EC2Instance{
 		Name:          "g4dn.xlarge",
@@ -62,7 +61,6 @@ var (
 		Gpu:           1,
 		Memory:        16384,
 		MemoryAllowed: 15731,
-		Architecture:  "gpu",
 	}
 	Inf1Xlarge = EC2Instance{
 		Name:          "inf1.xlarge",
@@ -70,18 +68,34 @@ var (
 		Ram:           8192,
 		MemoryAllowed: 7667,
 		DevicePaths:   []string{"/dev/neuron0"}, // AWS ML accelerator chips
-		Architecture:  "inf",
 	}
 )
 
-type GithubProjectInformation struct {
-	Organization string
-	Repository   string
-	Branch       string
-	// WorkflowFilename string
-	// WorkflowName     string
+type MicroserviceInformation struct {
+	Branch          string
 	HealthCheckPath string
-	ImageTag        string
+	Docker          Docker
+}
+type Docker struct {
+	Registry   *Registry
+	Repository Repository
+	Image      *Image
+}
+type Registry struct {
+	Name *string
+	Ecr  *Ecr
+}
+type Ecr struct {
+	Privacy     string
+	AccountId   *string
+	RegionName  *string
+	PublicAlias *string
+}
+type Repository struct {
+	Name string
+}
+type Image struct {
+	Tag string
 }
 
 type EndpointTest struct {
@@ -106,8 +120,10 @@ type LogTest struct {
 }
 
 type TrafficPoint struct {
-	Port     *int
-	Protocol string
+	Port            *int
+	Protocol        string
+	ProtocolVersion *string
+	StatusCode      *string
 }
 
 type Traffic struct {
@@ -116,10 +132,9 @@ type Traffic struct {
 	Base     *bool
 }
 
-func ValidateMicroservice(t *testing.T, name string, deployment DeploymentTest) {
+func ValidateMicroservice(t *testing.T, name string, deployment DeploymentTest, serviceName string) {
 	terratestStructure.RunTestStage(t, "validate_microservice", func() {
 		serviceCount := int64(1)
-		serviceName := util.Format("-", name, "service")
 		ValidateEcs(t, AccountRegion, name, serviceName, serviceCount, deployment)
 	})
 }

@@ -1,4 +1,4 @@
-package microservice_scraper_frontend_test
+package microservice_scraper_backend_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
 
-func Test_Unit_Microservice_ScraperFrontend_ECS_EC2(t *testing.T) {
+func Test_Unit_Microservice_ScraperBackend_ECS_Fargate(t *testing.T) {
 	// t.Parallel()
 	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)
@@ -53,19 +53,18 @@ func Test_Unit_Microservice_ScraperFrontend_ECS_EC2(t *testing.T) {
 							},
 						},
 
-						"ec2": map[string]any{
-							"key_name":       nil,
-							"instance_types": []string{instance.Name},
-							"os":             "linux",
-							"os_version":     "2023",
+						"fargate": map[string]any{
+							// "key_name":       nil,
+							// "instance_types": []string{instance.Name},
+							// "os":             "linux",
+							// "os_version":     "2023",
 
-							"capacities": []map[string]any{
-								{
-									"type":   "ON_DEMAND",
-									"base":   nil, // no preferred instance amount
-									"weight": 50,  // 50% chance
-								},
-							},
+							// "capacities": []map[string]any{{
+							// 	"type":   "ON_DEMAND",
+							// 	"base":   nil, // no preferred instance amount
+							// 	"weight": 50,  // 50% chance
+							// },
+							// },
 						},
 					},
 

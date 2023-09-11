@@ -29,18 +29,92 @@ variable "route53" {
   default = null
 }
 
-variable "ecs" {
+variable "bucket_env" {
   type = object({
-    service = object({
-      deployment_type                    = string
-      task_min_count                     = number
-      task_desired_count                 = number
-      task_max_count                     = number
-      deployment_maximum_percent         = optional(number)
-      deployment_minimum_healthy_percent = optional(number)
-      deployment_circuit_breaker = optional(object({
-        enable   = bool
-        rollback = bool
+    force_destroy = bool
+    versioning    = bool
+    file_path     = string
+    file_key      = string
+  })
+  nullable = false
+}
+
+variable "iam" {
+  type = object({
+    scope        = string
+    requires_mfa = optional(bool)
+    mfa_age      = optional(number)
+    account_ids  = optional(list(string))
+    vpc_ids      = optional(list(string))
+  })
+}
+
+variable "container" {
+  type = object({
+    group = object({
+      name = string
+      deployment = object({
+        min_size        = number
+        max_size        = number
+        desired_size    = number
+        maximum_percent = optional(number)
+
+        memory = optional(number)
+        cpu    = number
+
+        container = object({
+          name               = string
+          memory             = optional(number)
+          memory_reservation = optional(number)
+          cpu                = number
+          gpu                = optional(number)
+          environment = optional(list(object({
+            name  = string
+            value = string
+          })), [])
+          docker = object({
+            registry = optional(object({
+              name = optional(string)
+              ecr = optional(object({
+                privacy      = string
+                public_alias = optional(string)
+                account_id   = optional(string)
+                region_name  = optional(string)
+              }))
+            }))
+            repository = object({
+              name = string
+            })
+            image = optional(object({
+              tag = string
+            }))
+          })
+          command                  = optional(list(string), [])
+          entrypoint               = optional(list(string), [])
+          readonly_root_filesystem = optional(bool)
+        })
+      })
+      ec2 = optional(object({
+        key_name       = optional(string)
+        instance_types = list(string)
+        os             = string
+        os_version     = string
+
+        capacities = optional(list(object({
+          type   = optional(string, "ON_DEMAND")
+          base   = optional(number)
+          weight = optional(number, 1)
+        })))
+      }))
+      fargate = optional(object({
+        os           = string
+        architecture = string
+
+        capacities = optional(list(object({
+          type   = optional(string, "ON_DEMAND")
+          base   = optional(number)
+          weight = optional(number, 1)
+        })))
       }))
     })
     traffics = list(object({
@@ -58,112 +132,155 @@ variable "ecs" {
       })
       base = optional(bool)
     }))
-    task_definition = object({
-      volumes = optional(list(object({
-        name = string
-        host = object({
-          sourcePath = string
-        })
-      })), [])
-
-      memory             = optional(number)
-      memory_reservation = optional(number)
-      cpu                = number
-      gpu                = optional(number)
-      docker = object({
-        registry = optional(object({
-          name = optional(string)
-          ecr = optional(object({
-            privacy      = string
-            public_alias = optional(string)
-            account_id   = optional(string)
-            region_name  = optional(string)
-          }))
-        }))
-        repository = object({
-          name = string
-        })
-        image = optional(object({
-          tag = string
-        }))
-      })
-      environment = optional(list(object({
-        name  = string
-        value = string
-      })))
-      resource_requirements = optional(list(object({
-        type  = string
-        value = string
-      })))
-      command                  = optional(list(string), [])
-      entrypoint               = optional(list(string), [])
-      health_check             = optional(any, {})
-      readonly_root_filesystem = optional(bool)
-      user                     = optional(string)
-      volumes_from             = optional(list(any))
-      working_directory        = optional(string)
-      mount_points             = optional(list(any))
-      linux_parameters         = optional(any, {})
-    })
-    fargate = optional(object({
-      os           = string
-      architecture = string
-      capacity_provider = map(object({
-        key    = string
-        base   = optional(number)
-        weight = optional(number)
-      }))
+    eks = optional(object({
+      cluster_version = string
     }))
-    ec2 = optional(map(object({
-      user_data     = optional(string)
-      instance_type = string
-      os            = string
-      os_version    = string
-      architecture  = string
-      use_spot      = bool
-      key_name      = optional(string)
-      asg = object({
-        instance_refresh = optional(object({
-          strategy = string
-          preferences = optional(object({
-            checkpoint_delay       = optional(number)
-            checkpoint_percentages = optional(list(number))
-            instance_warmup        = optional(number)
-            min_healthy_percentage = optional(number)
-            skip_matching          = optional(bool)
-            auto_rollback          = optional(bool)
-          }))
-          triggers = optional(list(string))
-        }))
-      })
-      capacity_provider = object({
-        base                        = optional(number)
-        weight                      = number
-        target_capacity_cpu_percent = number
-        maximum_scaling_step_size   = optional(number)
-        minimum_scaling_step_size   = optional(number)
-      })
-    })))
+    ecs = optional(object({}))
   })
+
+  # orchestrator
+  validation {
+    condition     = (var.container.ecs != null && var.container.eks == null) || (var.container.ecs == null && var.container.eks != null)
+    error_message = "either ecs or eks should have a configuration"
+  }
+
+  # deployment type
+  validation {
+    condition     = (var.container.group.ec2 != null && var.container.group.fargate == null) || (var.container.group.ec2 == null && var.container.group.fargate != null)
+    error_message = "either fargate or ec2 should have a configuration"
+  }
+
+  # traffic
+  validation {
+    condition     = length(var.container.traffics) > 0
+    error_message = "traffic must have at least one element"
+  }
+  validation {
+    condition     = length([for traffic in var.container.traffics : traffic.base if traffic.base == true || length(var.container.traffics) == 1]) == 1
+    error_message = "traffics must have exactly one base or only one element (base not required)"
+  }
+  validation {
+    condition     = length(distinct([for traffic in var.container.traffics : { listener = traffic.listener, target = traffic.target }])) == length(var.container.traffics)
+    error_message = "traffics elements cannot be similar"
+  }
+
+  # traffic listeners
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.listener.protocol)])
+    error_message = "Listener protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : traffic.listener.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.listener.protocol_version) : true])
+    error_message = "Listener protocol version must be one of [http1, http2, grpc] or null"
+  }
+
+  # traffic targets
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.target.protocol)])
+    error_message = "Target protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.container.traffics : traffic.target.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.target.protocol_version) : true])
+    error_message = "Target protocol version must be one of [http1, http2, grpc] or null"
+  }
+
+  # docker
+  validation {
+    condition     = try(var.container.group.deployment.docker.registry.ecr.name != null, true)
+    error_message = "docker registry name must not be empty if ecr is not specified"
+  }
+
+  validation {
+    condition     = try(contains(["private", "public", "intra"], var.container.group.deployment.docker.registry.ecr.privacy), true)
+    error_message = "docker repository privacy must be one of [public, private, intra]"
+  }
+
+  validation {
+    condition     = try((var.container.group.deployment.docker.registry.ecr.privacy == "public" ? length(coalesce(var.container.group.deployment.docker.registry.ecr.public_alias, "")) > 0 : true), true)
+    error_message = "docker repository alias need when repository privacy is `public`"
+  }
+
+  # # fargate
+  # validation {
+  #   condition     = contains(["linux"], var.fargate.os)
+  #   error_message = "Fargate os must be one of [linux]"
+  # }
+
+  # validation {
+  #   condition     = var.fargate.os == "linux" ? contains(["x86_64", "arm64"], var.fargate.architecture) : false
+  #   error_message = "Fargate architecture must for one of linux:[x86_64, arm64]"
+  # }
+
+  # ec2 instance_type
+  validation {
+    condition     = length(distinct(var.container.group.ec2.instance_types)) == length(var.container.group.ec2.instance_types)
+    error_message = "ec2 instance types must all be unique"
+  }
+
+  # ec2 os
+  validation {
+    condition     = contains(["linux"], var.container.group.ec2.os)
+    error_message = "EC2 os must be one of [linux]"
+  }
+
+  validation {
+    condition     = var.container.group.ec2.os == "linux" ? contains(["2", "2023"], var.container.group.ec2.os_version) : false
+    error_message = "EC2 os version must be one of linux:[2, 2023]"
+  }
 }
 
-variable "bucket_env" {
-  type = object({
-    name          = string
-    force_destroy = bool
-    versioning    = bool
-    file_path     = string
-    file_key      = string
-  })
-  default = null
+data "aws_ec2_instance_types" "region" {
+  filter {
+    name   = "instance-type"
+    values = [for instance_type in var.container.group.ec2.instance_types : instance_type]
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = sort(distinct([for instance_type in var.container.group.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
+      error_message = <<EOF
+      ec2 instances type are not all available
+      want::
+      ${jsonencode(sort([for instance_type in var.container.group.ec2.instance_types : instance_type]))}
+      got::
+      ${jsonencode(sort(self.instance_types))}
+EOF
+    }
+  }
 }
 
-variable "iam" {
-  type = object({
-    scope        = string
-    requires_mfa = optional(bool)
-    mfa_age      = optional(number)
-    account_ids  = optional(list(string))
-    vpc_ids      = optional(list(string))
-  })
-}
+# ebs_device_map = {
+#   amazon2       = "/dev/sdf"
+#   amazon2023    = "/dev/sdf"
+#   amazoneks     = "/dev/sdf"
+#   amazonecs     = "/dev/xvdcz"
+#   rhel7         = "/dev/sdf"
+#   rhel8         = "/dev/sdf"
+#   centos7       = "/dev/sdf"
+#   ubuntu18      = "/dev/sdf"
+#   ubuntu20      = "/dev/sdf"
+#   debian10      = "/dev/sdf"
+#   debian11      = "/dev/sdf"
+#   windows2012r2 = "xvdf"
+#   windows2016   = "xvdf"
+#   windows2019   = "xvdf"
+#   windows2022   = "xvdf"
+# }
+
+# root_device_map = {
+#   amazon2       = "/dev/xvda"
+#   amazon2023    = "/dev/xvda"
+#   amazoneks     = "/dev/xvda"
+#   amazonecs     = "/dev/xvda"
+#   rhel7         = "/dev/sda1"
+#   rhel8         = "/dev/sda1"
+#   centos7       = "/dev/sda1"
+#   ubuntu18      = "/dev/sda1"
+#   ubuntu20      = "/dev/sda1"
+#   windows2012r2 = "/dev/sda1"
+#   windows2016   = "/dev/sda1"
+#   windows2019   = "/dev/sda1"
+#   windows2022   = "/dev/sda1"
+#   debian10      = "/dev/sda1"
+#   debian11      = "/dev/sda1"
+# }
