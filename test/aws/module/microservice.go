@@ -40,37 +40,6 @@ type EC2Instance struct {
 	Processor     string
 }
 
-var (
-	// for amazon 2023 at least
-	// arm64 for amd
-	T3Small = EC2Instance{
-		Name:          "t3.small",
-		Cpu:           2048,
-		Memory:        2048,
-		MemoryAllowed: 1801, // TODO: double check under infra of cluster + ECSReservedMemory
-	}
-	T3Medium = EC2Instance{
-		Name:          "t3.medium",
-		Cpu:           2048,
-		Memory:        4096,
-		MemoryAllowed: 3828,
-	}
-	G4dnXlarge = EC2Instance{
-		Name:          "g4dn.xlarge",
-		Cpu:           4096,
-		Gpu:           1,
-		Memory:        16384,
-		MemoryAllowed: 15731,
-	}
-	Inf1Xlarge = EC2Instance{
-		Name:          "inf1.xlarge",
-		Cpu:           4096,
-		Ram:           8192,
-		MemoryAllowed: 7667,
-		DevicePaths:   []string{"/dev/neuron0"}, // AWS ML accelerator chips
-	}
-)
-
 type MicroserviceInformation struct {
 	Branch          string
 	HealthCheckPath string

@@ -1,8 +1,8 @@
 package util
 
-func Nil(obj any, objMap map[string]any, key string) map[string]any {
+func Nil[K any](obj *K, objMap map[string]any, key string) map[string]any {
 	if obj != nil {
-		objMap[key] = obj
+		objMap[key] = *obj
 	}
 	return objMap
 }

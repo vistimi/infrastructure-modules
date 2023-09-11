@@ -46,15 +46,8 @@ variable "microservice" {
           desired_size    = number
           maximum_percent = optional(number)
 
-          memory = optional(number)
-          cpu    = number
-
           container = object({
-            name               = string
-            memory             = optional(number)
-            memory_reservation = optional(number)
-            cpu                = number
-            gpu                = optional(number)
+            name = string
             environment = optional(list(object({
               name  = string
               value = string

@@ -65,15 +65,8 @@ variable "ecs" {
         desired_size    = number
         maximum_percent = optional(number)
 
-        memory = optional(number)
-        cpu    = number
-
         container = object({
-          name               = string
-          memory             = optional(number)
-          memory_reservation = optional(number)
-          cpu                = number
-          gpu                = optional(number)
+          name = string
           environment = optional(list(object({
             name  = string
             value = string
@@ -151,4 +144,9 @@ variable "ecs" {
       }))
     })
   })
+
+  validation {
+    condition     = length(var.ecs.service.ec2.instance_types) == 1
+    error_message = "ECS configuration only supports one instance type yet"
+  }
 }

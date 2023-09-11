@@ -3,6 +3,8 @@ locals {
     ON_DEMAND = "FARGATE"
     SPOT      = "FARGATE_SPOT"
   }
+
+  ecs_reserved_memory = 30
 }
 
 module "ecs" {
@@ -43,6 +45,7 @@ module "ecs" {
     }
   }
 
+  # TODO: one service per instance type
   services = {
     "${var.name}-${var.ecs.service.name}" = {
       #------------
@@ -166,8 +169,9 @@ module "ecs" {
       }
 
       # Task definition
-      memory                   = var.ecs.service.task.container.memory
-      cpu                      = var.ecs.service.task.container.cpu
+      cpu    = local.instances_specs[var.ecs.service.ec2.instance_types[0]].cpu
+      memory = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
+
       family                   = var.name
       requires_compatibilities = var.ecs.service.ec2 != null ? ["EC2"] : ["FARGATE"]
       // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode.html
@@ -215,10 +219,11 @@ module "ecs" {
             protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol // TODO: local.layer7_to_layer4_mapping[target.protocol]
             }
           ]
-          memory             = var.ecs.service.task.container.memory
-          memory_reservation = var.ecs.service.task.container.memory_reservation
-          cpu                = var.ecs.service.task.container.cpu
-          log_configuration  = null # other driver than json-file
+          cpu                = local.instances_specs[var.ecs.service.ec2.instance_types[0]].cpu
+          memory             = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
+          memory_reservation = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
+
+          log_configuration = null # other driver than json-file
 
           resource_requirements = try(var.ecs.service.ec2.architecture == "gpu", false) ? [{
             "type" : "GPU",
@@ -234,7 +239,23 @@ module "ecs" {
           # volumes_from      = []
           # working_directory = ""
           # mount_points      = []
-          # linux_parameters  = {}
+
+          linuxParameters = try(var.ecs.service.ec2.architecture == "inf", false) ? {
+            "devices" = [for device_path in local.instances_specs[var.ecs.service.ec2.instance_types[0]].device_paths : {
+              "containerPath" = device_path,
+              "hostPath"      = device_path,
+              "permissions" : [
+                "read",
+                "write"
+              ]
+              }
+            ],
+            "capabilities" = {
+              "add" = [
+                "IPC_LOCK"
+              ]
+            }
+          } : {}
 
           # fargate AMI
           runtime_platform = var.ecs.service.ec2 != null ? null : {

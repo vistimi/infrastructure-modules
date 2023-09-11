@@ -69,8 +69,6 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 		"Service": serviceName,
 	}
 
-	instance := testAwsModule.T3Medium
-
 	// instance := testAwsModule.T3Small
 	options := &terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -79,7 +77,7 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			"name_suffix": nameSuffix,
 
 			"labelstudio": map[string]any{
-				"instance_type":    instance.Name,
+				"instance_type":    "t3.small",
 				"desired_capacity": 1,
 				"max_size":         1,
 				"min_size":         1,

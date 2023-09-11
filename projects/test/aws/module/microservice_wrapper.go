@@ -45,17 +45,20 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 		target = util.Nil(traffic.Target.Port, target, "port")
 		target = util.Nil(traffic.Target.ProtocolVersion, target, "protocol_version")
 		target = util.Nil(traffic.Target.StatusCode, target, "status_code")
+
+		listener := map[string]any{
+			"protocol": traffic.Listener.Protocol,
+		}
+		listener = util.Nil(traffic.Listener.Port, target, "port")
+
 		trafficsMap = append(trafficsMap, map[string]any{
-			"listener": map[string]any{
-				"port":     util.Value(traffic.Listener.Port, 80),
-				"protocol": traffic.Listener.Protocol,
-			},
-			"target": target,
-			"base":   util.Value(traffic.Base),
+			"listener": listener,
+			"target":   target,
+			"base":     util.Value(traffic.Base),
 		})
 	}
 
-	registry := map[string]any{}
+	registry := make(map[string]any)
 	if microserviceInformation.Docker.Registry.Ecr != nil {
 		registry["ecr"] = map[string]any{
 			"privacy": microserviceInformation.Docker.Registry.Ecr.Privacy,
@@ -64,9 +67,9 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.RegionName, registry["ecr"].(map[string]any), "region_name")
 		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.PublicAlias, registry["ecr"].(map[string]any), "public_alias")
 	}
-	image := map[string]any{}
+	image := make(map[string]any)
 	if microserviceInformation.Docker.Image != nil {
-		registry["image"] = map[string]any{
+		image = map[string]any{
 			"tag": microserviceInformation.Docker.Image.Tag,
 		}
 	}

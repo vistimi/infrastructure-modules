@@ -24,7 +24,7 @@ var (
 		Docker: testAwsModule.Docker{
 			Registry: &testAwsModule.Registry{
 				Ecr: &testAwsModule.Ecr{
-					Privacy: "privacy",
+					Privacy: "private",
 				},
 			},
 			Repository: testAwsModule.Repository{

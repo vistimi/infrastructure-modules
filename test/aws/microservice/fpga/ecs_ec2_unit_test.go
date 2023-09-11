@@ -104,21 +104,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 	// t.Parallel()
 	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)
-	instance := testAwsModule.T3Small
 	serviceNameSuffix := "unique"
-
-	devices := []map[string]any{}
-	for _, devicePath := range instance.DevicePaths {
-		devices = append(devices, map[string]any{
-
-			"containerPath": devicePath,
-			"hostPath":      devicePath,
-			"permissions": []string{
-				"read",
-				"write",
-			},
-		})
-	}
 
 	options := util.Ptr(terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -140,15 +126,8 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 							"max_size":     1,
 							"desired_size": 1,
 
-							"cpu":    instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
-							"memory": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
-
 							"container": map[string]any{
 								"name":               "unique",
-								"cpu":                instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
-								"memory":             instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
-								"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
-
 								"docker": docker,
 								"entrypoint": []string{
 									"/bin/bash",
@@ -169,19 +148,12 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 								// 	"command": []string{"CMD-SHELL", "curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST http://127.0.0.1/predictions/squeezenet -T kitten.jpg || exit 1"},
 								// },
 								"readonly_root_filesystem": false,
-
-								"linux_parameters": map[string]any{
-									"devices": devices,
-									"capabilities": map[string]any{
-										"add": []string{"IPC_LOCK"},
-									},
-								},
 							},
 						},
 
 						"ec2": map[string]any{
 							"key_name":       nil,
-							"instance_types": []string{instance.Name},
+							"instance_types": []string{"t3.small"},
 							"os":             "linux",
 							"os_version":     "2023",
 

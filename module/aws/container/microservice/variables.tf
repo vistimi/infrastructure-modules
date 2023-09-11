@@ -59,15 +59,8 @@ variable "container" {
         desired_size    = number
         maximum_percent = optional(number)
 
-        memory = optional(number)
-        cpu    = number
-
         container = object({
-          name               = string
-          memory             = optional(number)
-          memory_reservation = optional(number)
-          cpu                = number
-          gpu                = optional(number)
+          name = string
           environment = optional(list(object({
             name  = string
             value = string
@@ -191,8 +184,8 @@ variable "container" {
   }
 
   validation {
-    condition     = try(contains(["private", "public", "intra"], var.container.group.deployment.docker.registry.ecr.privacy), true)
-    error_message = "docker repository privacy must be one of [public, private, intra]"
+    condition     = try(contains(["private", "public"], var.container.group.deployment.docker.registry.ecr.privacy), true)
+    error_message = "docker repository privacy must be one of [public, private]"
   }
 
   validation {
@@ -239,11 +232,11 @@ data "aws_ec2_instance_types" "region" {
     postcondition {
       condition     = sort(distinct([for instance_type in var.container.group.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
       error_message = <<EOF
-      ec2 instances type are not all available
-      want::
-      ${jsonencode(sort([for instance_type in var.container.group.ec2.instance_types : instance_type]))}
-      got::
-      ${jsonencode(sort(self.instance_types))}
+ec2 instances type are not all available
+want::
+${jsonencode(sort([for instance_type in var.container.group.ec2.instance_types : instance_type]))}
+got::
+${jsonencode(sort(self.instance_types))}
 EOF
     }
   }

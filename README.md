@@ -266,3 +266,9 @@ unset SKIP_cleanup_mongodb
 #### scraper-backend
 
 ![Scraper-backend](modules/services/scraper-backend/graph.png)
+
+# Debug
+
+## Expected a newline or comma to mark the beginning of the next attribute.
+
+This error comes from the fact that you give a pointer to terraform. Terraform is either a value or null. Terratest in Golang has types and its pointers are either `nil` or something like `0xc000409cc0`. In order to avoid that error you need to give it a value or a nil pointer, never a adress to a value.
