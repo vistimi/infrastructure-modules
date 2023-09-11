@@ -1,12 +1,21 @@
 locals {
   microservice_config_vars = yamldecode(file("../../microservice.yml"))
   # repository_config_vars   = yamldecode(file("./repository.yml"))
+
+  name = "${var.name_prefix}-scraper-be-${var.name_suffix}"
 }
+
+resource "null_resource" "env" {
+  provisioner "local-exec" {
+    command = "echo COMMON_NAME=${local.name} >> ${var.microservice.bucket_env.file_path}"
+  }
+}
+
 
 module "microservice" {
   source = "../../../../../../module/aws/container/microservice"
 
-  name       = "${var.name_prefix}-scraper-be-${var.name_suffix}"
+  name       = local.name
   vpc        = var.vpc
   route53    = var.microservice.route53
   container  = var.microservice.container

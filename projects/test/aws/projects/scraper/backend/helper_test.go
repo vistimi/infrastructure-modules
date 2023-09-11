@@ -1,16 +1,12 @@
 package microservice_scraper_backend_test
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 
-	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
-
-	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 )
 
@@ -83,15 +79,6 @@ var (
 )
 
 func SetupVars(t *testing.T) (vars map[string]any) {
-	_, nameSuffix, _, _, _, _ := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
-
-	// override.env
-	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
-	command := terratestShell.Command{
-		Command: "bash",
-		Args:    []string{"-c", bashCode},
-	}
-	terratestShell.RunCommandAndGetOutput(t, command)
 
 	// yml
 	path, err := filepath.Abs("config_override.yml")
