@@ -1,3 +1,7 @@
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 locals {
   # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/5.1.1?utm_content=documentLink&utm_medium=Visual+Studio+Code&utm_source=terraform-ls#private-versus-intra-subnets
   tier_tags = ["private", "public", "intra"]
@@ -8,10 +12,6 @@ locals {
     for i, tier in local.tier_tags :
     "${tier}" => [for az_idx in range(0, length(local.azs)) : cidrsubnet(var.cidr_ipv4, 4, i * length(local.azs) + az_idx)]
   }
-}
-
-data "aws_availability_zones" "available" {
-  state = "available"
 }
 
 module "vpc" {
@@ -27,7 +27,7 @@ module "vpc" {
   single_nat_gateway     = var.nat == "vpc" ? true : false
   one_nat_gateway_per_az = var.nat == "az" ? true : false
 
-  azs             = data.aws_availability_zones.available.names
+  azs             = local.azs
   public_subnets  = local.subnets["public"]
   private_subnets = local.subnets["private"]
   intra_subnets   = local.subnets["intra"]

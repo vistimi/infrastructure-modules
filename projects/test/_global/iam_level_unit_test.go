@@ -40,7 +40,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 		},
 		{
 			Name:                "dev",
-			Users:               []map[string]any{{"name": "dev1", "statements": userStatements}},
+			Users:               []map[string]any{{"name": "dev1"}},
 			ExternalAssumeRoles: []string{},
 		},
 	}
