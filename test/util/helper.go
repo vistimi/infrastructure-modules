@@ -1,5 +1,12 @@
 package util
 
+func Nil(obj any, objMap map[string]any, key string) map[string]any {
+	if obj != nil {
+		objMap[key] = obj
+	}
+	return objMap
+}
+
 func Ptr[K any](m K) *K {
 	return &m
 }

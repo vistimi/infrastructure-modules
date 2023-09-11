@@ -14,9 +14,10 @@ import (
 
 func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 	// t.Parallel()
-	namePrefix, nameSuffix, tags := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
-	vars, traffics, docker, bucketEnv := SetupOptionsRepository(t)
+	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
+	vars := SetupVars(t)
 	instance := testAwsModule.T3Small
+	serviceNameSuffix := "unique"
 
 	options := util.Ptr(terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -25,14 +26,14 @@ func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 			"name_suffix": nameSuffix,
 
 			"vpc": map[string]any{
-				"id":   "vpc-013a411b59dd8a08e",
+				"id":   util.GetEnvVariable("VPC_ID"),
 				"tier": "public",
 			},
 
 			"microservice": map[string]any{
 				"container": map[string]any{
 					"group": map[string]any{
-						"name": "unique",
+						"name": serviceNameSuffix,
 						"deployment": map[string]any{
 							"min_size":     1,
 							"max_size":     1,
@@ -57,8 +58,6 @@ func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 							"instance_types": []string{instance.Name},
 							"os":             "linux",
 							"os_version":     "2023",
-							"architecture":   instance.Architecture,
-							"processor":      instance.Processor,
 
 							"capacities": []map[string]any{
 								{
@@ -96,13 +95,15 @@ func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
-		// FIXME: terraform.InitAndApply(t, options)
-		terraform.InitAndPlan(t, options)
+		terraform.Init(t, options)
+		terraform.Plan(t, options)
+		terraform.Apply(t, options)
 	})
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
 		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
-		testAwsModule.ValidateMicroservice(t, name, Deployment)
-		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
+		serviceName := util.Format("-", name, serviceNameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "")
 	})
 }

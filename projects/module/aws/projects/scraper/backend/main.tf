@@ -10,7 +10,7 @@ module "microservice" {
   vpc        = var.vpc
   route53    = var.microservice.route53
   container  = var.microservice.container
-  bucket_env = merge(var.microservice.bucket_env, { name = local.microservice_config_vars.bucket_env_name })
+  bucket_env = var.microservice.bucket_env
   iam        = var.microservice.iam
 
   tags = var.tags

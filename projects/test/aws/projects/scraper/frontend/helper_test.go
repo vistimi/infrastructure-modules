@@ -1,15 +1,10 @@
 package microservice_scraper_frontend_test
 
 import (
-	"fmt"
 	"testing"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/gruntwork-io/terratest/modules/terraform"
 
-	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 )
@@ -23,18 +18,27 @@ const (
 )
 
 var (
-	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "dresspeng",
-		Repository:      "scraper-frontend",
+	MicroserviceInformation = testAwsModule.MicroserviceInformation{
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
-		ImageTag:        "latest",
+		Docker: testAwsModule.Docker{
+			Registry: &testAwsModule.Registry{
+				Ecr: &testAwsModule.Ecr{
+					Privacy: "privacy",
+				},
+			},
+			Repository: testAwsModule.Repository{
+				Name: "scraper-frontend-trunk", // TODO: make it flexible for testing other branches
+			},
+			Image: &testAwsModule.Image{
+				Tag: "latest",
+			},
+		},
 	}
 
-	Traffic = []testAwsModule.Traffic{
+	Traffics = []testAwsModule.Traffic{
 		{
 			Listener: testAwsModule.TrafficPoint{
-				Port:     util.Ptr(80),
 				Protocol: "http",
 			},
 			Target: testAwsModule.TrafficPoint{
@@ -49,7 +53,7 @@ var (
 		// 	},
 		// 	Target: testAwsModule.TrafficPoint{
 		// 		Port:     util.Ptr(3000),
-		// 		Protocol: "hTargetttps",
+		// 		Protocol: "https",
 		// 	},
 		// },
 	}
@@ -58,69 +62,21 @@ var (
 		MaxRetries: aws.Int(10),
 		Endpoints: []testAwsModule.EndpointTest{
 			{
-				Path:           GithubProject.HealthCheckPath,
+				Path:           MicroserviceInformation.HealthCheckPath,
 				ExpectedStatus: 200,
-				ExpectedBody:   nil,
+				ExpectedBody:   util.Ptr(`"ok"`),
+				MaxRetries:     aws.Int(3),
+			},
+			{
+				Path:           "/tags/wanted",
+				ExpectedStatus: 200,
+				ExpectedBody:   util.Ptr(`[]`),
 				MaxRetries:     aws.Int(3),
 			},
 		},
 	}
 )
 
-func SetupOptionsRepository(t *testing.T) (*terraform.Options, string, string) {
-	optionsMicroservice, namePrefix, nameSuffix := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
-
-	optionsProject := &terraform.Options{
-		TerraformDir: MicroservicePath,
-		Vars:         map[string]any{},
-	}
-
-	maps.Copy(optionsProject.Vars, optionsMicroservice.Vars)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any), map[string]any{
-		"iam": map[string]any{
-			"scope":        "accounts",
-			"requires_mfa": false,
-		},
-	})
-	traffics := []map[string]any{}
-	for _, traffic := range Traffic {
-		traffics = append(traffics, map[string]any{
-			"listener": map[string]any{
-				"port":     util.Value(traffic.Listener.Port),
-				"protocol": traffic.Listener.Protocol,
-			},
-			"target": map[string]any{
-				"port":              util.Value(traffic.Target.Port),
-				"protocol":          traffic.Target.Protocol,
-				"health_check_path": GithubProject.HealthCheckPath,
-			},
-			"base": util.Value(traffic.Base),
-		})
-	}
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any), map[string]any{
-		"traffics": traffics,
-	})
-	envKey := fmt.Sprintf("%s.env", GithubProject.Branch)
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["ecs"].(map[string]any)["task_definition"].(map[string]any), map[string]any{
-		"docker": map[string]any{
-			"registry": map[string]any{
-				"ecr": map[string]any{
-					"privacy": "private",
-				},
-			},
-			"repository": map[string]any{
-				"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
-			},
-			"image": map[string]any{
-				"tag": GithubProject.ImageTag,
-			},
-		},
-		"readonly_root_filesystem": false,
-	})
-	maps.Copy(optionsProject.Vars["microservice"].(map[string]any)["bucket_env"].(map[string]any), map[string]any{
-		"file_key":  envKey,
-		"file_path": "override.env",
-	})
-
-	return optionsProject, namePrefix, nameSuffix
+func SetupVars(t *testing.T) (vars map[string]any) {
+	return map[string]any{}
 }

@@ -12,10 +12,8 @@ locals {
         ${var.ecs.service.ec2.architecture == "gpu" ? "ECS_ENABLE_GPU_SUPPORT=true" : ""}
         ${var.ecs.service.ec2.architecture == "gpu" ? "ECS_NVIDIA_RUNTIME=nvidia" : ""}
         EOF
-        ${var.ecs.service.ec2.user_data != null ? var.ecs.service.ec2.user_data : ""}
       EOT
   }
-
 }
 
 #------------------------
@@ -27,7 +25,7 @@ module "asg" {
 
   for_each = {
     for obj in flatten([for instance_type in var.ecs.service.ec2.instance_types : [for capacity in var.ecs.service.ec2.capacities : {
-      name          = "${var.name}-${capacity.type}-${instance_type}"
+      name          = "${var.name}-${substr(capacity.type, 0, 2)}-${substr(instance_type, 0, 2)}"
       instance_type = instance_type
       capacity      = capacity
       }
@@ -35,7 +33,7 @@ module "asg" {
   }
 
   name          = each.key
-  instance_type = each.value
+  instance_type = each.value.instance_type
 
   capacity_provider = {
     weight = each.value.capacity.weight

@@ -23,15 +23,25 @@ const (
 )
 
 var (
-	GithubProject = testAwsModule.GithubProjectInformation{
-		Organization:    "dresspeng",
-		Repository:      "scraper-backend",
+	MicroserviceInformation = testAwsModule.MicroserviceInformation{
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/healthz",
-		ImageTag:        "latest",
+		Docker: testAwsModule.Docker{
+			Registry: &testAwsModule.Registry{
+				Ecr: &testAwsModule.Ecr{
+					Privacy: "privacy",
+				},
+			},
+			Repository: testAwsModule.Repository{
+				Name: "scraper-backend-trunk", // TODO: make it flexible for testing other branches
+			},
+			Image: &testAwsModule.Image{
+				Tag: "latest",
+			},
+		},
 	}
 
-	Traffic = []testAwsModule.Traffic{
+	Traffics = []testAwsModule.Traffic{
 		{
 			Listener: testAwsModule.TrafficPoint{
 				Protocol: "http",
@@ -57,7 +67,7 @@ var (
 		MaxRetries: aws.Int(10),
 		Endpoints: []testAwsModule.EndpointTest{
 			{
-				Path:           GithubProject.HealthCheckPath,
+				Path:           MicroserviceInformation.HealthCheckPath,
 				ExpectedStatus: 200,
 				ExpectedBody:   util.Ptr(`"ok"`),
 				MaxRetries:     aws.Int(3),
@@ -72,8 +82,8 @@ var (
 	}
 )
 
-func SetupOptionsRepository(t *testing.T) (vars map[string]any, traffics []map[string]any, docker map[string]any, bucketEnv map[string]any) {
-	_, nameSuffix, _ := testAwsProjectModule.SetupOptionsMicroserviceWrapper(t, projectName, serviceName)
+func SetupVars(t *testing.T) (vars map[string]any) {
+	_, nameSuffix, _, _, _, _ := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 
 	// override.env
 	bashCode := fmt.Sprintf("echo COMMON_NAME=%s >> %s/override.env", nameSuffix, MicroservicePath)
@@ -110,7 +120,6 @@ func SetupOptionsRepository(t *testing.T) (vars map[string]any, traffics []map[s
 		t.Errorf("config.yml file missing buckets.picture")
 	}
 	bucket_picture_name := *bucket_picture_name_extension.Name
-
 	vars = map[string]any{
 		"dynamodb_tables": dynamodb_tables,
 		"bucket_picture": map[string]any{
@@ -119,42 +128,5 @@ func SetupOptionsRepository(t *testing.T) (vars map[string]any, traffics []map[s
 			"versioning":    false,
 		},
 	}
-
-	for _, traffic := range Traffic {
-		traffics = append(traffics, map[string]any{
-			"listener": map[string]any{
-				"port":     util.Value(traffic.Listener.Port),
-				"protocol": traffic.Listener.Protocol,
-			},
-			"target": map[string]any{
-				"port":              util.Value(traffic.Target.Port),
-				"protocol":          traffic.Target.Protocol,
-				"health_check_path": GithubProject.HealthCheckPath,
-			},
-			"base": util.Value(traffic.Base),
-		})
-	}
-
-	docker = map[string]any{
-		"registry": map[string]any{
-			"ecr": map[string]any{
-				"privacy": "private",
-			},
-		},
-		"repository": map[string]any{
-			"name": util.Format("-", GithubProject.Repository, GithubProject.Branch),
-		},
-		"image": map[string]any{
-			"tag": GithubProject.ImageTag,
-		},
-	}
-
-	bucketEnv = map[string]any{
-		"force_destroy": true,
-		"versioning":    false,
-		"file_key":      fmt.Sprintf("%s.env", GithubProject.Branch),
-		"file_path":     "override.env",
-	}
-
-	return vars, traffics, docker, bucketEnv
+	return vars
 }

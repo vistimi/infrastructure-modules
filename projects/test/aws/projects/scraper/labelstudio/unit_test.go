@@ -102,9 +102,6 @@ func Test_Unit_External_Scraper_LabelStudio(t *testing.T) {
 			// 		"subdomain_name": id,
 			// 	},
 			// },
-			// "vpc": map[string]any{
-			// 	"id": "vpc-013a411b59dd8a08e",
-			// },
 			"iam": map[string]any{
 				"scope":        "accounts",
 				"requires_mfa": false,

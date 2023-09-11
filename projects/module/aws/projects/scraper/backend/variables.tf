@@ -86,8 +86,6 @@ variable "microservice" {
           instance_types = list(string)
           os             = string
           os_version     = string
-          architecture   = string
-          processor      = string
 
           capacities = optional(list(object({
             type   = optional(string, "ON_DEMAND")
@@ -100,10 +98,9 @@ variable "microservice" {
           architecture = string
 
           capacities = optional(list(object({
-            type                        = optional(string, "ON_DEMAND")
-            base                        = optional(number)
-            weight                      = optional(number, 1)
-            target_capacity_cpu_percent = optional(number, 66)
+            type   = optional(string, "ON_DEMAND")
+            base   = optional(number)
+            weight = optional(number, 1)
           })))
         }))
       })
@@ -125,35 +122,7 @@ variable "microservice" {
       eks = optional(object({
         cluster_version = string
       }))
-      ecs = optional(object({
-        service = optional(object({
-          task = optional(object({
-            minimum_healthy_percent = optional(number)
-            circuit_breaker = optional(object({
-              enable   = bool
-              rollback = bool
-              }), {
-              enable   = true
-              rollback = true
-            })
-
-            volumes = optional(list(object({
-              name = string
-              host = object({
-                sourcePath = string
-              })
-            })), [])
-            container = object({
-              health_check      = optional(any, {})
-              user              = optional(string)
-              volumes_from      = optional(list(any), [])
-              working_directory = optional(string)
-              mount_points      = optional(list(any), [])
-              linux_parameters  = optional(any, {})
-            })
-          }))
-        }))
-      }))
+      ecs = optional(object({}))
     })
   })
 }

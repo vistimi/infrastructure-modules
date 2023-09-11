@@ -29,6 +29,14 @@ variable "route53" {
   default = null
 }
 
+variable "bucket_env" {
+  type = object({
+    name          = string
+    file_key      = string
+  })
+  default = null
+}
+
 variable "traffics" {
   type = list(object({
     listener = object({

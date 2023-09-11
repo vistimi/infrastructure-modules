@@ -43,7 +43,7 @@ resource "null_resource" "instances" {
   lifecycle {
     precondition {
       condition     = length(distinct([for _, instance_specs in local.instances_specs : instance_specs.architecture])) == 1
-      error_message = "instances need to have the same architecture: ${ { for instance_type, instance_specs in local.instances_specs : instance_type => instance_specs.architecture } }"
+      error_message = "instances need to have the same architecture: ${jsonencode({ for instance_type, instance_specs in local.instances_specs : instance_type => instance_specs.architecture })}"
     }
   }
 }
@@ -74,76 +74,70 @@ resource "null_resource" "instance" {
 module "ecs" {
   source = "../../../../module/aws/container/ecs"
 
-  for_each = var.container.ecs != null ? { "${var.name}" = {} } : {}
-
   name     = var.name
   vpc      = var.vpc
   route53  = var.route53
   traffics = var.container.traffics
+  bucket_env = {
+    name     = join("-", [var.name, "env"])
+    file_key = var.bucket_env.file_key
+  }
   ecs = {
-    service = merge(
-      var.container.group,
-      {
-        task = merge(
-          var.container.group.deployment,
-          try(var.container.ecs.service.task, {}),
-          {
-            container = merge(
-              var.container.group.deployment.container,
-              try(var.container.ecs.service.task.container, {}),
-              {
-                env_file = try({
-                  bucket_name = one(values(module.bucket_env)).bucket.name
-                  file_name   = var.bucket_env.file_key
-                }, null)
-              }
-            )
-          }
-        )
-        ec2 = merge(
-          var.container.group.ec2,
-          {
-            architecture   = one(values(local.instances_specs)).architecture
-            processor_type = one(values(local.instances_specs)).processor_type
-          },
-        )
-      },
-    )
+    service = {
+      name = var.container.group.name
+      task = var.container.group.deployment
+      ec2 = {
+        key_name       = var.container.group.ec2.key_name
+        instance_types = var.container.group.ec2.instance_types
+        os             = var.container.group.ec2.os
+        os_version     = var.container.group.ec2.os_version
+        capacities     = var.container.group.ec2.capacities
+
+        architecture   = one(values(local.instances_specs)).architecture
+        processor_type = one(values(local.instances_specs)).processor_type
+      }
+      fargate = var.container.group.fargate
+    }
   }
 
   tags = local.tags
 }
 
-module "eks" {
-  source = "../../../../module/aws/container/eks"
+# module "eks" {
+#   source = "../../../../module/aws/container/eks"
 
-  for_each = var.container.eks != null ? { "${var.name}" = {} } : {}
+#   for_each = var.container.eks != null ? { "${var.name}" = {} } : {}
 
-  name     = var.name
-  vpc      = var.vpc
-  route53  = var.route53
-  traffics = var.container.traffics
-  eks = merge(
-    {
-      create = var.container.eks != null ? true : false
-      group = merge(
-        var.container.group,
-        {
-          ec2 = merge(
-            var.container.group.ec2,
-            {
-              architecture   = one(values(local.instances_specs)).architecture
-              processor_type = one(values(local.instances_specs)).processor_type
-            },
-          ),
-        },
-      )
-    },
-    var.container.eks
-  )
+#   name     = var.name
+#   vpc      = var.vpc
+#   route53  = var.route53
+#   traffics = var.container.traffics
+#   bucket_env = try({
+#     name     = one(values(module.bucket_env)).bucket.name
+#     file_key = var.bucket_env.file_key
+#   }, null)
+#   eks = {
+#     create          = var.container.eks != null ? true : false
+#     cluster_version = var.container.eks.cluster_version
+#     group = {
+#       name       = var.container.group.name
+#       deployment = var.container.group.deployment
+#       ec2 = {
+#         key_name       = var.container.group.ec2.key_name
+#         instance_types = var.container.group.ec2.instance_types
+#         os             = var.container.group.ec2.os
+#         os_version     = var.container.group.ec2.os_version
+#         capacities     = var.container.group.ec2.capacities
 
-  tags = local.tags
-}
+#         architecture   = one(values(local.instances_specs)).architecture
+#         processor_type = one(values(local.instances_specs)).processor_type
+#       }
+#       fargate = var.container.group.fargate
+#     }
+#   }
+
+#   tags = local.tags
+# }
 
 # ------------------------
 #     Bucket env
@@ -151,9 +145,7 @@ module "eks" {
 module "bucket_env" {
   source = "../../../../module/aws/data/bucket"
 
-  for_each = var.bucket_env != null ? { unique = {} } : {}
-
-  name          = join("-", [var.name, var.bucket_env.name])
+  name          = join("-", [var.name, "env"])
   force_destroy = var.bucket_env.force_destroy
   versioning    = var.bucket_env.versioning
   encryption = {
@@ -169,10 +161,8 @@ module "bucket_env" {
 }
 
 resource "aws_s3_object" "env" {
-  for_each = var.bucket_env != null ? { unique = {} } : {}
-
   key                    = var.bucket_env.file_key
-  bucket                 = module.bucket_env[each.key].bucket.name
+  bucket                 = module.bucket_env.bucket.name
   source                 = var.bucket_env.file_path
   server_side_encryption = "aws:kms"
 }

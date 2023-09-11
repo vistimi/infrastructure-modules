@@ -47,30 +47,24 @@ variable "traffics" {
   }))
 }
 
+variable "bucket_env" {
+  type = object({
+    name     = string
+    file_key = string
+  })
+  nullable = false
+}
+
 variable "ecs" {
   type = object({
     service = object({
       name = string
       task = object({
-        min_size                = number
-        max_size                = number
-        desired_size            = number
-        maximum_percent         = optional(number)
-        minimum_healthy_percent = optional(number)
-        circuit_breaker = optional(object({
-          enable   = bool
-          rollback = bool
-          }), {
-          enable   = true
-          rollback = true
-        })
+        min_size        = number
+        max_size        = number
+        desired_size    = number
+        maximum_percent = optional(number)
 
-        volumes = optional(list(object({
-          name = string
-          host = object({
-            sourcePath = string
-          })
-        })), [])
         memory = optional(number)
         cpu    = number
 
@@ -80,10 +74,6 @@ variable "ecs" {
           memory_reservation = optional(number)
           cpu                = number
           gpu                = optional(number)
-          env_file = optional(object({
-            bucket_name = string
-            file_name   = string
-          }))
           environment = optional(list(object({
             name  = string
             value = string
@@ -105,19 +95,9 @@ variable "ecs" {
               tag = string
             }))
           })
-          resource_requirements = optional(list(object({
-            type  = string
-            value = string
-          })), [])
           command                  = optional(list(string), [])
           entrypoint               = optional(list(string), [])
-          health_check             = optional(any, {})
           readonly_root_filesystem = optional(bool)
-          user                     = optional(string)
-          volumes_from             = optional(list(any), [])
-          working_directory        = optional(string)
-          mount_points             = optional(list(any), [])
-          linux_parameters         = optional(any, {})
         })
       })
       ec2 = optional(object({

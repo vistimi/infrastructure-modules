@@ -1,12 +1,13 @@
-package microservice_cuda_test
+package microservice_test
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
-	"time"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/aws/aws-sdk-go/aws"
+	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
 	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -27,7 +28,37 @@ var (
 	AccountRegion = util.GetEnvVariable("AWS_REGION_NAME")
 	DomainName    = fmt.Sprintf("%s.%s", util.GetEnvVariable("DOMAIN_NAME"), util.GetEnvVariable("DOMAIN_SUFFIX"))
 
-	Traffic = []testAwsModule.Traffic{
+	MicroserviceInformation = testAwsModule.MicroserviceInformation{
+		Branch:          "trunk", // TODO: make it flexible for testing other branches
+		HealthCheckPath: "/",
+		Docker: testAwsModule.Docker{
+			Registry: &testAwsModule.Registry{
+				Ecr: &testAwsModule.Ecr{
+					Privacy:    "private",
+					AccountId:  util.Ptr("763104351884"),
+					RegionName: util.Ptr("us-east-1"),
+				},
+			},
+			Repository: testAwsModule.Repository{
+				Name: "mxnet-inference",
+			},
+			Image: &testAwsModule.Image{
+				// "1.8.1-cpu-py36-ubuntu18.04-v1.7",
+				Tag: "1.6.0-cpu-py36-ubuntu16.04",
+			},
+		},
+	}
+	// "registry": map[string]any{
+	// 	"name": "awsdeeplearningteam",
+	// },
+	// "repository": map[string]any{
+	// 	"name": "multi-model-server",
+	// },
+	// "image": map[string]any{
+	// 	"tag": "latest",
+	// },
+
+	Traffics = []testAwsModule.Traffic{
 		{
 			Listener: testAwsModule.TrafficPoint{
 				Port:     util.Ptr(80),
@@ -63,41 +94,19 @@ var (
 	}
 )
 
-// https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-inference.html
-func Test_Unit_Microservice_Fpga_Inferentia_EC2_MXNet(t *testing.T) {
-	t.Parallel()
+func SetupVars(t *testing.T) (vars map[string]any) {
+	return map[string]any{}
+}
 
-	rand.Seed(time.Now().UnixNano())
+// https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
+// https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
+func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
+	// t.Parallel()
+	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
+	vars := SetupVars(t)
+	instance := testAwsModule.T3Small
+	serviceNameSuffix := "unique"
 
-	// global variables
-	id := util.RandomID(4)
-	name := util.Format("-", projectName, serviceName, util.GetEnvVariable("AWS_PROFILE_NAME"), id)
-	tags := map[string]string{
-		"TestID":  id,
-		"Account": AccountName,
-		"Region":  AccountRegion,
-		"Project": projectName,
-		"Service": serviceName,
-	}
-
-	instance := testAwsModule.Inf1Xlarge
-	keyOnDemand := "on-demand"
-
-	traffics := []map[string]any{}
-	for _, traffic := range Traffic {
-		traffics = append(traffics, map[string]any{
-			"listener": map[string]any{
-				"port":     util.Value(traffic.Listener.Port),
-				"protocol": traffic.Listener.Protocol,
-			},
-			"target": map[string]any{
-				"port":              util.Value(traffic.Target.Port),
-				"protocol":          traffic.Target.Protocol,
-				"health_check_path": "/",
-			},
-			"base": util.Value(traffic.Base),
-		})
-	}
 	devices := []map[string]any{}
 	for _, devicePath := range instance.DevicePaths {
 		devices = append(devices, map[string]any{
@@ -110,33 +119,37 @@ func Test_Unit_Microservice_Fpga_Inferentia_EC2_MXNet(t *testing.T) {
 			},
 		})
 	}
-	options := &terraform.Options{
+
+	options := util.Ptr(terraform.Options{
 		TerraformDir: MicroservicePath,
-		Vars: map[string]any{
-			"name": name,
-			"tags": tags,
+		Vars: map[string]interface{}{
+			"name_prefix": namePrefix,
+			"name_suffix": nameSuffix,
 
 			"vpc": map[string]any{
-				"id":   "vpc-013a411b59dd8a08e",
+				"id":   util.GetEnvVariable("VPC_ID"),
 				"tier": "public",
 			},
 
-			"container": map[string]any{
-				"traffics": traffics,
-				"group": map[string]any{
-					"deployment": map[string]any{
-						"min_count":     1,
-						"desired_count": 1,
-						"max_count":     1,
+			"microservice": map[string]any{
+				"container": map[string]any{
+					"group": map[string]any{
+						"name": serviceNameSuffix,
+						"deployment": map[string]any{
+							"min_size":     1,
+							"max_size":     1,
+							"desired_size": 1,
 
-						"cpu":    instance.Cpu,
-						"memory": instance.MemoryAllowed,
+							"cpu":    instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
+							"memory": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
 
-						"containers": []map[string]any{
-							{
-								"cpu":                instance.Cpu,
-								"memory_reservation": instance.MemoryAllowed,
+							"container": map[string]any{
+								"name":               "unique",
+								"cpu":                instance.Cpu,                                             // supported CPU values are between 128 CPU units (0.125 vCPUs) and 10240 CPU units (10 vCPUs)
+								"memory":             instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // the limit is dependent upon the amount of available memory on the underlying Amazon EC2 instance you use
+								"memory_reservation": instance.MemoryAllowed - testAwsModule.ECSReservedMemory, // memory_reservation <= memory
 
+								"docker": docker,
 								"entrypoint": []string{
 									"/bin/bash",
 									"-c",
@@ -163,77 +176,39 @@ func Test_Unit_Microservice_Fpga_Inferentia_EC2_MXNet(t *testing.T) {
 										"add": []string{"IPC_LOCK"},
 									},
 								},
+							},
+						},
 
-								// WARNING: requires permissions to that private external account ECR repository
-								"docker": map[string]any{
-									"registry": map[string]any{
-										"ecr": map[string]any{
-											"privacy":     "private",
-											"account_id":  "763104351884",
-											"region_name": "us-east-1",
-										},
-									},
-									"repository": map[string]any{
-										"name": "mxnet-inference",
-									},
-									"image": map[string]any{
-										// "tag": "1.8.1-cpu-py36-ubuntu18.04-v1.7",
-										"tag": "1.6.0-cpu-py36-ubuntu16.04",
-									},
-									// "registry": map[string]any{
-									// 	"name": "awsdeeplearningteam",
-									// },
-									// "repository": map[string]any{
-									// 	"name": "multi-model-server",
-									// },
-									// "image": map[string]any{
-									// 	"tag": "latest",
-									// },
+						"ec2": map[string]any{
+							"key_name":       nil,
+							"instance_types": []string{instance.Name},
+							"os":             "linux",
+							"os_version":     "2023",
+
+							"capacities": []map[string]any{
+								{
+									"type":   "ON_DEMAND",
+									"base":   nil, // no preferred instance amount
+									"weight": 50,  // 50% chance
 								},
 							},
 						},
 					},
 
-					"ec2": map[string]map[string]any{
-						keyOnDemand: {
-							"os":           "linux",
-							"os_version":   "2023",
-							"architecture": instance.Architecture,
-							"processor":    instance.Processor,
-
-							"instance_type": instance.Name,
-							"key_name":      nil,
-							"use_spot":      false,
-							"asg": map[string]any{
-								"instance_refresh": map[string]any{
-									"strategy": "Rolling",
-									"preferences": map[string]any{
-										"checkpoint_delay":       600,
-										"checkpoint_percentages": []int{35, 70, 100},
-										"instance_warmup":        300,
-										"min_healthy_percentage": 80,
-									},
-									"triggers": []string{"tag"},
-								},
-							},
-							"capacity_provider": map[string]any{
-								"base":                        nil, // no preferred instance amount
-								"weight":                      50,  // 50% chance
-								"target_capacity_cpu_percent": 70,
-							},
-						},
-					},
+					"traffics": traffics,
+					"ecs":      map[string]any{},
 				},
+				"iam": map[string]any{
+					"scope":        "accounts",
+					"requires_mfa": false,
+				},
+				"bucket_env": bucketEnv,
 			},
 
-			"ecs": map[string]any{},
-
-			"iam": map[string]any{
-				"scope":        "accounts",
-				"requires_mfa": false,
-			},
+			"tags": tags,
 		},
-	}
+	})
+	maps.Copy(options.Vars, vars)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -246,13 +221,16 @@ func Test_Unit_Microservice_Fpga_Inferentia_EC2_MXNet(t *testing.T) {
 	}()
 
 	terratestStructure.RunTestStage(t, "deploy", func() {
-		terraform.InitAndApply(t, options)
+		terraform.Init(t, options)
+		terraform.Plan(t, options)
+		terraform.Apply(t, options)
 	})
-
 	terratestStructure.RunTestStage(t, "validate", func() {
 		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-		testAwsModule.ValidateMicroservice(t, name, Deployment)
-		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffic, name, "")
+		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
+		serviceName := util.Format("-", name, serviceNameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "")
 	})
 }
 
