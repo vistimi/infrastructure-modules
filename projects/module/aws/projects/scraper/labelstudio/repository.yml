@@ -1,4 +1,4 @@
-project_name: scraper
+project_name: sp
 service_name: ls
 bucket_label_name: label
 statements:
@@ -6,9 +6,7 @@ statements:
     actions: ["s3:*"]
     effect: "Allow"
     resources:
-      [
-        "arn:aws:s3:::${name_prefix}scraper-ls-${user_name}-${branch_name}-label",
-      ]
+      ["arn:aws:s3:::${name_prefix}sp-ls-${user_name}-${branch_name}-label"]
   - sid: Microservice
     actions:
       [
