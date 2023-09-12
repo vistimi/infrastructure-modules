@@ -117,7 +117,10 @@ func ValidateRestEndpoints(t *testing.T, microservicePath string, deployment Dep
 			elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
 			terratestLogger.Log(t, fmt.Sprintf("elb :: %+v", elb))
 			if elb != nil {
-				elbDnsUrl := elb.(map[string]any)["lb_dns_name"].(string)
+				elbDnsUrl := elb.(map[string]any)["lb"].(map[string]any)["dns_name"].(string)
+				if elbDnsUrl == "" || elbDnsUrl == "null" {
+					t.Fatalf("ECS ELB DNS is null: %s", elbDnsUrl)
+				}
 				elbDnsUrl = fmt.Sprintf("http://%s:%d", elbDnsUrl, port)
 				fmt.Printf("\n\nLoad Balancer DNS = %s\n\n", elbDnsUrl)
 

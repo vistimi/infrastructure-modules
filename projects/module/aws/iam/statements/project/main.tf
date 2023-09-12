@@ -76,7 +76,6 @@ locals {
       permission = {
         user = {
           statements = [
-
             {
               sid       = "SelfMaintenance"
               actions   = ["iam:ListMFADevices", "iam:CreateVirtualMFADevice", "iam:DeactivateMFADevice", "iam:ListAccessKeys"]
@@ -93,7 +92,7 @@ locals {
               sid       = "DynamodbBackend"
               actions   = ["dynamodb:*"]
               effect    = "Allow"
-              resources = ["arn:aws:dynamodb:${local.region_name}:${local.account_id}:table/*${var.user_name}*${var.backend.dynamodb_table_name}"]
+              resources = ["arn:aws:dynamodb:*:${local.account_id}:table/*${var.user_name}*${var.backend.dynamodb_table_name}"]
             },
           ]
         }
