@@ -6,7 +6,7 @@ locals {
 module "microservice" {
   source = "../../../../../../module/aws/container/microservice"
 
-  name       = "${var.name_prefix}-scraper-fe-${var.name_suffix}"
+  name       = "${var.name_prefix}-sp-fe-${var.name_suffix}"
   vpc        = var.vpc
   route53    = var.microservice.route53
   container  = var.microservice.container

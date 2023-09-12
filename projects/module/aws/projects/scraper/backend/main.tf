@@ -2,7 +2,7 @@ locals {
   microservice_config_vars = yamldecode(file("../../microservice.yml"))
   # repository_config_vars   = yamldecode(file("./repository.yml"))
 
-  name = "${var.name_prefix}-scraper-be-${var.name_suffix}"
+  name = "${var.name_prefix}-sp-be-${var.name_suffix}"
 }
 
 resource "null_resource" "env" {
