@@ -1,4 +1,4 @@
-project_name: scraper
+project_name: sp
 service_name: fe
 deployment_type: microservice
 statements:
@@ -14,12 +14,12 @@ statements:
     effect: "Allow"
     resources:
       [
-        "arn:aws:dynamodb:*:*:table/${name_prefix}scraper-${user_name}-${branch_name}-*",
+        "arn:aws:dynamodb:*:*:table/${name_prefix}sp-${user_name}-${branch_name}-*",
       ]
   - sid: BucketPicturesRead
     actions: ["s3:DescribeJob", "s3:Get*", "s3:List*"]
     effect: "Allow"
     resources:
       [
-        "arn:aws:s3:::${name_prefix}scraper-${user_name}-${branch_name}-${bucket_picture_name}",
+        "arn:aws:s3:::${name_prefix}sp-${user_name}-${branch_name}-${bucket_picture_name}",
       ]
