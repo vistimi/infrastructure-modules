@@ -114,7 +114,7 @@ func ValidateRestEndpoints(t *testing.T, microservicePath string, deployment Dep
 		if traffic.Listener.Protocol == "http" {
 			port := util.Value(traffic.Listener.Port, 80)
 			// test Load Balancer HTTP
-			elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
+			elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "microservice.ecs.elb"))
 			terratestLogger.Log(t, fmt.Sprintf("elb :: %+v", elb))
 			if elb != nil {
 				elbDnsUrl := elb.(map[string]any)["lb"].(map[string]any)["dns_name"].(string)
@@ -149,30 +149,34 @@ func ValidateRestEndpoints(t *testing.T, microservicePath string, deployment Dep
 			}
 
 			// test Route53
-			route53 := ExtractFromState(t, microservicePath, "ecs.route53")
+			route53 := ExtractFromState(t, microservicePath, "microservice.ecs.route53")
 			terratestLogger.Log(t, fmt.Sprintf("route53 :: %+v", route53))
 			if route53 != nil {
-				recordName := route53.(map[string]any)["records"].(map[string]any)[fmt.Sprintf("%s.%s", util.GetEnvVariable("DOMAIN_NAME"), util.GetEnvVariable("DOMAIN_SUFFIX"))].(map[string]any)["name"].(map[string]any)[name+" A"].(string)
-				route53DnsUrl := fmt.Sprintf("http://%s:%d", recordName, port)
-				fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
+				records := route53.(map[string]any)["records"].(map[string]any)
+				terratestLogger.Log(t, fmt.Sprintf("records :: %+v", records))
+				if len(records) != 0 {
+					recordName := records[fmt.Sprintf("%s.%s", util.GetEnvVariable("DOMAIN_NAME"), util.GetEnvVariable("DOMAIN_SUFFIX"))].(map[string]any)["name"].(map[string]any)[name+" A"].(string)
+					route53DnsUrl := fmt.Sprintf("http://%s:%d", recordName, port)
+					fmt.Printf("\n\nRoute53 DNS = %s\n\n", route53DnsUrl)
 
-				// add dns to endpoints
-				endpointsRoute53 := []EndpointTest{}
-				for _, endpoint := range deployment.Endpoints {
-					newEndpoint := endpoint
+					// add dns to endpoints
+					endpointsRoute53 := []EndpointTest{}
+					for _, endpoint := range deployment.Endpoints {
+						newEndpoint := endpoint
 
-					if endpoint.Command != nil {
-						re := regexp.MustCompile(`<URL>`)
-						newEndpoint.Command = util.Ptr(re.ReplaceAllString(util.Value(endpoint.Command), route53DnsUrl))
-					} else {
-						newEndpoint.Path = route53DnsUrl + endpoint.Path
+						if endpoint.Command != nil {
+							re := regexp.MustCompile(`<URL>`)
+							newEndpoint.Command = util.Ptr(re.ReplaceAllString(util.Value(endpoint.Command), route53DnsUrl))
+						} else {
+							newEndpoint.Path = route53DnsUrl + endpoint.Path
+						}
+						endpointsRoute53 = append(endpointsRoute53, newEndpoint)
 					}
-					endpointsRoute53 = append(endpointsRoute53, newEndpoint)
-				}
 
-				terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
-					TestRestEndpoints(t, endpointsRoute53)
-				})
+					terratestStructure.RunTestStage(t, "validate_rest_endpoints_route53", func() {
+						TestRestEndpoints(t, endpointsRoute53)
+					})
+				}
 			}
 
 		} else if traffic.Listener.Protocol == "https" {

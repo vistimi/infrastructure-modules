@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	projectName = "scraper"
+	projectName = "sp"
 	serviceName = "be"
 
 	Rootpath         = "../../../../.."

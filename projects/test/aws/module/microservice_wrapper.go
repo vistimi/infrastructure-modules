@@ -29,7 +29,7 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 
 	// global variables
 	namePrefix = "vi"
-	id := util.RandomID(4)
+	id := "sdra" //util.RandomID(4)	// FIXME:
 	nameSuffix = strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags = map[string]string{
 		"TestID":  id,
@@ -49,7 +49,8 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 		listener := map[string]any{
 			"protocol": traffic.Listener.Protocol,
 		}
-		listener = util.Nil(traffic.Listener.Port, target, "port")
+		listener = util.Nil(traffic.Listener.Port, listener, "port")
+		listener = util.Nil(traffic.Listener.ProtocolVersion, listener, "protocol_version")
 
 		trafficsMap = append(trafficsMap, map[string]any{
 			"listener": listener,

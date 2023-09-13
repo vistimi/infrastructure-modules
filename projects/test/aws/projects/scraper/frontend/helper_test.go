@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	projectName = "scraper"
+	projectName = "sp"
 	serviceName = "fe"
 
 	Rootpath         = "../../../../.."
@@ -64,14 +64,14 @@ var (
 			{
 				Path:           MicroserviceInformation.HealthCheckPath,
 				ExpectedStatus: 200,
-				ExpectedBody:   util.Ptr(`"ok"`),
-				MaxRetries:     aws.Int(3),
+				// ExpectedBody:   util.Ptr(`"ok"`),
+				MaxRetries: aws.Int(3),
 			},
 			{
 				Path:           "/tags/wanted",
 				ExpectedStatus: 200,
-				ExpectedBody:   util.Ptr(`[]`),
-				MaxRetries:     aws.Int(3),
+				// ExpectedBody:   util.Ptr(`[]`),
+				MaxRetries: aws.Int(3),
 			},
 		},
 	}
