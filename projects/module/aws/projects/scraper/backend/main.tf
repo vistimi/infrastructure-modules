@@ -2,7 +2,9 @@ locals {
   microservice_config_vars = yamldecode(file("../../microservice.yml"))
   # repository_config_vars   = yamldecode(file("./repository.yml"))
 
-  name = "${var.name_prefix}-sp-be-${var.name_suffix}"
+  project_name = "sp"
+  service_name = "be"
+  name         = join("-", [var.name_prefix, local.project_name, local.service_name, var.var.name_suffix])
 }
 
 module "microservice" {
@@ -27,7 +29,7 @@ module "dynamodb_table" {
   }
 
   # TODO: handle no sort key
-  table_name                   = "${var.name_prefix}-scraper-${var.name_suffix}-${each.value.name}"
+  table_name                   = join("-", [var.name_prefix, local.project_name, var.var.name_suffix, each.value.name])
   primary_key_name             = each.value.primary_key_name
   primary_key_type             = each.value.primary_key_type
   sort_key_name                = each.value.sort_key_name
@@ -43,7 +45,7 @@ module "dynamodb_table" {
 module "bucket_picture" {
   source = "../../../../../../module/aws/data/bucket"
 
-  name                          = "${var.name_prefix}-scraper-${var.name_suffix}-${var.bucket_picture.name}"
+  name                          = join("-", [var.name_prefix, local.project_name, var.var.name_suffix, var.bucket_picture.name])
   force_destroy                 = var.bucket_picture.force_destroy
   versioning                    = var.bucket_picture.versioning
   bucket_attachement_role_names = [module.microservice.ecs.service.task_iam_role_name]
