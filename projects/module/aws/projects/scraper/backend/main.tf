@@ -5,13 +5,6 @@ locals {
   name = "${var.name_prefix}-sp-be-${var.name_suffix}"
 }
 
-resource "null_resource" "env" {
-  provisioner "local-exec" {
-    command = "echo COMMON_NAME=${local.name} >> ${var.microservice.bucket_env.file_path}"
-  }
-}
-
-
 module "microservice" {
   source = "../../../../../../module/aws/container/microservice"
 

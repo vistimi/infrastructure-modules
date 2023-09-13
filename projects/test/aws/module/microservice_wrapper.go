@@ -29,7 +29,7 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 
 	// global variables
 	namePrefix = "vi"
-	id := "sdra" //util.RandomID(4)	// FIXME:
+	id := util.RandomID(4)
 	nameSuffix = strings.ToLower(util.Format("-", util.GetEnvVariable("AWS_PROFILE_NAME"), id))
 	tags = map[string]string{
 		"TestID":  id,

@@ -47,7 +47,7 @@ module "ecs" {
 
   # TODO: one service per instance type
   services = {
-    "${var.name}-${var.ecs.service.name}" = {
+    "${var.ecs.service.name}" = {
       #------------
       # Service
       #------------
@@ -72,7 +72,7 @@ module "ecs" {
         # TODO: this-service
         service = {
           target_group_arn = element(module.elb.target_group.arns, 0) // one LB per target group
-          container_name   = "${var.name}-${var.ecs.service.task.container.name}"
+          container_name   = "${var.ecs.service.task.container.name}"
           container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
       }
@@ -193,7 +193,7 @@ module "ecs" {
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
-        "${var.name}-${var.ecs.service.task.container.name}" = {
+        "${var.ecs.service.task.container.name}" = {
 
           # enable_cloudwatch_logging              = true
           # create_cloudwatch_log_group            = true

@@ -6,6 +6,6 @@ output "ecs" {
 #   value = one(values(module.eks))
 # }
 
-output "bucket_env" {
-  value = one(values(module.bucket_env))
+output "env" {
+  value = module.bucket_env
 }
