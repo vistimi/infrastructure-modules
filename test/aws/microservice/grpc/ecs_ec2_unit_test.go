@@ -32,8 +32,11 @@ var (
 		Branch:          "trunk", // TODO: make it flexible for testing other branches
 		HealthCheckPath: "/helloworld.Greeter/SayHello",
 		Docker: testAwsModule.Docker{
+			Registry: &testAwsModule.Registry{
+				Name: util.Ptr("grpc"),
+			},
 			Repository: testAwsModule.Repository{
-				Name: "ubuntu",
+				Name: "java-example-hostname",
 			},
 			Image: &testAwsModule.Image{
 				Tag: "latest",
@@ -75,7 +78,7 @@ func SetupVars(t *testing.T) (vars map[string]any) {
 
 // https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
-func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
+func Test_Unit_Microservice_Grpc_ECS_EC2(t *testing.T) {
 	// t.Parallel()
 	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)
@@ -102,16 +105,8 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 							"desired_size": 1,
 
 							"container": map[string]any{
-								"name":   "unique",
-								"docker": docker,
-								"entrypoint": []string{
-									"/bin/bash",
-									"-c",
-								},
-								// install systemmd; service example start
-								"command": []string{
-									"apt update -q; apt install apache2 ufw systemctl curl -yq; ufw app list; systemctl start apache2; curl localhost; sleep infinity",
-								},
+								"name":                     "unique",
+								"docker":                   docker,
 								"readonly_root_filesystem": false,
 							},
 						},
@@ -131,10 +126,9 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 							},
 						},
 					},
-
-					"traffics": traffics,
-					"ecs":      map[string]any{},
+					"ecs": map[string]any{},
 				},
+				"traffics": traffics,
 				"iam": map[string]any{
 					"scope":        "accounts",
 					"requires_mfa": false,

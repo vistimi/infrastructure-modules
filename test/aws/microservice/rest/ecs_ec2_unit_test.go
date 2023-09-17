@@ -83,7 +83,7 @@ func SetupVars(t *testing.T) (vars map[string]any) {
 
 // https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-dlc-ecs-pytorch.html
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
-func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
+func Test_Unit_Microservice_Rest_ECS_EC2_Httpd(t *testing.T) {
 	// t.Parallel()
 	namePrefix, nameSuffix, tags, traffics, docker, bucketEnv := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)
@@ -110,7 +110,7 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 							"desired_size": 1,
 
 							"container": map[string]any{
-								"name":               "unique",
+								"name":   "unique",
 								"docker": docker,
 								"entrypoint": []string{
 									"/bin/bash",
@@ -139,10 +139,9 @@ func Test_Unit_Microservice_Rest_EC2_Httpd(t *testing.T) {
 							},
 						},
 					},
-
-					"traffics": traffics,
-					"ecs":      map[string]any{},
+					"ecs": map[string]any{},
 				},
+				"traffics": traffics,
 				"iam": map[string]any{
 					"scope":        "accounts",
 					"requires_mfa": false,

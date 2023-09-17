@@ -32,8 +32,9 @@ module "asg" {
     ]]) : obj.name => { instance_type = obj.instance_type, capacity = obj.capacity }
   }
 
-  name          = each.key
-  instance_type = each.value.instance_type
+  name           = each.key
+  instance_type  = each.value.instance_type
+  processor_type = var.ecs.service.ec2.processor_type
 
   capacity_provider = {
     weight = each.value.capacity.weight

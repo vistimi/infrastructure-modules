@@ -36,7 +36,7 @@ variable "bucket_env" {
     file_path     = string
     file_key      = string
   })
-  nullable = false
+  default = null
 }
 
 variable "iam" {
@@ -49,7 +49,60 @@ variable "iam" {
   })
 }
 
-variable "container" {
+variable "traffics" {
+  type = list(object({
+    listener = object({
+      protocol         = string
+      port             = optional(number)
+      protocol_version = optional(string)
+    })
+    target = object({
+      protocol          = string
+      port              = number
+      protocol_version  = optional(string)
+      health_check_path = optional(string)
+      status_code       = optional(string)
+    })
+    base = optional(bool)
+  }))
+  nullable = false
+
+  # traffic
+  validation {
+    condition     = length(var.traffics) > 0
+    error_message = "traffic must have at least one element"
+  }
+  validation {
+    condition     = length([for traffic in var.traffics : traffic.base if traffic.base == true || length(var.traffics) == 1]) == 1
+    error_message = "traffics must have exactly one base or only one element (base not required)"
+  }
+  validation {
+    condition     = length(distinct([for traffic in var.traffics : { listener = traffic.listener, target = traffic.target }])) == length(var.traffics)
+    error_message = "traffics elements cannot be similar"
+  }
+
+  # traffic listeners
+  validation {
+    condition     = alltrue([for traffic in var.traffics : contains(["http", "https", "tcp"], traffic.listener.protocol)])
+    error_message = "Listener protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.traffics : traffic.listener.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.listener.protocol_version) : true])
+    error_message = "Listener protocol version must be one of [http1, http2, grpc] or null"
+  }
+
+  # traffic targets
+  validation {
+    condition     = alltrue([for traffic in var.traffics : contains(["http", "https", "tcp"], traffic.target.protocol)])
+    error_message = "Target protocol must be one of [http, https, tcp]"
+  }
+  validation {
+    condition     = alltrue([for traffic in var.traffics : traffic.target.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.target.protocol_version) : true])
+    error_message = "Target protocol version must be one of [http1, http2, grpc] or null"
+  }
+}
+
+variable "orchestrator" {
   type = object({
     group = object({
       name = string
@@ -59,8 +112,12 @@ variable "container" {
         desired_size    = number
         maximum_percent = optional(number)
 
-        container = object({
-          name = string
+        containers = list(object({
+          name        = string
+          base        = optional(bool)
+          cpu         = optional(number)
+          memory      = optional(number)
+          devices_idx = optional(list(number))
           environment = optional(list(object({
             name  = string
             value = string
@@ -85,7 +142,8 @@ variable "container" {
           command                  = optional(list(string), [])
           entrypoint               = optional(list(string), [])
           readonly_root_filesystem = optional(bool)
-        })
+          user                     = optional(string)
+        }))
       })
       ec2 = optional(object({
         key_name       = optional(string)
@@ -110,21 +168,6 @@ variable "container" {
         })))
       }))
     })
-    traffics = list(object({
-      listener = object({
-        protocol         = string
-        port             = optional(number)
-        protocol_version = optional(string)
-      })
-      target = object({
-        protocol          = string
-        port              = number
-        protocol_version  = optional(string)
-        health_check_path = optional(string)
-        status_code       = optional(string)
-      })
-      base = optional(bool)
-    }))
     eks = optional(object({
       cluster_version = string
     }))
@@ -133,64 +176,35 @@ variable "container" {
 
   # orchestrator
   validation {
-    condition     = (var.container.ecs != null && var.container.eks == null) || (var.container.ecs == null && var.container.eks != null)
+    condition     = (var.orchestrator.ecs != null && var.orchestrator.eks == null) || (var.orchestrator.ecs == null && var.orchestrator.eks != null)
     error_message = "either ecs or eks should have a configuration"
   }
 
   # deployment type
   validation {
-    condition     = (var.container.group.ec2 != null && var.container.group.fargate == null) || (var.container.group.ec2 == null && var.container.group.fargate != null)
+    condition     = (var.orchestrator.group.ec2 != null && var.orchestrator.group.fargate == null) || (var.orchestrator.group.ec2 == null && var.orchestrator.group.fargate != null)
     error_message = "either fargate or ec2 should have a configuration"
   }
 
-  # traffic
+  # container
   validation {
-    condition     = length(var.container.traffics) > 0
-    error_message = "traffic must have at least one element"
-  }
-  validation {
-    condition     = length([for traffic in var.container.traffics : traffic.base if traffic.base == true || length(var.container.traffics) == 1]) == 1
-    error_message = "traffics must have exactly one base or only one element (base not required)"
-  }
-  validation {
-    condition     = length(distinct([for traffic in var.container.traffics : { listener = traffic.listener, target = traffic.target }])) == length(var.container.traffics)
-    error_message = "traffics elements cannot be similar"
-  }
-
-  # traffic listeners
-  validation {
-    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.listener.protocol)])
-    error_message = "Listener protocol must be one of [http, https, tcp]"
-  }
-  validation {
-    condition     = alltrue([for traffic in var.container.traffics : traffic.listener.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.listener.protocol_version) : true])
-    error_message = "Listener protocol version must be one of [http1, http2, grpc] or null"
-  }
-
-  # traffic targets
-  validation {
-    condition     = alltrue([for traffic in var.container.traffics : contains(["http", "https", "tcp"], traffic.target.protocol)])
-    error_message = "Target protocol must be one of [http, https, tcp]"
-  }
-  validation {
-    condition     = alltrue([for traffic in var.container.traffics : traffic.target.protocol_version != null ? contains(["http1", "http2", "grpc"], traffic.target.protocol_version) : true])
-    error_message = "Target protocol version must be one of [http1, http2, grpc] or null"
-  }
-
-  # docker
-  validation {
-    condition     = try(var.container.group.deployment.docker.registry.ecr.name != null, true)
+    condition     = alltrue([for container in var.orchestrator.group.deployment.containers : try(container.docker.registry.ecr.name != null, true)])
     error_message = "docker registry name must not be empty if ecr is not specified"
   }
 
   validation {
-    condition     = try(contains(["private", "public"], var.container.group.deployment.docker.registry.ecr.privacy), true)
+    condition     = alltrue([for container in var.orchestrator.group.deployment.containers : try(contains(["private", "public"], container.docker.registry.ecr.privacy), true)])
     error_message = "docker repository privacy must be one of [public, private]"
   }
 
   validation {
-    condition     = try((var.container.group.deployment.docker.registry.ecr.privacy == "public" ? length(coalesce(var.container.group.deployment.docker.registry.ecr.public_alias, "")) > 0 : true), true)
+    condition     = alltrue([for container in var.orchestrator.group.deployment.containers : try((container.docker.registry.ecr.privacy == "public" ? length(coalesce(container.docker.registry.ecr.public_alias, "")) > 0 : true), true)])
     error_message = "docker repository alias need when repository privacy is `public`"
+  }
+
+  validation {
+    condition     = length(compact([for container in var.orchestrator.group.deployment.containers : container.base])) == 1 || length(var.orchestrator.group.deployment.containers) == 1
+    error_message = "containers must have one base or be unique"
   }
 
   # # fargate
@@ -206,18 +220,18 @@ variable "container" {
 
   # ec2 instance_type
   validation {
-    condition     = length(distinct(var.container.group.ec2.instance_types)) == length(var.container.group.ec2.instance_types)
+    condition     = length(distinct(var.orchestrator.group.ec2.instance_types)) == length(var.orchestrator.group.ec2.instance_types)
     error_message = "ec2 instance types must all be unique"
   }
 
   # ec2 os
   validation {
-    condition     = contains(["linux"], var.container.group.ec2.os)
+    condition     = contains(["linux"], var.orchestrator.group.ec2.os)
     error_message = "EC2 os must be one of [linux]"
   }
 
   validation {
-    condition     = var.container.group.ec2.os == "linux" ? contains(["2", "2023"], var.container.group.ec2.os_version) : false
+    condition     = var.orchestrator.group.ec2.os == "linux" ? contains(["2", "2023"], var.orchestrator.group.ec2.os_version) : false
     error_message = "EC2 os version must be one of linux:[2, 2023]"
   }
 }
@@ -225,16 +239,16 @@ variable "container" {
 data "aws_ec2_instance_types" "region" {
   filter {
     name   = "instance-type"
-    values = [for instance_type in var.container.group.ec2.instance_types : instance_type]
+    values = [for instance_type in var.orchestrator.group.ec2.instance_types : instance_type]
   }
 
   lifecycle {
     postcondition {
-      condition     = sort(distinct([for instance_type in var.container.group.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
+      condition     = sort(distinct([for instance_type in var.orchestrator.group.ec2.instance_types : instance_type])) == sort(distinct(self.instance_types))
       error_message = <<EOF
 ec2 instances type are not all available
 want::
-${jsonencode(sort([for instance_type in var.container.group.ec2.instance_types : instance_type]))}
+${jsonencode(sort([for instance_type in var.orchestrator.group.ec2.instance_types : instance_type]))}
 got::
 ${jsonencode(sort(self.instance_types))}
 EOF

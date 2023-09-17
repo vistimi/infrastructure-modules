@@ -45,6 +45,7 @@ variable "traffics" {
     })
     base = optional(bool)
   }))
+  nullable = false
 }
 
 variable "bucket_env" {
@@ -52,7 +53,6 @@ variable "bucket_env" {
     name     = string
     file_key = string
   })
-  nullable = false
 }
 
 variable "ecs" {
@@ -64,9 +64,15 @@ variable "ecs" {
         max_size        = number
         desired_size    = number
         maximum_percent = optional(number)
+        cpu             = number
+        memory          = number
 
-        container = object({
-          name = string
+        containers = list(object({
+          name        = string
+          base        = optional(bool)
+          cpu         = number
+          memory      = number
+          devices_idx = list(number)
           environment = optional(list(object({
             name  = string
             value = string
@@ -91,7 +97,8 @@ variable "ecs" {
           command                  = optional(list(string), [])
           entrypoint               = optional(list(string), [])
           readonly_root_filesystem = optional(bool)
-        })
+          user                     = optional(string)
+        }))
       })
       ec2 = optional(object({
         key_name       = optional(string)
