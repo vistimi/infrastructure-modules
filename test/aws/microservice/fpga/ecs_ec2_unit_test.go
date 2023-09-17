@@ -59,7 +59,7 @@ var (
 		MaxRetries: aws.Int(10),
 		Endpoints: []testAwsModule.EndpointTest{
 			{
-				Command:        util.Ptr("curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -X POST <URL>/predictions/squeezenet -T kitten.jpg"),
+				Command:        util.Ptr("curl -O https://s3.amazonaws.com/model-server/inputs/kitten.jpg && curl -v -X POST <URL>/predictions/densenet161 -T kitten.jpg"),
 				ExpectedStatus: 200,
 				MaxRetries:     aws.Int(3),
 			},
@@ -75,11 +75,9 @@ func SetupVars(t *testing.T) (vars map[string]any) {
 // https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-ecs-tutorials-training.html
 func Test_Unit_Microservice_FPGA_ECS_EC2_Densenet(t *testing.T) {
 	// t.Parallel()
-	namePrefix, _, tags, traffics, docker, _ := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
+	namePrefix, nameSuffix, tags, traffics, docker, _ := testAwsProjectModule.SetupMicroservice(t, MicroserviceInformation, Traffics)
 	vars := SetupVars(t)
 	serviceNameSuffix := "unique"
-
-	nameSuffix := "aaaa" // FIXME:
 
 	options := util.Ptr(terraform.Options{
 		TerraformDir: MicroservicePath,
@@ -108,9 +106,7 @@ func Test_Unit_Microservice_FPGA_ECS_EC2_Densenet(t *testing.T) {
 									"-c",
 								},
 								"command": []string{
-									// echo -e 'vmargs=-Xmx128m -XX:-UseLargePages -XX:+UseG1GC -XX:MaxMetaspaceSize=32M -XX:MaxDirectMemorySize=10m -XX:+ExitOnOutOfMemoryError\nload_models=ALL\ninference_address=http://0.0.0.0:8080\nmanagement_address=http://0.0.0.0:8081' > config.properties
-									// --ts-config config.properties
-									"apt update; apt install git wget curl -qy; git clone https://github.com/pytorch/serve.git; cd serve; ls examples/image_classifier/densenet_161/; wget https://download.pytorch.org/models/densenet161-8d451a50.pth; torch-model-archiver --model-name densenet161 --version 1.0 --model-file examples/image_classifier/densenet_161/model.py --serialized-file densenet161-8d451a50.pth --handler image_classifier --extra-files examples/image_classifier/index_to_name.json; mkdir -p model_store; mv densenet161.mar model_store/; torchserve --start --model-store model_store --models densenet161=densenet161.mar; curl http://127.0.0.1:8080/predictions/densenet161 -T examples/image_classifier/kitten.jpg; sleep infinity",
+									"apt update; apt install git wget curl -qy; git clone https://github.com/pytorch/serve.git; cd serve; ls examples/image_classifier/densenet_161/; wget https://download.pytorch.org/models/densenet161-8d451a50.pth; torch-model-archiver --model-name densenet161 --version 1.0 --model-file examples/image_classifier/densenet_161/model.py --serialized-file densenet161-8d451a50.pth --handler image_classifier --extra-files examples/image_classifier/index_to_name.json; mkdir -p model_store; mv densenet161.mar model_store/; echo load_models=ALL >> config.properties; echo inference_address=http://0.0.0.0:8080 >> config.properties; echo management_address=http://0.0.0.0:8081 >> config.properties; echo metrics_address=http://0.0.0.0:8082 >> config.properties; torchserve --start --ts-config config.properties --model-store model_store --models densenet161=densenet161.mar; sleep infinity",
 								},
 								"readonly_root_filesystem": false,
 								"user":                     "root",
@@ -157,19 +153,21 @@ func Test_Unit_Microservice_FPGA_ECS_EC2_Densenet(t *testing.T) {
 		})
 	}()
 
-	// terratestStructure.RunTestStage(t, "deploy", func() {
-	// 	terraform.Init(t, options)
-	// 	terraform.Plan(t, options)
-	// 	terraform.Apply(t, options)
-	// })
-	// terratestStructure.RunTestStage(t, "validate", func() {
-	// 	// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-	// 	name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
-	// 	serviceName := util.Format("-", name, serviceNameSuffix)
-	// 	testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
-	// 	testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "")
-	// })
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.Init(t, options)
+		terraform.Plan(t, options)
+		terraform.Apply(t, options)
+	})
+	terratestStructure.RunTestStage(t, "validate", func() {
+		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
+		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
+		serviceName := util.Format("-", name, serviceNameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "")
+	})
 }
+
+//those values where found inside the container for inference made by aws, vmargs are not required
 
 // // MXNet
 // vmargs=-XX:+UseContainerSupport -XX:InitialRAMPercentage=8.0 -XX:MaxRAMPercentage=10.0 -XX:-UseLargePages -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
@@ -177,9 +175,11 @@ func Test_Unit_Microservice_FPGA_ECS_EC2_Densenet(t *testing.T) {
 // load_models=ALL
 // inference_address=http://0.0.0.0:8080
 // management_address=http://0.0.0.0:8081
+// metrics_address=http://0.0.0.0:8082
 
 //	// Pytorch: in config.properties, then do torchserve --ts-config config.properties
 // vmargs=-Xmx128m -XX:-UseLargePages -XX:+UseG1GC -XX:MaxMetaspaceSize=32M -XX:MaxDirectMemorySize=10m -XX:+ExitOnOutOfMemoryError
 // load_models=ALL
 // inference_address=http://0.0.0.0:8080
 // management_address=http://0.0.0.0:8081
+// metrics_address=http://0.0.0.0:8082

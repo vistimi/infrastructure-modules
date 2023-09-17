@@ -252,7 +252,7 @@ module "ecs" {
           # working_directory = ""
           # mount_points      = []
 
-          linuxParameters = try(var.ecs.service.ec2.architecture == "inf", false) ? {
+          linuxParameters = var.ecs.service.ec2.architecture == "inf" ? {
             "devices" = [for device_idx in container.devices_idx : {
               "containerPath" = "/dev/neuron${device_idx}",
               "hostPath"      = "/dev/neuron${device_idx}",

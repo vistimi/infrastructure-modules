@@ -93,6 +93,6 @@ func Test_Unit_Microservice_ScraperFrontend_ECS_Fargate(t *testing.T) {
 		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
 		serviceName := util.Format("-", name, serviceNameSuffix)
 		testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
-		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "")
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "microservice")
 	})
 }
