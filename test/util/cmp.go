@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -31,9 +32,14 @@ func Finds(t *testing.T, needles []string, sources []string) {
 }
 
 func Find(t *testing.T, needle string, source string) {
-	match, _ := regexp.MatchString(needle, source)
-
-	if !match {
-		t.Fatalf("Could not find in regexp\nsource:\n%s\nneedle:\n%s", source, needle)
+	if err := FindE(needle, source); err != nil {
+		t.Fatal(err)
 	}
+}
+
+func FindE(needle string, source string) error {
+	if match, _ := regexp.MatchString(needle, source); !match {
+		return fmt.Errorf("could not find in regexp\nsource:\n%s\nneedle:\n%s", source, needle)
+	}
+	return nil
 }

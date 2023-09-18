@@ -3,8 +3,6 @@ locals {
     ON_DEMAND = "FARGATE"
     SPOT      = "FARGATE_SPOT"
   }
-
-  ecs_reserved_memory = 30
 }
 
 module "ecs" {
@@ -72,7 +70,7 @@ module "ecs" {
         # TODO: this-service
         service = {
           target_group_arn = element(module.elb.target_group.arns, 0) // one LB per target group
-          container_name   = "${var.name}-${var.ecs.service.task.container.name}"
+          container_name   = length(var.ecs.service.task.containers) == 1 ? "${var.name}-${var.ecs.service.task.containers[0].name}" : [for container in var.ecs.service.task.containers : "${var.name}-${container.name}" if container.base == true][0]
           container_port   = element([for traffic in local.traffics : traffic.target.port if traffic.base == true || length(local.traffics) == 1], 0)
         }
       }
@@ -129,31 +127,45 @@ module "ecs" {
             effect    = "Allow"
             resources = ["*"],
           },
-          bucket-env = {
-            actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:s3:::${var.bucket_env.name}"],
-          },
-          bucket-env-files = {
-            actions   = ["s3:GetObject"]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:s3:::${var.bucket_env.name}/${var.bucket_env.file_key}"],
-          },
         },
-        try(var.ecs.service.task.container.docker.registry.ecr != null, false) ? {
-          ecr = {
-            actions = [
-              "ecr:GetAuthorizationToken",
-              "ecr:BatchCheckLayerAvailability",
-              "ecr:GetDownloadUrlForLayer",
-              "ecr:BatchGetImage",
-              "ecr-public:GetAuthorizationToken",
-              "ecr-public:BatchCheckLayerAvailability",
-            ]
-            effect    = "Allow"
-            resources = ["arn:${local.partition}:${local.ecr_services[var.ecs.service.task.container.docker.registry.ecr.privacy]}:${local.ecr_repository_region_name}:${local.ecr_repository_account_id}:repository/${var.ecs.service.task.container.docker.repository.name}"]
+        try(
+          {
+            bucket-env = {
+              actions   = ["s3:GetBucketLocation", "s3:ListBucket"]
+              effect    = "Allow"
+              resources = ["arn:${local.partition}:s3:::${var.bucket_env.name}"],
+            },
+            bucket-env-files = {
+              actions   = ["s3:GetObject"]
+              effect    = "Allow"
+              resources = ["arn:${local.partition}:s3:::${var.bucket_env.name}/${var.bucket_env.file_key}"],
+            },
           },
-        } : {}
+          {}
+        ),
+        try(
+          {
+            ecr = {
+              actions = [
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+                "ecr-public:GetAuthorizationToken",
+                "ecr-public:BatchCheckLayerAvailability",
+              ]
+              effect = "Allow"
+              resources = [for container in var.ecs.service.task.containers : "arn:${local.partition}:${
+                local.ecr_services[container.docker.registry.ecr.privacy]
+                }:${
+                container.docker.registry.ecr.privacy == "private" ? coalesce(container.docker.registry.ecr.region_name, local.region_name) : "us-east-1"
+                }:${
+                coalesce(try(container.docker.registry.ecr.account_id, null), local.account_id)
+              }:repository/${container.docker.repository.name}"]
+            }
+          },
+          {}
+        ),
       )
 
       create_tasks_iam_role = true
@@ -169,8 +181,8 @@ module "ecs" {
       }
 
       # Task definition
-      cpu    = local.instances_specs[var.ecs.service.ec2.instance_types[0]].cpu
-      memory = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
+      cpu    = var.ecs.service.task.cpu
+      memory = var.ecs.service.task.memory
 
       family                   = var.name
       requires_compatibilities = var.ecs.service.ec2 != null ? ["EC2"] : ["FARGATE"]
@@ -184,7 +196,7 @@ module "ecs" {
         },
         {
           "type" : "memberOf",
-          "expression" : "attribute:ecs.instance-type == ${var.ecs.service.ec2.architecture.instance_types[0]}"
+          "expression" : "attribute:ecs.instance-type == ${var.ecs.service.ec2.instance_types[0]}"
         }
       ] : []
 
@@ -193,7 +205,7 @@ module "ecs" {
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
       container_definitions = {
-        "${var.name}-${var.ecs.service.task.container.name}" = {
+        for container in var.ecs.service.task.containers : "${var.name}-${container.name}" => {
 
           # enable_cloudwatch_logging              = true
           # create_cloudwatch_log_group            = true
@@ -201,11 +213,11 @@ module "ecs" {
           # cloudwatch_log_group_kms_key_id        = null
 
           # name = var.name
-          environment_files = [{
+          environment_files = try([{
             "value" = "arn:${local.partition}:s3:::${var.bucket_env.name}/${var.bucket_env.file_key}",
             "type"  = "s3"
-          }]
-          environment = var.ecs.service.task.container.environment,
+          }], [])
+          environment = container.environment,
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [for target in distinct([for traffic in local.traffics : {
@@ -219,35 +231,32 @@ module "ecs" {
             protocol      = target.protocol_version == "grpc" ? "tcp" : target.protocol // TODO: local.layer7_to_layer4_mapping[target.protocol]
             }
           ]
-          cpu                = local.instances_specs[var.ecs.service.ec2.instance_types[0]].cpu
-          memory             = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
-          memory_reservation = local.instances_specs[var.ecs.service.ec2.instance_types[0]].memory_available - local.ecs_reserved_memory
+          cpu                = container.cpu
+          memory             = container.memory
+          memory_reservation = container.memory
 
           log_configuration = null # other driver than json-file
 
           resource_requirements = try(var.ecs.service.ec2.architecture == "gpu", false) ? [{
             "type" : "GPU",
-            "value" : "${var.ecs.service.task.container.gpu}"
+            "value" : "${length(container.device_idx)}"
           }] : []
 
-          command                  = var.ecs.service.task.container.command
-          entrypoint               = var.ecs.service.task.container.entrypoint
-          readonly_root_filesystem = var.ecs.service.task.container.readonly_root_filesystem
+          command                  = container.command
+          entrypoint               = container.entrypoint
+          readonly_root_filesystem = container.readonly_root_filesystem
+          user                     = container.user
 
           # health_check      = {}
-          # user              = ""
           # volumes_from      = []
           # working_directory = ""
           # mount_points      = []
 
-          linuxParameters = try(var.ecs.service.ec2.architecture == "inf", false) ? {
-            "devices" = [for device_path in local.instances_specs[var.ecs.service.ec2.instance_types[0]].device_paths : {
-              "containerPath" = device_path,
-              "hostPath"      = device_path,
-              "permissions" : [
-                "read",
-                "write"
-              ]
+          linuxParameters = var.ecs.service.ec2.architecture == "inf" ? {
+            "devices" = [for device_idx in container.devices_idx : {
+              "containerPath" = "/dev/neuron${device_idx}",
+              "hostPath"      = "/dev/neuron${device_idx}",
+              "permissions" : ["read", "write"],
               }
             ],
             "capabilities" = {
@@ -255,7 +264,10 @@ module "ecs" {
                 "IPC_LOCK"
               ]
             }
-          } : {}
+            } : {
+            devices      = []
+            capabilities = {}
+          }
 
           # fargate AMI
           runtime_platform = var.ecs.service.ec2 != null ? null : {
@@ -264,8 +276,20 @@ module "ecs" {
           }
 
           image = join("/", compact([
-            local.docker_registry_name,
-            join(":", compact([var.ecs.service.task.container.docker.repository.name, try(var.ecs.service.task.container.docker.image.tag, "")]))
+            try(
+              container.docker.registry.ecr.privacy == "private" ? (
+                "${
+                  coalesce(try(container.docker.registry.ecr.account_id, null), local.account_id)
+                  }.dkr.ecr.${
+                  container.docker.registry.ecr.privacy == "private" ? coalesce(container.docker.registry.ecr.region_name, local.region_name) : "us-east-1"
+                }.${local.dns_suffix}"
+                ) : (
+                "public.ecr.aws/${container.docker.registry.ecr.public_alias}"
+              ),
+              container.docker.registry.name,
+              null
+            ),
+            join(":", compact([container.docker.repository.name, try(container.docker.image.tag, "")]))
           ]))
 
           essential = true

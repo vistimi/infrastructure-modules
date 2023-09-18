@@ -81,16 +81,4 @@ locals {
   fargate_architecture = {
     x86_64 = "X86_64"
   }
-
-  ecr_repository_account_id = coalesce(try(var.ecs.service.task.container.docker.registry.ecr.account_id, null), local.account_id)
-  ecr_repository_region_name = try(
-    (var.ecs.service.task.container.docker.registry.ecr.privacy == "private" ? coalesce(var.ecs.service.task.container.docker.registry.ecr.region_name, local.region_name) : "us-east-1"),
-    null
-  )
-
-  docker_registry_name = try(
-    var.ecs.service.task.container.docker.registry.ecr.privacy == "private" ? "${local.ecr_repository_account_id}.dkr.ecr.${local.ecr_repository_region_name}.${local.dns_suffix}" : "public.ecr.aws/${var.ecs.service.task.container.docker.registry.ecr.public_alias}",
-    var.ecs.service.task.container.docker.registry.name,
-    null
-  )
 }

@@ -114,7 +114,7 @@ func ValidateRestEndpoints(t *testing.T, microservicePath string, deployment Dep
 		if traffic.Listener.Protocol == "http" {
 			port := util.Value(traffic.Listener.Port, 80)
 			// test Load Balancer HTTP
-			elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "microservice.ecs.elb"))
+			elb := ExtractFromState(t, microservicePath, util.Format(".", modulePath, "ecs.elb"))
 			terratestLogger.Log(t, fmt.Sprintf("elb :: %+v", elb))
 			if elb != nil {
 				elbDnsUrl := elb.(map[string]any)["lb"].(map[string]any)["dns_name"].(string)
@@ -149,7 +149,7 @@ func ValidateRestEndpoints(t *testing.T, microservicePath string, deployment Dep
 			}
 
 			// test Route53
-			route53 := ExtractFromState(t, microservicePath, "microservice.ecs.route53")
+			route53 := ExtractFromState(t, microservicePath, "ecs.route53")
 			terratestLogger.Log(t, fmt.Sprintf("route53 :: %+v", route53))
 			if route53 != nil {
 				records := route53.(map[string]any)["records"].(map[string]any)
@@ -211,6 +211,10 @@ func TestRestEndpoints(t *testing.T, endpoints []EndpointTest) {
 				}
 				output := strings.TrimSpace(terratestShell.RunCommandAndGetOutput(t, command))
 				terratestLogger.Log(t, output)
+				if err := util.FindE(fmt.Sprintf("%d", endpoint.ExpectedStatus), output); err == nil {
+					terratestLogger.Log(t, `Command successful`)
+					return
+				}
 				if i == maxRetries {
 					t.Fatalf(`'Command' unsuccessful after %d retries`, maxRetries)
 				}

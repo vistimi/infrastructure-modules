@@ -42,15 +42,15 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 			"protocol":          traffic.Target.Protocol,
 			"health_check_path": microserviceInformation.HealthCheckPath,
 		}
-		target = util.Nil(traffic.Target.Port, target, "port")
-		target = util.Nil(traffic.Target.ProtocolVersion, target, "protocol_version")
-		target = util.Nil(traffic.Target.StatusCode, target, "status_code")
+		target = util.ObjNil(traffic.Target.Port, target, "port")
+		target = util.ObjNil(traffic.Target.ProtocolVersion, target, "protocol_version")
+		target = util.ObjNil(traffic.Target.StatusCode, target, "status_code")
 
 		listener := map[string]any{
 			"protocol": traffic.Listener.Protocol,
 		}
-		listener = util.Nil(traffic.Listener.Port, listener, "port")
-		listener = util.Nil(traffic.Listener.ProtocolVersion, listener, "protocol_version")
+		listener = util.ObjNil(traffic.Listener.Port, listener, "port")
+		listener = util.ObjNil(traffic.Listener.ProtocolVersion, listener, "protocol_version")
 
 		trafficsMap = append(trafficsMap, map[string]any{
 			"listener": listener,
@@ -60,26 +60,26 @@ func SetupMicroservice(t *testing.T, microserviceInformation testAwsModule.Micro
 	}
 
 	registry := make(map[string]any)
+	registry = util.ObjNil(microserviceInformation.Docker.Registry.Name, registry, "name")
 	if microserviceInformation.Docker.Registry.Ecr != nil {
 		registry["ecr"] = map[string]any{
 			"privacy": microserviceInformation.Docker.Registry.Ecr.Privacy,
 		}
-		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.AccountId, registry["ecr"].(map[string]any), "account_id")
-		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.RegionName, registry["ecr"].(map[string]any), "region_name")
-		registry["ecr"] = util.Nil(microserviceInformation.Docker.Registry.Ecr.PublicAlias, registry["ecr"].(map[string]any), "public_alias")
+		registry["ecr"] = util.ObjNil(microserviceInformation.Docker.Registry.Ecr.AccountId, registry["ecr"].(map[string]any), "account_id")
+		registry["ecr"] = util.ObjNil(microserviceInformation.Docker.Registry.Ecr.RegionName, registry["ecr"].(map[string]any), "region_name")
+		registry["ecr"] = util.ObjNil(microserviceInformation.Docker.Registry.Ecr.PublicAlias, registry["ecr"].(map[string]any), "public_alias")
 	}
-	image := make(map[string]any)
-	if microserviceInformation.Docker.Image != nil {
-		image = map[string]any{
-			"tag": microserviceInformation.Docker.Image.Tag,
-		}
-	}
+
 	docker = map[string]any{
 		"registry": registry,
 		"repository": map[string]any{
 			"name": microserviceInformation.Docker.Repository.Name,
 		},
-		"image": image,
+	}
+	if microserviceInformation.Docker.Image != nil {
+		docker["image"] = map[string]any{
+			"tag": microserviceInformation.Docker.Image.Tag,
+		}
 	}
 
 	bucketEnv = map[string]any{
