@@ -54,8 +54,7 @@ jobs:
           echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT
           echo IMAGE_KEEP_COUNT=$IMAGE_KEEP_COUNT >> $GITHUB_ENV
 
-          DOCKERFILES=$(jq --null-input -c \
-          ${{ vars.CONTAINER_REGISTRY_ARGS }} \
+          DOCKERFILES=$(${{ vars.CONTAINER_REGISTRY_ARGS }} \
           '${{ vars.CONTAINER_REGISTRY_JSON }}')
           echo DOCKERFILES=$DOCKERFILES
           echo DOCKERFILES=$DOCKERFILES >> $GITHUB_ENV
