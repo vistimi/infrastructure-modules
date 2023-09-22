@@ -246,11 +246,11 @@ module "ecs" {
           entrypoint               = container.entrypoint
           readonly_root_filesystem = container.readonly_root_filesystem
           user                     = container.user
+          mount_points      = container.mount_points
 
           # health_check      = {}
           # volumes_from      = []
           # working_directory = ""
-          # mount_points      = []
 
           linuxParameters = var.ecs.service.ec2.architecture == "inf" ? {
             "devices" = [for device_idx in container.devices_idx : {

@@ -143,6 +143,11 @@ variable "orchestrator" {
           entrypoint               = optional(list(string), [])
           readonly_root_filesystem = optional(bool)
           user                     = optional(string)
+          mount_points= optional(list(object({
+            source_volume = string
+            container_path = string
+            read_only = optional(bool)
+          })))
         }))
       })
       ec2 = optional(object({
