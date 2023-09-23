@@ -3,7 +3,10 @@ include {
 }
 
 locals {
-  microservice = read_terragrunt_config("${get_terragrunt_dir()}/microservice_override.hcl")
+  microservice       = read_terragrunt_config("${get_terragrunt_dir()}/microservice_override.hcl")
+  aws_account_vars   = read_terragrunt_config(find_in_parent_folders("aws_account_override.hcl"))
+  aws_account_id     = local.aws_account_vars.locals.aws_account_id
+  aws_account_region = local.aws_account_vars.locals.aws_account_region
 }
 
 # Generate version block
@@ -50,6 +53,10 @@ generate "provider" {
   path      = "provider_kubernetes_override.tf"
   if_exists = "overwrite_terragrunt"
   contents = <<EOF
+provider "aws" {
+  region = "${local.aws_account_region}"
+  allowed_account_ids = ["${local.aws_account_id}"]
+}
 ${local.microservice.locals.orchestrator == "eks" ? <<EOT
   provider "kubernetes" {
     host                   = one(values(module.eks)).cluster_endpoint

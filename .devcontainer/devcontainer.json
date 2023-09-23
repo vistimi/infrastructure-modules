@@ -3,10 +3,13 @@
 	"build": {
 		"dockerfile": "../Dockerfile.bin",
 		"args": {
-			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16"
+			"VARIANT": "mcr.microsoft.com/devcontainers/base:alpine-3.16",
+			"DOCKER_BUILDKIT": "0"
 		},
 		"target": "runner"
 	},
+	// "initializeCommand": "export $(grep -v '^#' .devcontainer/devcontainer.env | xargs -0) && make aws-auth && aws ecr get-login-password --region ${AWS_REGION_NAME} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION_NAME}.amazonaws.com",
+	// "image": "401582117818.dkr.ecr.us-east-1.amazonaws.com/infrastructure-modules-trunk-bin:latest",
 	"runArgs": [
 		"--env-file",
 		".devcontainer/devcontainer.env"

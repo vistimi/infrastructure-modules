@@ -118,7 +118,7 @@ variable "orchestrator" {
           cpu         = optional(number)
           memory      = optional(number)
           devices_idx = optional(list(number))
-          environment = optional(list(object({
+          environments = optional(list(object({
             name  = string
             value = string
           })), [])
@@ -143,10 +143,12 @@ variable "orchestrator" {
           entrypoint               = optional(list(string), [])
           readonly_root_filesystem = optional(bool)
           user                     = optional(string)
-          mount_points= optional(list(object({
-            source_volume = string
+          mount_points = optional(list(object({
+            s3 = optional(object({
+              name = string
+            }))
             container_path = string
-            read_only = optional(bool)
+            read_only      = optional(bool)
           })))
         }))
       })

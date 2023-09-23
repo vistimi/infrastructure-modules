@@ -48,7 +48,7 @@ variable "microservice" {
 
           container = object({
             name = string
-            environment = optional(list(object({
+            environments = optional(list(object({
               name  = string
               value = string
             })), [])

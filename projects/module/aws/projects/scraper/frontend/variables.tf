@@ -47,8 +47,8 @@ variable "microservice" {
           maximum_percent = optional(number)
 
           container = object({
-            name               = string
-            environment = optional(list(object({
+            name = string
+            environments = optional(list(object({
               name  = string
               value = string
             })), [])

@@ -200,7 +200,21 @@ module "ecs" {
         }
       ] : []
 
-      # volumes = []
+      volume = flatten([
+        for container in var.ecs.service.task.containers : [
+          for mount_point in container.mount_points :
+          {
+            name      = mount_point.s3.name
+            host_path = null
+            docker_volume_configuration = {
+              scope         = "shared"
+              autoprovision = false
+              driver        = "rexray/s3fs:latest"
+              driver_opts   = null
+            }
+          } if mount_point.s3 != null
+        ]
+      ])
 
       # Task definition container(s)
       # https://github.com/terraform-aws-modules/terraform-aws-ecs/blob/master/modules/container-definition/variables.tf
@@ -217,7 +231,7 @@ module "ecs" {
             "value" = "arn:${local.partition}:s3:::${var.bucket_env.name}/${var.bucket_env.file_key}",
             "type"  = "s3"
           }], [])
-          environment = container.environment,
+          environment = container.environments,
 
           # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html
           port_mappings = [for target in distinct([for traffic in local.traffics : {
@@ -242,11 +256,44 @@ module "ecs" {
             "value" : "${length(container.device_idx)}"
           }] : []
 
+          # command = flatten(concat([
+          #   for mount_point in container.mount_points :
+          #   [
+          #     "yum install -y gcc libstdc+-devel gcc-c+ fuse fuse-devel curl-devel libxml2-devel mailcap automake openssl-devel git gcc-c++",
+          #     "git clone https://github.com/s3fs-fuse/s3fs-fuse",
+          #     "cd s3fs-fuse/",
+          #     "./autogen.sh",
+          #     "./configure --prefix=/usr --with-openssl",
+          #     "make",
+          #     "make install",
+          #     "docker plugin install rexray/s3fs:latest S3FS_REGION=${local.region_name} S3FS_OPTIONS=\"allow_other,iam_role=auto,umask=000\" LIBSTORAGE_INT,EGRATION_VOLUME_OPERATIONS_MOUNT_ROOTPATH=/ --grant-all-permissions",
+          #     "yum update -y ecs-init",
+          #     "service docker restart && start ecs",
+          #   ] if mount_point.s3 != null
+          #   ],
+          #   container.command
+          # ))
+          # entrypoint = flatten(concat([
+          #   for mount_point in container.mount_points :
+          #   [
+          #     "/bin/bash",
+          #     "-c",
+          #   ] if mount_point.s3 != null
+          #   ],
+          #   container.entrypoint
+          # ))
           command                  = container.command
           entrypoint               = container.entrypoint
           readonly_root_filesystem = container.readonly_root_filesystem
           user                     = container.user
-          mount_points      = container.mount_points
+          mount_points = [
+            for mount_point in container.mount_points :
+            {
+              readOnly      = mount_point.read_only
+              containerPath = mount_point.container_path
+              sourceVolume  = mount_point.s3.name
+            } if mount_point.s3 != null
+          ]
 
           # health_check      = {}
           # volumes_from      = []

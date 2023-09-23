@@ -55,6 +55,12 @@ prepare-global-level:
 prepare-aws-scraper-labelstudio:
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
 
+ORCHESTRATOR ?= ecs
+prepare-aws-tryon-backend:
+	$(call check_defined, ORCHESTRATOR)
+	make -f ${PATH_ABS_ROOT}/../Makefile prepare-aws-microservice ORCHESTRATOR=${ORCHESTRATOR}
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/../module/aws/container/microservice
+
 BRANCH_NAME ?= trunk
 prepare-aws-scraper-backend:
 	$(eval GIT_NAME=github.com)

@@ -6,6 +6,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
+	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
@@ -85,16 +86,16 @@ func Test_Unit_Microservice_ScraperBackend_ECS_EC2(t *testing.T) {
 		})
 	}()
 
-	// terratestStructure.RunTestStage(t, "deploy", func() {
-	// 	terraform.Init(t, options)
-	// 	terraform.Plan(t, options)
-	// 	terraform.Apply(t, options)
-	// })
-	// terratestStructure.RunTestStage(t, "validate", func() {
-	// 	// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
-	// 	name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
-	// 	serviceName := util.Format("-", name, serviceNameSuffix)
-	// 	testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
-	// 	testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "microservice")
-	// })
+	terratestStructure.RunTestStage(t, "deploy", func() {
+		terraform.Init(t, options)
+		terraform.Plan(t, options)
+		terraform.Apply(t, options)
+	})
+	terratestStructure.RunTestStage(t, "validate", func() {
+		// TODO: test that /etc/ecs/ecs.config is not empty, requires key_name coming from terratest maybe
+		name := util.Format("-", namePrefix, projectName, serviceName, nameSuffix)
+		serviceName := util.Format("-", name, serviceNameSuffix)
+		testAwsModule.ValidateMicroservice(t, name, Deployment, serviceName)
+		testAwsModule.ValidateRestEndpoints(t, MicroservicePath, Deployment, Traffics, name, "microservice")
+	})
 }
