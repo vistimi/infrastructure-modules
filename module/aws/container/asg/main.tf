@@ -4,11 +4,12 @@ module "asg" {
   version = "6.10.0"
 
   name     = var.name
+  use_name_prefix = false
   key_name = var.key_name # to SSH into instance
 
   # iam configuration
   create_iam_instance_profile = true
-  iam_role_name               = "${var.name}-asg"
+  iam_role_name               = "${var.name}"
   iam_role_path               = "/ec2/"
   iam_role_description        = "ASG role for ${var.name}"
   iam_role_policies = {
