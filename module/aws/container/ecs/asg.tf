@@ -29,7 +29,7 @@ module "asg" {
       instance_type = instance_type
       capacity      = capacity
       }
-    ]]) : join("-", compact([var.name, substr(obj.capacity.type, 0, 2), obj.instance_regex.size_number, substr(obj.instance_regex.size_name, 0, 1)])) => { instance_type = obj.instance_type, capacity = obj.capacity }
+    ]]) : join("-", compact([var.name, substr(obj.capacity.type, 0, 2), "${obj.instance_regex.prefix}-${obj.instance_regex.size_number}${substr(obj.instance_regex.size_name, 0, 1)}"])) => { instance_type = obj.instance_type, capacity = obj.capacity }
   }
 
   name           = each.key
