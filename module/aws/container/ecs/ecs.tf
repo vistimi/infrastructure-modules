@@ -246,8 +246,8 @@ module "ecs" {
             }
           ]
           cpu                = container.cpu
-          memory             = container.memory
-          memory_reservation = container.memory
+          memory             = container.memory - container.memory_reservation
+          memory_reservation = container.memory - container.memory_reservation
 
           log_configuration = null # other driver than json-file
 

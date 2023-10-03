@@ -117,6 +117,7 @@ variable "orchestrator" {
           base        = optional(bool)
           cpu         = optional(number)
           memory      = optional(number)
+          memory_reservation = optional(number, 50)
           devices_idx = optional(list(number))
           environments = optional(list(object({
             name  = string

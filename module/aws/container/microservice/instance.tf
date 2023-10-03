@@ -50,7 +50,7 @@ locals {
     "t3.medium" = {
       cpu              = 2048
       memory           = 4096
-      memory_available = 3828
+      memory_available = 3827
     }
 
     // gpu
