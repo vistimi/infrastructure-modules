@@ -10,6 +10,7 @@ module "asg" {
   # iam configuration
   create_iam_instance_profile = true
   iam_role_name               = "${var.name}"
+  iam_role_use_name_prefix   = false
   iam_role_path               = "/ec2/"
   iam_role_description        = "ASG role for ${var.name}"
   iam_role_policies = {
@@ -21,6 +22,7 @@ module "asg" {
 
   # launch template configuration
   create_launch_template = true
+  launch_template_use_name_prefix = false
   tag_specifications = concat(
     var.use_spot ? [{
       resource_type = "spot-instances-request"
@@ -50,7 +52,7 @@ module "asg" {
   #   http_tokens                 = "required"
   #   http_put_response_hop_limit = 32
   # }
-  use_name_prefix = false
+
   # wait_for_capacity_timeout = 0
   enable_monitoring = true
   enabled_metrics = [
