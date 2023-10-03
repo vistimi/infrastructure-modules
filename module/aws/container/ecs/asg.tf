@@ -25,11 +25,11 @@ module "asg" {
 
   for_each = {
     for obj in flatten([for instance_type in var.ecs.service.ec2.instance_types : [for capacity in var.ecs.service.ec2.capacities : {
-      name          = "${var.name}-${substr(capacity.type, 0, 2)}-${substr(instance_type, 0, 2)}"
+      instance_regex = regex("^(?P<prefix>\\w+)\\.(?P<size_number>\\d*x*)(?P<size_name>\\w+)$","t3.24xlarge")
       instance_type = instance_type
       capacity      = capacity
       }
-    ]]) : obj.name => { instance_type = obj.instance_type, capacity = obj.capacity }
+    ]]) : join("-", compact([var.name, substr(obj.capacity.type, 0, 2), obj.instance_regex.size_number, substr(obj.instance_regex.size_name, 0, 1)])) => { instance_type = obj.instance_type, capacity = obj.capacity }
   }
 
   name           = each.key
