@@ -28,7 +28,7 @@ module "ecs" {
               {
                 cpu         = coalesce(container.cpu, local.instances_properties[var.orchestrator.group.ec2.instance_types[0]].cpu)
                 memory      = coalesce(container.memory, local.instances_properties[var.orchestrator.group.ec2.instance_types[0]].memory_available)
-                devices_idx = coalesce(container.devices_idx, range(length(local.instances_properties[var.orchestrator.group.ec2.instance_types[0]].device_paths)))
+                devices_idx = coalesce(container.devices_idx, try(range(length(local.instances_properties[var.orchestrator.group.ec2.instance_types[0]].device_paths)), []))
               },
             )
           ]
