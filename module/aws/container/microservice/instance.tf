@@ -83,25 +83,25 @@ locals {
     "inf1.2xlarge" = {
       cpu              = 8192
       memory           = 16384
-      memory_available = 0 // TODO: not tested yet
+      memory_available = 16000 // TODO: not tested yet
       device_paths     = ["/dev/neuron0"]
     }
     "inf1.6xlarge" = {
       cpu              = 24576
       memory           = 49152
-      memory_available = 0 // TODO: not tested yet
+      memory_available = 49000 // TODO: not tested yet
       device_paths     = ["/dev/neuron0", "/dev/neuron1", "/dev/neuron2", "/dev/neuron3"]
     }
     "inf2.xlarge" = {
       cpu              = 8192
       memory           = 16384
-      memory_available = 0 // TODO: not tested yet
+      memory_available = 16000 // TODO: not tested yet
       device_paths     = ["/dev/neuron0"]
     }
     "inf2.8xlarge" = {
       cpu              = 32768
       memory           = 131072
-      memory_available = 0 // TODO: not tested yet
+      memory_available = 131000 // TODO: not tested yet
       device_paths     = ["/dev/neuron0"]
     }
   }
