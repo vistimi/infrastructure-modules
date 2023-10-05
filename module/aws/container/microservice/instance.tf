@@ -45,12 +45,12 @@ locals {
     "t3.small" = {
       cpu              = 2048
       memory           = 2048
-      memory_available = 1901
+      memory_available = 1900
     }
     "t3.medium" = {
       cpu              = 2048
       memory           = 4096
-      memory_available = 3827
+      memory_available = 3820
     }
 
     // gpu
@@ -58,7 +58,7 @@ locals {
       cpu              = 4096
       gpu              = 1
       memory           = 16384
-      memory_available = 15731
+      memory_available = 15730
     }
 
     // inference
@@ -77,13 +77,13 @@ locals {
     "inf1.xlarge" = {
       cpu              = 4096
       memory           = 8192
-      memory_available = 7667
+      memory_available = 7660
       device_paths     = ["/dev/neuron0"]
     }
     "inf1.2xlarge" = {
       cpu              = 8192
       memory           = 16384
-      memory_available = 16000 // TODO: not tested yet
+      memory_available = 15560 // TODO: not tested yet
       device_paths     = ["/dev/neuron0"]
     }
     "inf1.6xlarge" = {
