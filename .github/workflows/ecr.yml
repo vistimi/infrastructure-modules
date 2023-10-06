@@ -40,6 +40,8 @@ jobs:
       AWS_PROFILE_NAME: ${{ vars.AWS_PROFILE_NAME }}
       ECR_REGISTRY_PRIVATE_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION_NAME }}.amazonaws.com
       ECR_REGISTRY_PUBLIC_URI: public.ecr.aws
+      AWS_ACCESS_KEY: ${{ vars.AWS_ACCESS_KEY }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -182,7 +184,7 @@ jobs:
           func_ecr_create_public_repository () {
             # TODO: repository catalog data logo ImageBlob
             # create repository
-            func_ecr_get_ecr_platforms
+            func_ecr_get_ecr_platforms; if [ $? -ne 0 ]; then exit 42; fi
 
             ECR_REPOSITORY_URI=$(
               aws ecr-public create-repository \
@@ -198,17 +200,15 @@ jobs:
           func_ecr_create_repository () {            
             if [[ $ECR_PRIVACY == private ]]; then
               echo -e '\033[43mCreating private repository in ECR\033[0m'
-              func_ecr_create_private_repository
+              func_ecr_create_private_repository; if [ $? -ne 0 ]; then exit 42; fi
             elif [[ $ECR_PRIVACY == public ]]; then
               echo -e '\033[43mCreating public repository in ECR\033[0m'
-              func_ecr_create_public_repository              
+              func_ecr_create_public_repository; if [ $? -ne 0 ]; then exit 42; fi           
             fi
             echo -e '\033[44mECR REPOSITORY\033[0m'::
             repository=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --output json)
             echo $repository
-            if [[ -z $repository ]]; then
-              exit 42
-            fi
+            if [[ -z $repository ]]; then exit 42; fi
           }
 
           func_ecr_get_buildx_platforms () {
@@ -227,7 +227,7 @@ jobs:
 
           func_ecr_push_image_buildx () {
             echo -e '\033[43mPushing buildx image to ECR\033[0m'
-            func_ecr_get_buildx_platforms
+            func_ecr_get_buildx_platforms; if [ $? -ne 0 ]; then exit 42; fi
             # docker buildx create --name multiarch --platform $PLATFORMS --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement network.host'
             docker buildx create --use --name multiarch
 
@@ -251,13 +251,13 @@ jobs:
             ECR_REPOSITORY_URI=$(aws $AWS_CLI_SERVICE describe-repositories --repository-names $ECR_REPOSITORY_NAME --query 'repositories[0].repositoryUri' | tr -d '"')
             echo ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
             if [ -z ${ECR_REPOSITORY_URI} ]; then
-              func_ecr_create_repository
+              func_ecr_create_repository; if [ $? -ne 0 ]; then exit 42; fi
             else
               echo -e '\033[46mRepository already exists\033[0m'
             fi
 
             # Push new image
-            func_ecr_push_image_buildx
+            func_ecr_push_image_buildx; if [ $? -ne 0 ]; then exit 42; fi
 
             # echo -e '\033[44mIMAGE SIZE\033[0m' $(docker inspect -f "{{ .Size }}" $(docker images -q $ECR_REPOSITORY_URI:$latest) | numfmt --to=si)
 
@@ -265,17 +265,15 @@ jobs:
             echo -e '\033[44mECR IMAGE\033[0m'::
             image=$(aws $AWS_CLI_SERVICE describe-images --repository-name $ECR_REPOSITORY_NAME --image-ids imageTag=latest --output json)
             echo $image
-            if [[ -z $image ]]; then
-              exit 42
-            fi
+            if [[ -z $image ]]; then exit 42; fi
           }
 
           func_gh_event_to_ecr () {
             # create/push/delete
             if [[ "${{ github.event_name }}" == "create" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "create") ]]; then
-              func_ecr_create_repository
+              func_ecr_create_repository; if [ $? -ne 0 ]; then exit 42; fi
             elif [[ "${{ github.event_name }}" == "push" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "push") ]]; then
-              func_ecr_push_image
+              func_ecr_push_image; if [ $? -ne 0 ]; then exit 42; fi
             elif [[ "${{ github.event_name }}" == "delete" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.event_name }}" == "delete") ]]; then
               echo -e '\033[43mDeleting repository in ECR\033[0m'
               aws $AWS_CLI_SERVICE delete-repository --repository-name $ECR_REPOSITORY_NAME --force
@@ -323,5 +321,5 @@ jobs:
             echo DOCKERFILE_ARGS:: $DOCKERFILE_ARGS
 
             # run function
-            echo $(func_gh_event_to_ecr)
+            func_gh_event_to_ecr; if [ $? -ne 0 ]; then exit 42; fi
           done
