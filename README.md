@@ -2,14 +2,14 @@
 
 ## modules
 
-In [Modules](./module/), there are the reusable cloud components
-In [Modules](./module/aws/container/microservice/) there is the microservice module for AWS
+In [Modules](./modules/), there are the reusable cloud components
+In [Modules](./modules/aws/container/microservice/) there is the microservice module for AWS
 In [Test](./test/aws/microservice/) there are the tests for the microservice with support for
 - CPU, GPU, FPGA
 - Rest and gRPC
 
 ## projects
-In [Projects](./projects/), there are examples on how to use the [Modules](./module/)
+In [Projects](./projects/), there are examples on how to use the [Modules](./modules/)
 
 
 ## build

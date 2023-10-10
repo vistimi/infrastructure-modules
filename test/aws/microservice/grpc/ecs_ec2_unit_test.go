@@ -19,7 +19,7 @@ const (
 	serviceName = "grpc"
 
 	Rootpath         = "../../../.."
-	MicroservicePath = Rootpath + "/module/aws/container/microservice"
+	MicroservicePath = Rootpath + "/modules/aws/container/microservice"
 )
 
 var (

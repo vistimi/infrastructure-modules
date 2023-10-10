@@ -184,7 +184,7 @@ func Test_Unit_Microservice_FPGA_ECS_EC2_Densenet(t *testing.T) {
 // management_address=http://0.0.0.0:8081
 // metrics_address=http://0.0.0.0:8082
 
-//	// Pytorch: in config.properties, then do torchserve --ts-config config.properties
+//	// Torchserve: in config.properties, then do torchserve --ts-config config.properties
 // vmargs=-Xmx128m -XX:-UseLargePages -XX:+UseG1GC -XX:MaxMetaspaceSize=32M -XX:MaxDirectMemorySize=10m -XX:+ExitOnOutOfMemoryError
 // load_models=ALL
 // inference_address=http://0.0.0.0:8080

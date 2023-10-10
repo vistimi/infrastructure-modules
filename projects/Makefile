@@ -38,8 +38,8 @@ test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/_global
-	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/modules/_global
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/modules/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -50,16 +50,16 @@ prepare-account-aws:
 	EOF
 
 prepare-global-level:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/_global/level
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/_global/level
 
 prepare-aws-scraper-labelstudio:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/projects/scraper/labelstudio
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/aws/projects/scraper/labelstudio
 
 ORCHESTRATOR ?= ecs
 prepare-aws-tryon-backend:
 	$(call check_defined, ORCHESTRATOR)
 	make -f ${PATH_ABS_ROOT}/../Makefile prepare-aws-microservice ORCHESTRATOR=${ORCHESTRATOR}
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/../module/aws/container/microservice
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/../modules/aws/container/microservice
 
 BRANCH_NAME ?= trunk
 prepare-aws-scraper-backend:

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	pathLevel = "../../module/_global/level"
+	pathLevel = "../../modules/_global/level"
 )
 
 func Test_Unit_Global_Level(t *testing.T) {

@@ -1,0 +1,10 @@
+# # uncomment if you want to override the default lookup
+# projects:
+#   scraper:
+#     services:
+#       backend:
+#         path: projects/modules/aws/projects/scraper/backend
+#       frontend:
+#         path: projects/modules/aws/projects/scraper/frontend
+#       labelstudio:
+#         path: projects/modules/aws/projects/scraper/labelstudio

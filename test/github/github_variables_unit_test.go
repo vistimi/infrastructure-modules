@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	path = "../../module/github/variables"
+	path = "../../modules/github/variables"
 )
 
 var (

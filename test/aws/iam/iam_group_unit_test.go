@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	pathGroup = "../../../module/aws/iam/group"
+	pathGroup = "../../../modules/aws/iam/group"
 )
 
 func Test_Unit_IAM_Group(t *testing.T) {

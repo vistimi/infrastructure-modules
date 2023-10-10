@@ -19,7 +19,7 @@ const (
 	serviceName = "ls"
 
 	Rootpath         = "../../../../.."
-	MicroservicePath = Rootpath + "/module/aws/projects/scraper/labelstudio"
+	MicroservicePath = Rootpath + "/modules/aws/projects/scraper/labelstudio"
 )
 
 var (

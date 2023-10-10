@@ -19,7 +19,7 @@ const (
 	serviceName = "rest"
 
 	Rootpath         = "../../../.."
-	MicroservicePath = Rootpath + "/module/aws/container/microservice"
+	MicroservicePath = Rootpath + "/modules/aws/container/microservice"
 )
 
 var (

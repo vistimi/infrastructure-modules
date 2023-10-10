@@ -35,7 +35,7 @@ test-clear: ## Clear the cache for the tests
 	go clean -testcache
 
 prepare-terragrunt:
-	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/module/aws
+	make -f ${PATH_ABS_ROOT}/${FILE_NAME} prepare-account-aws ACCOUNT_PATH=${PATH_ABS_ROOT}/modules/aws
 prepare-account-aws:
 	cat <<-EOF > ${ACCOUNT_PATH}/aws_account_override.hcl
 	locals {
@@ -45,22 +45,23 @@ prepare-account-aws:
 	}
 	EOF
 
+ORCHESTRATOR ?= ecs
 prepare-aws-microservice:
 	$(call check_defined, ORCHESTRATOR)
-	cat <<-EOF > ${PATH_ABS_ROOT}/module/aws/container/microservice/microservice_override.hcl
+	cat <<-EOF > ${PATH_ABS_ROOT}/modules/aws/container/microservice/microservice_override.hcl
 	locals {
 		orchestrator="${ORCHESTRATOR}"
 	}
 	EOF
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/container/microservice
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/aws/container/microservice
 
 prepare-aws-iam-level:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/iam/level
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/aws/iam/level
 prepare-aws-iam-group:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/aws/iam/group
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/aws/iam/group
 
 prepare-github-variables:
-	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/module/github/variables
+	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} init TERRAGRUNT_CONFIG_PATH=${PATH_ABS_ROOT}/modules/github/variables
 
 clean: ## Clean the test environment
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} nuke-region

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	pathLevel = "../../../module/aws/iam/level"
+	pathLevel = "../../../modules/aws/iam/level"
 )
 
 func Test_Unit_IAM_Level(t *testing.T) {
