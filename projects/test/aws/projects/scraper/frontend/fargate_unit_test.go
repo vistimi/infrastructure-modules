@@ -5,11 +5,11 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	testAwsProjectModule "github.com/dresspeng/infrastructure-modules/projects/test/aws/module"
-	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
-	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+	testAwsProjectModule "github.com/vistimi/infrastructure-modules/projects/test/aws/module"
+	testAwsModule "github.com/vistimi/infrastructure-modules/test/aws/module"
+	"github.com/vistimi/infrastructure-modules/test/util"
 )
 
 func Test_Unit_Microservice_ScraperFrontend_ECS_Fargate(t *testing.T) {

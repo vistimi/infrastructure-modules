@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+	"github.com/vistimi/infrastructure-modules/test/util"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 var (
 	accesses = []map[string]any{
 		{
-			"owner": "dresspeng",
+			"owner": "vistimi",
 			"name":  "infrastructure-modules",
 		},
 	}

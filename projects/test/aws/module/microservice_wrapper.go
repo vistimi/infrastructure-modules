@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dresspeng/infrastructure-modules/test/util"
+	"github.com/vistimi/infrastructure-modules/test/util"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
+	testAwsModule "github.com/vistimi/infrastructure-modules/test/aws/module"
 )
 
 var (

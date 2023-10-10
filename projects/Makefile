@@ -64,7 +64,7 @@ prepare-aws-tryon-backend:
 BRANCH_NAME ?= trunk
 prepare-aws-scraper-backend:
 	$(eval GIT_NAME=github.com)
-	$(eval ORGANIZATION_NAME=dresspeng)
+	$(eval ORGANIZATION_NAME=vistimi)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=backend)
 	$(eval COMMON_NAME="")
@@ -98,7 +98,7 @@ make prepare-scraper-backend-env:
 BRANCH_NAME ?= trunk
 prepare-aws-scraper-frontend:
 	$(eval GIT_NAME=github.com)
-	$(eval ORGANIZATION_NAME=dresspeng)
+	$(eval ORGANIZATION_NAME=vistimi)
 	$(eval PROJECT_NAME=scraper)
 	$(eval SERVICE_NAME=frontend)
 	make -f ${PATH_ABS_ROOT}/${INFRA_FILE_NAME} gh-load-folder \

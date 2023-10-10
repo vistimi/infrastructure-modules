@@ -1,4 +1,4 @@
-module github.com/dresspeng/infrastructure-modules
+module github.com/vistimi/infrastructure-modules
 
 go 1.18
 

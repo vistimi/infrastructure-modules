@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/dresspeng/infrastructure-modules/test/util"
+	"github.com/vistimi/infrastructure-modules/test/util"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
+	testAwsModule "github.com/vistimi/infrastructure-modules/test/aws/module"
 )
 
 const (

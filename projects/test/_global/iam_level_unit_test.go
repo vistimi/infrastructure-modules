@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
-	"github.com/dresspeng/infrastructure-modules/test/util"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+	testAwsModule "github.com/vistimi/infrastructure-modules/test/aws/module"
+	"github.com/vistimi/infrastructure-modules/test/util"
 )
 
 const (
@@ -111,7 +111,7 @@ func Test_Unit_Global_Level(t *testing.T) {
 			"github": map[string]any{
 				"accesses": []map[string]any{
 					{
-						"owner": "dresspeng",
+						"owner": "vistimi",
 						"name":  "infrastructure-modules",
 					},
 				},

@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dresspeng/infrastructure-modules/test/util"
 	terratest_http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
 	terratestShell "github.com/gruntwork-io/terratest/modules/shell"
 	terratestStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+	"github.com/vistimi/infrastructure-modules/test/util"
 )
 
 var (

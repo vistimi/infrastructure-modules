@@ -5,8 +5,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 
-	testAwsModule "github.com/dresspeng/infrastructure-modules/test/aws/module"
-	"github.com/dresspeng/infrastructure-modules/test/util"
+	testAwsModule "github.com/vistimi/infrastructure-modules/test/aws/module"
+	"github.com/vistimi/infrastructure-modules/test/util"
 )
 
 const (
