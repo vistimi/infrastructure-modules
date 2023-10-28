@@ -47,9 +47,9 @@ apply:
 destroy-microservice:
 	$(call check_defined, TERRAGRUNT_CONFIG_PATH)
 	terragrunt destroy --terragrunt-non-interactive -auto-approve --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -target module.microservice
-output-microservice:
+output-microservice-ecs:
 	$(call check_defined, TERRAGRUNT_CONFIG_PATH)
-	terragrunt output --terragrunt-non-interactive --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -json microservice | jq '.ecs.elb.lb_dns_name'
+	terragrunt output --terragrunt-non-interactive --terragrunt-working-dir ${TERRAGRUNT_CONFIG_PATH} -json microservice | jq '.ecs.elb.lb.dns_name'
 
 
 clean-cloudwatch:
@@ -58,7 +58,7 @@ clean-task-definition:
 	for taskDefinition in $(shell aws ecs list-task-definitions --status ACTIVE --query 'taskDefinitionArns[]' | tr -d '[],'); do aws ecs deregister-task-definition --task-definition $$taskDefinition --query 'taskDefinition.taskDefinitionArn'; done;
 clean-iam:
 	# roles are attached to policies
-	# for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done; \
+	for roleName in $(shell aws iam list-roles --query 'Roles[].RoleName'); do echo $$roleArn; aws iam delete-role --role-name $$roleName; done; \
 	for policyArn in $(shell aws iam list-policies --max-items 200 --no-only-attached --query 'Policies[].Arn' | tr -d '[],'); do echo $$policyArn; aws iam delete-policy --policy-arn $$policyArn; done;
 clean-ec2:
 	for launchTemplateId in $(shell aws ec2 describe-launch-templates --query 'LaunchTemplates[].LaunchTemplateId' | tr -d '[],'); do aws ec2 delete-launch-template --launch-template-id $$launchTemplateId --query 'LaunchTemplate.LaunchTemplateName'; done;
